@@ -192,3 +192,15 @@ describe("rebirth", () => {
     expect(r.bonusCoins).toBe(2);
   });
 });
+
+describe("paid backgrounds", () => {
+  test("buying spends Care Coins once; free and unaffordable ones don't", () => {
+    const s = run(newGame(), { type: "devAddCoins", count: 20 });
+    const bought = run(s, { type: "buyBackground", id: "purple_rain" });
+    expect(bought.ownedBackgrounds).toEqual(["purple_rain"]);
+    expect(coinBalance(bought)).toBe(coinBalance(s) - 15);
+    expect(run(bought, { type: "buyBackground", id: "purple_rain" })).toBe(bought); // already owned
+    expect(run(newGame(), { type: "buyBackground", id: "heart_monitor" }).ownedBackgrounds).toEqual([]); // no coins
+    expect(run(s, { type: "buyBackground", id: "rose_grid" }).ownedBackgrounds).toEqual([]); // free
+  });
+});

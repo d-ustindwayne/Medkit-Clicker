@@ -1,5 +1,6 @@
 import { ACHIEVEMENTS, type AchievementId } from "@/constants/achievements";
 import { gemsForRebirth, healingRate, rebirthMultiplier } from "@/constants/rebirth";
+import { BACKGROUNDS } from "@/constants/backgrounds";
 import { BOOSTS, LUCKY_MULT, boostMultiplier } from "@/constants/boosts";
 import { LOSE_SECONDS, WIN_COINS, WIN_SECONDS } from "@/constants/patients";
 import { REWARD_SECTIONS } from "@/constants/rewards";
@@ -45,6 +46,8 @@ export type GameState = {
   nextPatientAt: number;
   /** My Room: which room is shown, and the items placed in each. */
   room: RoomState;
+  /** Paid backgrounds bought with Care Coins (ids). Kept through rebirth. */
+  ownedBackgrounds: string[];
 };
 
 export type GameAction =
@@ -64,6 +67,7 @@ export type GameAction =
   | { type: "patientLeaves"; next: number }
   | { type: "treat"; won: boolean; next: number }
   | { type: "setRoom"; room: string }
+  | { type: "buyBackground"; id: string }
   /** Place an item (or move it, including from another room) at x, y: fractions of the room art. */
   | { type: "placeItem"; room: string; item: string; x: number; y: number }
   | { type: "removeItem"; room: string; item: string }
@@ -103,6 +107,7 @@ export const newGame = (): GameState => ({
   patient: null,
   nextPatientAt: Date.now() + 60_000,
   room: { current: ROOMS[0].id, placed: {} },
+  ownedBackgrounds: [],
 });
 
 /** Patients per medkit tap, including the rebirth boost and (when passed) active boosts. */
@@ -226,6 +231,11 @@ const apply = (state: GameState, action: GameAction): GameState => {
       const done = { ...state, patient: null, nextPatientAt: action.next };
       return earn(action.won ? { ...done, treated: state.treated + 1, bonusCoins: state.bonusCoins + WIN_COINS } : done, amount);
     }
+    case "buyBackground": {
+      const bg = BACKGROUNDS.find((b) => b.id === action.id);
+      if (!bg?.price || state.ownedBackgrounds.includes(bg.id) || coinBalance(state) < bg.price) return state;
+      return { ...state, coinsSpent: state.coinsSpent + bg.price, ownedBackgrounds: [...state.ownedBackgrounds, bg.id] };
+    }
     case "setRoom": {
       const room = ROOMS.find((r) => r.id === action.room);
       if (!room || !isUnlocked(room.unlock, state)) return state;
@@ -306,6 +316,7 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     nextPatientAt: typeof s.nextPatientAt === "number" ? s.nextPatientAt : base.nextPatientAt,
     // Natal Gems are one per rebirth; older saves had cube-root rebirth points, so cap them at the rebirth count.
     rebirthPoints: Math.min(typeof s.rebirthPoints === "number" ? s.rebirthPoints : 0, typeof s.rebirths === "number" ? s.rebirths : 0),
+    ownedBackgrounds: Array.isArray(s.ownedBackgrounds) ? s.ownedBackgrounds : [],
     room: s.room && typeof s.room.current === "string" ? { current: s.room.current, placed: { ...(s.room.placed ?? {}) } } : base.room,
   };
 };

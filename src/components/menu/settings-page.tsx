@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { Image } from "expo-image";
 import { Text, View } from "react-native";
 
-import { BACKGROUNDS } from "@/components/background-pattern";
+import { BACKGROUNDS, ownsBackground } from "@/constants/backgrounds";
 import { DevTools } from "@/components/menu/dev-tools";
 import { MusicPlayer } from "@/components/menu/music-player";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -9,6 +10,8 @@ import { Field, SettingsGroup, Stepper, Toggle, VolumeControl } from "@/componen
 import { PixelButton } from "@/components/ui/pixel-button";
 import { PLAYLISTS } from "@/constants/playlists";
 import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
+import { COIN } from "@/constants/boosts";
+import { coinBalance } from "@/lib/game";
 import { exportSave, importSave, type SaveFormat } from "@/lib/save-file";
 import { VOLUME_STEPS } from "@/lib/storage";
 
@@ -19,6 +22,9 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
   const state = useGameState();
   const { updateSettings, setTheme, replaceSave, resetProgress, dispatch, pushToast } = useGameActions();
   const [confirmReset, setConfirmReset] = useState(false);
+  const background = BACKGROUNDS[settings.background % BACKGROUNDS.length];
+  const owned = ownsBackground(settings.background, state.ownedBackgrounds);
+  const coins = coinBalance(state);
 
   const onExport = async (format: SaveFormat) => {
     try {
@@ -72,11 +78,25 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
         <Field label="Background">
           <Stepper
             label="background"
-            value={BACKGROUNDS[settings.background % BACKGROUNDS.length].name}
+            value={`${background.name}${owned ? "" : " (locked)"}`}
             onPrev={() => updateSettings({ background: cycle(settings.background, -1, BACKGROUNDS.length) })}
             onNext={() => updateSettings({ background: cycle(settings.background, 1, BACKGROUNDS.length) })}
           />
         </Field>
+        {!owned && (
+          <View className="flex-row items-center gap-3">
+            <Image source={COIN.image} style={{ width: 20, height: 20 }} contentFit="contain" />
+            <Text className="flex-1 font-body text-sm text-ink">
+              Animated background. You have {coins} {COIN.name}.
+            </Text>
+            <PixelButton
+              label={`Buy ${background.price}`}
+              tone="success"
+              disabled={coins < (background.price ?? 0)}
+              onPress={() => dispatch({ type: "buyBackground", id: background.id })}
+            />
+          </View>
+        )}
         <Toggle label="Dark mode" icon="moon" value={settings.theme === "dark"} onChange={(dark) => setTheme(dark ? "dark" : "light")} />
       </SettingsGroup>
 

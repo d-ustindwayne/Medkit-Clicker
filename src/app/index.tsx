@@ -12,6 +12,7 @@ import { HardShadow } from "@/components/ui/hard-shadow";
 import { Pager } from "@/components/ui/pager";
 import { ToastStack } from "@/components/toast-stack";
 import { RoomPage } from "@/components/room/room-page";
+import { ownsBackground } from "@/constants/backgrounds";
 import { BOOSTS, LUCKY_MULT } from "@/constants/boosts";
 import { healingRate } from "@/constants/rebirth";
 import { useAudio } from "@/hooks/use-audio";
@@ -114,6 +115,14 @@ function Counter({ compact }: { compact: boolean }) {
   );
 }
 
+/** The chosen background; an unbought paid one falls back to the default until it's bought. */
+function Backdrop({ width, height }: { width: number; height: number }) {
+  const settings = useSettings();
+  const { ownedBackgrounds } = useGameState();
+  const index = ownsBackground(settings.background, ownedBackgrounds) ? settings.background : 0;
+  return <BackgroundPattern index={index} theme={settings.theme} width={width} height={height} />;
+}
+
 /** Swipeable stage: the medkit, then My Room. */
 function Clicker({ width, height, compact }: { width: number; height: number; compact: boolean }) {
   const { owned, rebirths, boosts, luckyTaps, patient, room } = useGameState();
@@ -154,7 +163,6 @@ function Clicker({ width, height, compact }: { width: number; height: number; co
 export default function GameScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const settings = useSettings();
   const [menuOpen, setMenuOpen] = useState(false);
   const wide = width >= WIDE_BREAKPOINT;
   const clickerWidth = wide ? width - SIDEBAR_WIDTH : width;
@@ -166,7 +174,7 @@ export default function GameScreen() {
         className="relative overflow-hidden"
         style={{ width: clickerWidth, height: clickerHeight, paddingTop: insets.top, paddingLeft: insets.left }}
       >
-        <BackgroundPattern index={settings.background} theme={settings.theme} width={clickerWidth} height={clickerHeight} />
+        <Backdrop width={clickerWidth} height={clickerHeight} />
         <View className="absolute left-4 z-10" style={{ top: insets.top + 12 }}>
           <MenuButton onPress={() => setMenuOpen(true)} />
         </View>
