@@ -54,3 +54,66 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] All sprites are crisp (not blurry) at every size
 
 ## Latest run
+
+### 2026-10-20: Android emulator (Pixel-class, Android 16), debug build
+
+**Passed:**
+- Start-up and loading the save
+- Autosave plus restart keeps patients and items
+- Medkit tap: counter, particles, "Patient Healed" singular, First Aid unlock
+- Shop: the "???" reveal at half price
+- Buying: +15% price, count, orbit sprite
+- Refused buy when you can't afford it
+- Bandage: 1 of 13 items in order with correct prices
+- All 13 item types orbit the medkit (dev tools: +10 each)
+- Swipe pages:
+  - medkit → Hospital
+  - shop → "???"
+- Menu, and the back button from a page to the menu
+- Achievements page:
+  - 111 total, the counter and the detail card
+  - trophy art loads (slowly in debug, see below)
+- Settings:
+  - Vibration toggle
+  - dark mode across the menu
+  - background stepper (Mint Crosses)
+  - "Lights Out" secret achievement
+- Dev tools:
+  - +1 billion, +10 each, skip 1 h away: 18.5 trillion at 5.07 billion/s, as expected
+- Rebirth:
+  - 26 points (cube root of 18,727), confirmation dialog
+  - reset items, R1 badge, toast
+- Redeem: a wrong code is rejected with a message
+- Visit website opens the browser
+
+**Found and fixed:**
+- Toasts covered the counter; they now sit at the bottom, 2 at most.
+- Haptics only fired on the medkit; they now fire on buy, failed buy and achievements, with a Vibration toggle.
+- Achievement toasts always showed the medkit; they now show the achievement's art.
+- The splash screen and app icons showed the old black-outlined medkit.
+
+**Debug-only, not bugs:**
+- In debug builds, images and audio stream from Metro on first use.
+  - The first trophy took about 25 s to appear.
+  - The 5 audio players timed out at start-up while Metro was busy.
+- Release builds pack images and audio into the app.
+
+**Still to check on a real phone:**
+- 📱 how the vibration feels
+- 📱 music and sound quality, and that it stops in the background
+- the right redeem code
+- export and import through the Android folder picker
+
+### 2026-10-20: Android emulator, release APK
+
+**Passed:**
+- Installs over the debug build and keeps the save (rebirth, settings, items)
+- Opens instantly with the new splash
+- Music:
+  - plays with no errors
+  - next track, tap-to-seek and playlist switch (Cup of Joe → Love Songs) all work
+  - pauses when the app goes to the background and resumes on return
+- Haptics: the system vibration log shows the app's taps (50 ms) and stronger pulses
+- Swipe pages: medkit → Hospital (outside scene) → Ward (inside scene), with 3 dots
+- Toasts: "Welcome back" shows at the bottom and the counter stays visible
+- Offline earnings: 0.2/s for 13 s = 2 patients
