@@ -48,4 +48,4 @@ If you'd like the hospital to change as the game progresses (for example, rooms 
 
 ## Already provided (no action)
 
-Sprites: medkit, hospital, syringe, stethoscope, facemask, gloves, medicines. Fonts: Silkscreen, Mallanna, Inter Bold, Nunito. Sound: click, medkit click, buy, invalid buy, plus the music library.
+Sprites: medkit, hospital, syringe, stethoscope, facemask, gloves, medicines; 12 medical icons and 7 trophies (32 × 32, see [ART_PLAN.md](ART_PLAN.md)), not wired into the game yet. Fonts: Silkscreen, Mallanna, Inter Bold, Nunito. Sound: click, medkit click, buy, invalid buy, plus the music library.

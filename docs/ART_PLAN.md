@@ -17,12 +17,25 @@ The brief for polishing the existing sprites and drawing new ones. Read this bef
 | # | Phase | Status |
 | --- | --- | --- |
 | 1 | Audit the project, sprites and references | Done (2026-10-19) |
-| 2 | Polish existing sprites: the apple first, then remove black outlines from the 7 in-game sprites | Next |
-| 3 | New 32 × 32 icons (list below) | Not started |
-| 4 | Trophy series, starting from `trophy.aseprite` | Not started |
-| 5 | Export and verify: 32 × 32 sources, 1024 PNGs, transparency, game paths, `bun run typecheck` | Not started |
-| 6 | Reorder the shop: propose an order and get approval. Items are saved by `id`, so changing the order is safe for saves. | Not started |
+| 2 | Polish existing sprites: the apple first, then remove black outlines from the 7 in-game sprites | Done (2026-10-20), awaiting your review |
+| 3 | New 32 × 32 icons (list below) | Done (2026-10-20), awaiting your review |
+| 4 | Trophy series, starting from `trophy.aseprite` | Done (2026-10-20), awaiting your approval |
+| 5 | Export and verify: 32 × 32 sources, 1024 PNGs, transparency, game paths, `bun run typecheck` | Done (2026-10-20) |
+| 6 | Reorder the shop: propose an order and get approval. Items are saved by `id`, so changing the order is safe for saves. | Proposed, waiting for approval |
 | 7 | Plan the deferred art (below) | Not started |
+
+## Where the files are
+
+| What | `.aseprite` source (32 × 32) | Game PNG (1024 × 1024) |
+| --- | --- | --- |
+| 7 in-game sprites (medkit, syringe, stethoscope, facemask, gloves, medicines, hospital) | `src/media/photos/sprites/items/` | `src/imgs/<name>.png` (same paths as before) |
+| Apple, heart (your sources, enhanced in place) | `src/media/photos/sprites/Apple.aseprite`, `heart.aseprite` | `src/imgs/icons/apple.png`, `heart.png` |
+| 12 new icons | `src/media/photos/sprites/icons/` | `src/imgs/icons/` |
+| Trophies | `src/media/photos/sprites/trophies/` (gold = the original `trophy.aseprite`) | `src/imgs/trophies/` |
+
+The originals from before this work are in commit `62c51f2`, so any one can be restored with `git checkout 62c51f2 -- <path>`.
+
+Lighting follows each original. The items, apple, heart and icons are lit from the top-left, with an outline one shade darker than the fill: lighter on the lit edge, darker on the shadow edge. The trophies copy `trophy.aseprite`: no outline, lit from the right, highlight stripes on the right and copper bands on the left.
 
 ## Audit findings
 

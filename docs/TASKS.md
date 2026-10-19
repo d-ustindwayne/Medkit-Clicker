@@ -40,6 +40,37 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [ ] How to Play text on the About page
 - [ ] Real website URL for "Visit website" (`src/constants/app.ts`)
 
+## Proposed shop order (waiting for your OK)
+
+This keeps the 5 current items exactly as they are, at the same prices, rates and ids, so saves are safe. It adds 8 items from the new icons: the bandage goes between gloves and medicine, as you suggested, and the rest extend the late game. That also fixes the late-achievement concern below. You delegated the numbers to me; they follow the existing price ladder (each tier costs about 10× the last).
+
+| # | Item | Status | Base price | Heals/s |
+| --- | --- | --- | --- | --- |
+| 1 | Syringe | existing | 15 | 0.1 |
+| 2 | Stethoscope | existing | 100 | 1 |
+| 3 | Facemask | existing | 1,100 | 8 |
+| 4 | Gloves | existing | 12,000 | 47 |
+| 5 | Bandage | new | 40,000 | 120 |
+| 6 | Medicine | existing | 130,000 | 260 |
+| 7 | Thermometer | new | 1.4M | 1,400 |
+| 8 | BP tester | new | 20M | 7,800 |
+| 9 | IV bag | new | 330M | 44,000 |
+| 10 | Blood vial | new | 5.1B | 260,000 |
+| 11 | COVID test | new | 75B | 1.6M |
+| 12 | Microscope | new | 1T | 10M |
+| 13 | DNA | new | 14T | 65M |
+
+Grouping: bedside tools, then protection, then treatment, then vital signs, then lab and research.
+
+Suggested uses for the icons that aren't shop items:
+- coin: the rebirth-points currency
+- clock with moon: night-shift and offline achievements
+- medal and the 7 trophies: achievement tiers
+- winged heart: rebirth
+- apple and heart: spare
+
+Nothing is wired in yet. Adding items also means extending `ItemId`, the item achievements and the orbit.
+
 ## Concerns to address
 
 - [ ] **Late achievements are out of reach.** With 5 items the rate tops out around tens of thousands per second, so trillion-plus milestones need more items, upgrades or rebirth spending.
