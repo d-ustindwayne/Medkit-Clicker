@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
-import { REBIRTH_MIN_HEALED, REBIRTH_UNLOCKS, rebirthMultiplier, rebirthPointsFor } from "@/constants/rebirth";
+import { GEM, REBIRTH_MIN_HEALED, REBIRTH_UNLOCKS, gemsForRebirth, rebirthMultiplier } from "@/constants/rebirth";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { formatCount } from "@/lib/format";
 
@@ -21,13 +21,13 @@ export function RebirthPage({ onDone }: { onDone: () => void }) {
   const { rebirths, rebirthPoints, runHealed } = useGameState();
   const { dispatch, pushToast } = useGameActions();
   const [confirming, setConfirming] = useState(false);
-  const gain = rebirthPointsFor(runHealed);
+  const gain = gemsForRebirth(runHealed);
   const progress = Math.min(1, runHealed / REBIRTH_MIN_HEALED);
 
   const rebirth = () => {
     setConfirming(false);
     dispatch({ type: "rebirth" });
-    pushToast({ kind: "info", title: `Rebirth ${rebirths + 1}`, body: `You earned ${gain} rebirth point${gain === 1 ? "" : "s"}. A fresh start!` });
+    pushToast({ kind: "info", title: `Rebirth ${rebirths + 1}`, body: `You earned a ${GEM.one}. A fresh start!`, image: GEM.image });
     onDone();
   };
 
@@ -35,7 +35,7 @@ export function RebirthPage({ onDone }: { onDone: () => void }) {
     <View className="gap-4">
       <View className="flex-row gap-3">
         <Stat label="Rebirths" value={formatCount(rebirths)} />
-        <Stat label="Rebirth points" value={formatCount(rebirthPoints)} />
+        <Stat label={GEM.name} value={formatCount(rebirthPoints)} />
         <Stat label="Healing boost" value={`×${rebirthMultiplier(rebirths).toFixed(2)}`} />
       </View>
 
@@ -48,7 +48,7 @@ export function RebirthPage({ onDone }: { onDone: () => void }) {
           </Text>
           <Text className="font-body text-sm text-ink">This run: {formatCount(runHealed)} patients healed</Text>
           {gain > 0 ? (
-            <PixelButton tone="success" label={`Rebirth for +${formatCount(gain)} point${gain === 1 ? "" : "s"}`} onPress={() => setConfirming(true)} />
+            <PixelButton tone="success" label={`Rebirth for +1 ${GEM.one}`} onPress={() => setConfirming(true)} />
           ) : (
             <View className="gap-1">
               <View className="h-3 border-[1.5px] border-outline bg-backdrop">
@@ -81,7 +81,7 @@ export function RebirthPage({ onDone }: { onDone: () => void }) {
       <ConfirmDialog
         visible={confirming}
         title="Rebirth now?"
-        body={`Your ${formatCount(runHealed)} patients and all shop supplies will reset. You'll get ${formatCount(gain)} rebirth point${gain === 1 ? "" : "s"}.`}
+        body={`Your ${formatCount(runHealed)} patients and all shop supplies will reset. You'll get a ${GEM.one}.`}
         cancelLabel="Keep playing"
         confirmLabel="Rebirth"
         confirmTone="success"

@@ -4,7 +4,7 @@ import { ACHIEVEMENTS } from "@/constants/achievements";
 import { BOOSTS, boostMultiplier } from "@/constants/boosts";
 import { SHOP_ITEMS, itemCost } from "@/constants/items";
 import { SICK_PATIENTS } from "@/constants/patients";
-import { healingRate, rebirthPointsFor } from "@/constants/rebirth";
+import { healingRate } from "@/constants/rebirth";
 import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, roomBonus } from "@/constants/room";
 import { coinBalance, coinsEarned, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
 
@@ -43,6 +43,10 @@ describe("saves", () => {
     expect(s.boosts).toEqual({});
     expect(s.patient).toBeNull();
     expect(s.room.current).toBe(ROOMS[0].id);
+  });
+
+  test("old cube-root rebirth points become one Natal Gem per rebirth", () => {
+    expect(normalizeSave({ healed: 1, rebirths: 2, rebirthPoints: 26 })!.rebirthPoints).toBe(2);
   });
 
   test("rejects garbage", () => {
@@ -181,7 +185,7 @@ describe("rebirth", () => {
     s = { ...s, treated: 4, bonusCoins: 2 };
     const r = run(s, { type: "rebirth" });
     expect(r.rebirths).toBe(1);
-    expect(r.rebirthPoints).toBe(rebirthPointsFor(8e9));
+    expect(r.rebirthPoints).toBe(1); // one Natal Gem per rebirth
     expect(r.healed).toBe(0);
     expect(r.room.placed.empty).toHaveLength(1);
     expect(r.treated).toBe(4);

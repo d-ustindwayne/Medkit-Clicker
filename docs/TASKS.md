@@ -28,9 +28,9 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [ ] Achievement names, descriptions and thresholds (`src/constants/achievements.ts`), 111 in total, including names for the 8 new items' achievements.
 - [ ] Rebirth numbers (`src/constants/rebirth.ts`):
   - you need 1 billion patients in a run to rebirth
-  - points = cube root of (run patients ÷ 1 billion)
+  - each rebirth pays 1 Natal Gem (the prestige currency, renamed from rebirth points)
   - +2% healing per rebirth
-  - nothing to spend rebirth points on yet
+  - nothing to spend Natal Gems on yet (they count towards room and item unlocks)
 - [ ] What each rebirth unlocks (`REBIRTH_UNLOCKS`, currently empty)
 - [ ] Rewards section title "Jasmine's Rewards", the gift icon, and the wording of the "Tell Dustin" message
 - [ ] Background names and colours (Rose Grid, Mint Crosses, Lavender Dots, Peach Stripes, Sky Checker, Candy Hearts, Plain)

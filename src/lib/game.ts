@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, type AchievementId } from "@/constants/achievements";
-import { healingRate, rebirthMultiplier, rebirthPointsFor } from "@/constants/rebirth";
+import { gemsForRebirth, healingRate, rebirthMultiplier } from "@/constants/rebirth";
 import { BOOSTS, LUCKY_MULT, boostMultiplier } from "@/constants/boosts";
 import { LOSE_SECONDS, WIN_COINS, WIN_SECONDS } from "@/constants/patients";
 import { REWARD_SECTIONS } from "@/constants/rewards";
@@ -11,10 +11,10 @@ export type GameState = {
   healed: number;
   /** Everything ever earned, across rebirths; drives achievements and shop reveals. */
   totalHealed: number;
-  /** Earned since the last rebirth; decides rebirth points. */
+  /** Earned since the last rebirth; rebirth needs enough of it. */
   runHealed: number;
   rebirths: number;
-  /** Prestige currency earned by rebirthing; never reset. */
+  /** Natal Gems: the prestige currency, one per rebirth; never reset. (Saved under its old name.) */
   rebirthPoints: number;
   taps: number;
   owned: Record<ItemId, number>;
@@ -172,8 +172,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
     case "exported":
       return { ...state, exports: state.exports + 1 };
     case "rebirth": {
-      const points = rebirthPointsFor(state.runHealed);
-      if (points <= 0) return state;
+      const gems = gemsForRebirth(state.runHealed);
+      if (gems <= 0) return state;
       // A new run: patients and supplies reset; achievements, lifetime stats, rewards and settings stay.
       return {
         ...state,
@@ -181,7 +181,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
         runHealed: 0,
         owned: emptyOwned(),
         rebirths: state.rebirths + 1,
-        rebirthPoints: state.rebirthPoints + points,
+        rebirthPoints: state.rebirthPoints + gems,
       };
     }
     case "unlockSection":
@@ -304,6 +304,8 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     treated: typeof s.treated === "number" ? s.treated : 0,
     patient: s.patient && typeof s.patient.id === "string" ? s.patient : null,
     nextPatientAt: typeof s.nextPatientAt === "number" ? s.nextPatientAt : base.nextPatientAt,
+    // Natal Gems are one per rebirth; older saves had cube-root rebirth points, so cap them at the rebirth count.
+    rebirthPoints: Math.min(typeof s.rebirthPoints === "number" ? s.rebirthPoints : 0, typeof s.rebirths === "number" ? s.rebirths : 0),
     room: s.room && typeof s.room.current === "string" ? { current: s.room.current, placed: { ...(s.room.placed ?? {}) } } : base.room,
   };
 };

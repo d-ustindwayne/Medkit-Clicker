@@ -9,7 +9,8 @@ It runs on Android, iOS and the web, built with Expo 57, React Native, React 19,
 - **Tap and grow:** every tap heals patients. 13 supplies, from bandages and gloves to IV bags, microscopes and a DNA lab, keep healing while you rest. Each purchase raises the next price by 15%.
 - **Offline progress:** your team keeps working for up to 8 hours while the app is closed.
 - **111 achievements**, from "First Aid" to healing a vigintillion patients, with progress bars and a few secret ones.
-- **Rebirth:** start a new run for rebirth points and a small permanent healing boost.
+- **Three currencies**, shown top-right: patients (medkits), Care Coins (from achievements) and Natal Gems (one per rebirth).
+- **Rebirth:** start a new run for a Natal Gem and a small permanent healing boost.
 - **Care Coins and boosts:** achievements pay Care Coins. Spend them in the shop's Boosts tab on 13 power-ups, like 2x per tap for 3 minutes or an instant hour of healing.
 - **My Room:** decorate hospital rooms (Empty Room, Reception, Lab, Pharmacy, Children's Ward) with 14 pixel-art hospital items you unlock by playing. Each placed item gives a small permanent bonus, and nurses and the doctor walk around.
 - **Sick patients** turn up in your room at random. Treat them in a quick minigame (injection timing, CPR rhythm or a bandage-wrap tap race) for patients and coins.
@@ -41,16 +42,16 @@ Both folders are gitignored. Playlist names and tracks are set in `src/constants
 
 ## Scripts
 
-| Command | What it does |
-| --- | --- |
-| `bun run start` | Start the Expo dev server |
-| `bun run android` / `bun run ios` | Build and run on a device or emulator |
-| `bun run web` | Run in the browser |
-| `bun run music` | Build the trimmed music bundle |
-| `bun run lint` | Lint with ESLint |
-| `bun run typecheck` | Type-check with TypeScript |
-| `bun run test` | Unit tests for the game logic (Bun's built-in runner) |
-| `bun run tasks` | Progress summary of the task board in `docs/TASKS.md` |
+| Command                             | What it does                                                                                                      |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `bun run start`                     | Start the Expo dev server                                                                                         |
+| `bun run android` / `bun run ios`   | Build and run on a device or emulator                                                                             |
+| `bun run web`                       | Run in the browser                                                                                                |
+| `bun run music`                     | Build the trimmed music bundle                                                                                    |
+| `bun run lint`                      | Lint with ESLint                                                                                                  |
+| `bun run typecheck`                 | Type-check with TypeScript                                                                                        |
+| `bun run test`                      | Unit tests for the game logic (Bun's built-in runner)                                                             |
+| `bun run tasks`                     | Progress summary of the task board in `docs/TASKS.md`                                                             |
 | `bun run add-code <section> <code>` | Register a redeem code. Only its hash is stored, in `.env.local` (gitignored). Restart the dev server afterwards. |
 
 ## Project structure

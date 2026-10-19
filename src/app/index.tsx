@@ -4,6 +4,7 @@ import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BackgroundPattern } from "@/components/background-pattern";
+import { CurrencyBar } from "@/components/currency-bar";
 import { MedkitButton, ORBIT_SCALE } from "@/components/medkit-button";
 import { MenuDrawer } from "@/components/menu/menu-drawer";
 import { Shop } from "@/components/shop";
@@ -82,8 +83,8 @@ function Counter({ compact }: { compact: boolean }) {
   // Hard pixel drop shadow; NativeWind has no text-shadow utilities.
   const shadow = { textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 };
   return (
-    // Wide layouts pad past the menu button so long numbers never run under it.
-    <View className={`items-center ${compact ? "px-6" : "px-20"}`} accessibilityLiveRegion="none">
+    // Side padding clears the menu button (left) and the currency chips (right).
+    <View className={`items-center ${compact ? "px-20" : "px-24"}`} accessibilityLiveRegion="none">
       {compact ? (
         <View accessibilityRole="header" className="items-center">
           <Text className="text-center font-display text-5xl text-ink" style={shadow} adjustsFontSizeToFit numberOfLines={1}>
@@ -168,6 +169,9 @@ export default function GameScreen() {
         <BackgroundPattern index={settings.background} theme={settings.theme} width={clickerWidth} height={clickerHeight} />
         <View className="absolute left-4 z-10" style={{ top: insets.top + 12 }}>
           <MenuButton onPress={() => setMenuOpen(true)} />
+        </View>
+        <View className="absolute right-3 z-10" style={{ top: insets.top + 12 }}>
+          <CurrencyBar />
         </View>
         <Clicker width={clickerWidth} height={clickerHeight - insets.top} compact={!wide} />
       </View>
