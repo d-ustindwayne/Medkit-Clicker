@@ -4,10 +4,11 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import { MEDKIT_IMAGE, SHOP_ITEMS, itemCost, type ShopItem } from "@/constants/items";
+import { WARD_SCENE } from "@/constants/scenes";
 import { Shine } from "@/components/fx/shine";
+import { ScenePage } from "@/components/scene-page";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { Pager } from "@/components/ui/pager";
-import { PixelIcon } from "@/components/ui/pixel-icon";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
@@ -88,11 +89,10 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
   );
 });
 
-// Pages you can swipe to in the shop panel. Only "supplies" exists so far; the rest are
-// placeholders until their content is designed (see docs/TASKS.md).
+// Pages you can swipe to in the shop panel: the supplies list, then the ward.
 const SHOP_PAGES = [
   { id: "supplies", title: "SHOP" },
-  { id: "coming-soon", title: "???" },
+  { id: WARD_SCENE.id, title: WARD_SCENE.title.toUpperCase() },
 ];
 
 function SuppliesList() {
@@ -117,17 +117,6 @@ function SuppliesList() {
   );
 }
 
-function ComingSoonPage() {
-  return (
-    <View className="flex-1 items-center justify-center gap-3 px-6">
-      <View className="h-20 w-20 items-center justify-center border-2 border-dashed border-ink/60">
-        <PixelIcon name="lock" size={36} />
-      </View>
-      <Text className="text-center font-pixel text-base tracking-[3px] text-ink">COMING SOON</Text>
-    </View>
-  );
-}
-
 export function Shop({ compact, width }: { compact: boolean; width: number }) {
   const [page, setPage] = useState(0);
 
@@ -147,8 +136,8 @@ export function Shop({ compact, width }: { compact: boolean; width: number }) {
         onPageChange={setPage}
         pages={SHOP_PAGES.map((p) => ({
           key: p.id,
-          label: p.id === "supplies" ? "Supplies" : "Coming soon",
-          content: p.id === "supplies" ? <SuppliesList /> : <ComingSoonPage />,
+          label: p.id === "supplies" ? "Supplies" : WARD_SCENE.title,
+          content: p.id === "supplies" ? <SuppliesList /> : <ScenePage scene={WARD_SCENE} width={width} />,
         }))}
       />
     </View>

@@ -1,19 +1,19 @@
 # Medkit Clicker
 
-A nursing-themed clicker game for iOS, Android and the web, made by Dustin Dwayne Diaz for Jasmine Sison Taboy, to relieve her stress. Tap the medkit to heal patients, then spend them on supplies that keep healing for you.
+**Medkit Clicker is a cozy pixel-art idle game about running a hospital: tap the medkit to heal patients, then spend them on medical supplies, from bandages to a DNA lab, that keep healing for you.** Grow your hospital, unlock over a hundred achievements and rebirth for permanent boosts, all to a soundtrack you pick.
 
-Built with Expo 57, React Native, React 19, NativeWind v4 and Reanimated 4.
+It runs on Android, iOS and the web, built with Expo 57, React Native, React 19, NativeWind v4 and Reanimated 4, by Dustin Dwayne Diaz.
 
 ## Features
 
-- **Tap and grow:** every tap heals patients. Syringes, stethoscopes, facemasks, gloves and medicine keep healing while you rest. Each purchase raises the next price by 15%.
+- **Tap and grow:** every tap heals patients. 13 supplies, from bandages and gloves to IV bags, microscopes and a DNA lab, keep healing while you rest. Each purchase raises the next price by 15%.
 - **Offline progress:** your team keeps working for up to 8 hours while the app is closed.
 - **111 achievements**, from "First Aid" to healing a vigintillion patients, with progress bars and a few secret ones.
 - **Rebirth:** start a new run for rebirth points and a small permanent healing boost.
 - **Redeem codes** unlock hidden sections, like a rewards shop where patients buy real-life treats (with a limit on each).
-- **Music player** with six playlists, play/pause, track skipping and seeking; sound effects with their own volume; light haptics on native.
+- **Music player** with six playlists, play/pause, track skipping and seeking; sound effects with their own volume; vibration feedback (with an off switch) on phones.
 - **Light and dark themes** from the original design, with seven backgrounds, each with its own pattern and colours.
-- **Swipe pages** next to the medkit (the hospital) and in the shop.
+- **Swipe pages:** the outside of the hospital next to the medkit, and the ward next to the shop, drawn as full-width pixel scenes.
 - **Saves:** autosaves every 10 seconds and when the app is backgrounded. Export (to a folder you choose) or import a save as JSON or CSV.
 - **Responsive layout:** the shop sits beside the medkit on tablets and desktops, and below it on phones.
 
@@ -67,6 +67,10 @@ Game balance (prices, rates and growth) lives in `src/constants/items.ts`. Devel
 
 - [docs/TASKS.md](docs/TASKS.md): status, roadmap, open decisions and concerns
 - [docs/ASSETS.md](docs/ASSETS.md): art that's still needed, with sizes and where it goes
+- [docs/ART_PLAN.md](docs/ART_PLAN.md): pixel-art rules, where each sprite lives, and the large-art status
+- [docs/TESTING.md](docs/TESTING.md): the test checklist and the latest results
+- [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md): the plan for reward alerts and reminders
+- [docs/SCENE_MECHANICS.md](docs/SCENE_MECHANICS.md): proposed gameplay for the hospital and ward pages
 
 ## Redeem codes
 
@@ -77,6 +81,10 @@ bun run add-code jasmine "the-code"
 ```
 
 This writes the code's SHA-256 hash to `.env.local`. Builds made on another machine need the same `.env.local`, or the code won't match.
+
+## Fun fact
+
+The game started as a gift: Dustin made it for Jasmine Sison Taboy, a nursing student, to relieve her stress. That's why the theme is nursing, and why there's a hidden rewards section.
 
 ## License
 

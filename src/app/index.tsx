@@ -11,7 +11,7 @@ import { HardShadow } from "@/components/ui/hard-shadow";
 import { Pager } from "@/components/ui/pager";
 import { ToastStack } from "@/components/toast-stack";
 import { healingRate } from "@/constants/rebirth";
-import { SCENES } from "@/constants/scenes";
+import { HOSPITAL_SCENE } from "@/constants/scenes";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameState, useSettings } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
@@ -82,7 +82,7 @@ function Counter({ compact }: { compact: boolean }) {
   );
 }
 
-/** Swipeable stage: the medkit first, then a page per scene in SCENES. */
+/** Swipeable stage: the medkit, then the outside of the hospital. */
 function Clicker({ width, height, compact }: { width: number; height: number; compact: boolean }) {
   const { owned, rebirths } = useGameState();
   // Leave room for the orbiting supplies around the medkit.
@@ -104,15 +104,7 @@ function Clicker({ width, height, compact }: { width: number; height: number; co
               </View>
             ),
           },
-          ...SCENES.map((scene) => ({
-            key: scene.id,
-            label: scene.title,
-            content: (
-              <View className="flex-1 items-center justify-center">
-                <ScenePage scene={scene} size={size * 1.1} maxWidth={width - 32} />
-              </View>
-            ),
-          })),
+          { key: HOSPITAL_SCENE.id, label: HOSPITAL_SCENE.title, content: <ScenePage scene={HOSPITAL_SCENE} width={width} /> },
         ]}
       />
     </View>

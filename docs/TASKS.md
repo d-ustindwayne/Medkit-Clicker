@@ -35,7 +35,7 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [ ] Rewards section title "Jasmine's Rewards", the gift icon, and the wording of the "Tell Dustin" message
 - [ ] Background names and colours (Rose Grid, Mint Crosses, Lavender Dots, Peach Stripes, Sky Checker, Candy Hearts, Plain)
 - [ ] Playlist display names: "normal" is labelled "Everyday", "favourites" is "My Favs", "filipino_rap" is "Pinoy Rap"
-- [ ] What the shop's second swipe page is for (currently "???" / Coming soon)
+- [x] The shop's second page is now the ward scene; its gameplay is proposed in [SCENE_MECHANICS.md](SCENE_MECHANICS.md)
 - [ ] How to Play text on the About page
 - [ ] Real website URL for "Visit website" (`src/constants/app.ts`)
 
