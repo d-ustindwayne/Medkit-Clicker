@@ -11,11 +11,12 @@ It runs on Android, iOS and the web, built with Expo 57, React Native, React 19,
 - **111 achievements**, from "First Aid" to healing a vigintillion patients, with progress bars and a few secret ones.
 - **Rebirth:** start a new run for rebirth points and a small permanent healing boost.
 - **Care Coins and boosts:** achievements pay Care Coins. Spend them in the shop's Boosts tab on 13 power-ups, like 2x per tap for 3 minutes or an instant hour of healing.
-- **Ward patients:** sick patients turn up in the ward at random. Treat them in a quick minigame (injection timing, CPR rhythm or a bandage-wrap tap race) for patients and coins.
+- **My Room:** decorate hospital rooms (Empty Room, Reception, Lab, Pharmacy, Children's Ward) with 14 pixel-art hospital items you unlock by playing. Each placed item gives a small permanent bonus, and nurses and the doctor walk around.
+- **Sick patients** turn up in your room at random. Treat them in a quick minigame (injection timing, CPR rhythm or a bandage-wrap tap race) for patients and coins.
 - **Redeem codes** unlock hidden sections, like a rewards shop where patients buy real-life treats (with a limit on each).
 - **Music player** with six playlists, play/pause, track skipping and seeking; sound effects with their own volume; vibration feedback (with an off switch) on phones.
 - **Light and dark themes** from the original design, with seven backgrounds, each with its own pattern and colours.
-- **Swipe pages:** the ward next to the medkit, and the outside of the hospital next to the shop, drawn as full-width pixel scenes.
+- **Swipe pages:** My Room next to the medkit, and the outside of the hospital next to the shop, drawn as full-width pixel scenes.
 - **Saves:** autosaves every 10 seconds and when the app is backgrounded. Export (to a folder you choose) or import a save as JSON or CSV.
 - **Responsive layout:** the shop sits beside the medkit on tablets and desktops, and below it on phones.
 
@@ -48,6 +49,7 @@ Both folders are gitignored. Playlist names and tracks are set in `src/constants
 | `bun run music` | Build the trimmed music bundle |
 | `bun run lint` | Lint with ESLint |
 | `bun run typecheck` | Type-check with TypeScript |
+| `bun run test` | Unit tests for the game logic (Bun's built-in runner) |
 | `bun run tasks` | Progress summary of the task board in `docs/TASKS.md` |
 | `bun run add-code <section> <code>` | Register a redeem code. Only its hash is stored, in `.env.local` (gitignored). Restart the dev server afterwards. |
 
@@ -56,8 +58,8 @@ Both folders are gitignored. Playlist names and tracks are set in `src/constants
 ```
 src/
   app/            Expo Router screens (_layout.tsx, index.tsx)
-  components/     Medkit button, shop, side menu, toasts, UI controls
-  constants/      Shop items, achievements, playlists, theme palettes
+  components/     Medkit button, shop, side menu, toasts, UI controls, room/ (My Room), ward/ (minigames)
+  constants/      Shop items, achievements, boosts, patients, rooms, playlists, theme palettes
   hooks/          Game state provider and audio provider
   lib/            Game reducer, number formatting, storage, save export/import
   imgs/ fonts/ audio/ media/   Sprites, fonts, sound, design references
@@ -72,8 +74,7 @@ Game balance (prices, rates and growth) lives in `src/constants/items.ts`. Devel
 - [docs/ART_PLAN.md](docs/ART_PLAN.md): pixel-art rules, where each sprite lives, and the large-art status
 - [docs/TESTING.md](docs/TESTING.md): the test checklist and the latest results
 - [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md): the plan for reward alerts and reminders
-- [docs/SCENE_MECHANICS.md](docs/SCENE_MECHANICS.md): earlier proposal for the scene pages
-- [docs/ROOM.md](docs/ROOM.md): proposed "My Room" decoration feature
+- [docs/ROOM.md](docs/ROOM.md): how My Room works (rooms, items, unlocks, bonuses)
 - [docs/CLOUD.md](docs/CLOUD.md): plan for MongoDB Atlas cloud saves and reward alerts
 
 ## Redeem codes

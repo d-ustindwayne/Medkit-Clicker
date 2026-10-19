@@ -35,7 +35,7 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [ ] Rewards section title "Jasmine's Rewards", the gift icon, and the wording of the "Tell Dustin" message
 - [ ] Background names and colours (Rose Grid, Mint Crosses, Lavender Dots, Peach Stripes, Sky Checker, Candy Hearts, Plain)
 - [ ] Playlist display names: "normal" is labelled "Everyday", "favourites" is "My Favs", "filipino_rap" is "Pinoy Rap"
-- [x] The shop's second page is now the ward scene; its gameplay is proposed in [SCENE_MECHANICS.md](SCENE_MECHANICS.md)
+- [x] The shop's second page is now the outside of the hospital; the page next to the medkit is My Room (see [ROOM.md](ROOM.md))
 - [ ] How to Play text on the About page
 - [ ] Real website URL for "Visit website" (`src/constants/app.ts`)
 - [ ] Care Coins (`src/constants/achievements.ts` → `coins` on each achievement): the currency name, and the payout per achievement (1–5, harder pays more)
@@ -49,7 +49,11 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
   - Rhythm: 7 of 10 beats at 110 bpm
   - Bandage: 25 wraps in 5 seconds
   - the intro lines for each patient
-- [ ] Room or ward for the second page next to the medkit (see [ROOM.md](ROOM.md))
+- [ ] My Room numbers (`src/constants/room.ts`):
+  - room limits: 6 / 4 / 6 / 7 / 8
+  - room unlocks: 15 achievements, 1 rebirth, 10 patients treated, 40 achievements
+  - each item's unlock and bonus
+  - the +50% bonus cap
 - [ ] Cloud and alerts plan (see [CLOUD.md](CLOUD.md))
 
 ## Shop items (decided by Claude, 2026-10-20)
@@ -98,7 +102,7 @@ Still unused:
 - [ ] **iOS is untested.** It needs a Mac or a cloud build (`eas build`) to check.
 - [ ] **Music is copyrighted and not in git.** A fresh clone needs `bun run music` with your own MP3s. The bundle is about 47 MB.
 - [ ] **Old native build on the emulator:** `com.dust.dev.mc` is from before the audio and save libraries. Use Expo Go, or run `bunx expo prebuild --clean` then `bun run android` to replace it.
-- [ ] **No unit tests yet** for the reducer, number formatting, rebirth or rewards.
+- [x] **Unit tests:** `bun test` runs 23 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
 - [x] **Nothing is committed to git.** Done: pushed to https://github.com/d-ustindwayne/Medkit-Clicker (`main`).
 - [ ] **Achievement and welcome-back toasts briefly cover the counter.** Consider moving them or making them smaller.
 
@@ -144,7 +148,7 @@ Still unused:
 - [ ] PHL export (when the PHL project is ready)
 
 ### Phase 4: Release
-- [ ] Unit tests for the game logic
+- [x] Unit tests for the game logic (`bun test`)
 - [ ] Final app icon and splash art (now using the new outline-free medkit)
 - [ ] Commit, then `eas build` for an installable Android APK
 - [ ] iOS build (needs an Apple developer account)

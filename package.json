@@ -55,6 +55,7 @@
     "lint": "expo lint",
     "music": "sh ./scripts/build-music.sh",
     "typecheck": "tsc --noEmit",
+    "test": "bun test",
     "tasks": "bun scripts/tasks.ts",
     "add-code": "bun scripts/add-code.ts"
   },

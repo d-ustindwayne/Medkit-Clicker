@@ -33,11 +33,13 @@ Medkit Clicker is a one-page React Native application built with Expo 57, React 
 - **Theme**: colours are CSS variables set by `themeVars` in `src/constants/theme.ts`. Use `bg-primary`, `text-ink` and so on, and re-apply `themeVars` inside any `Modal`. For raw hex values (SVG, text shadows), use `usePalette()`.
 - **Reanimated + NativeWind**: `className` on `Animated.View` is ignored on native. Animate an outer `Animated.View` with `style` only, and put classes on an inner `View`.
 - **UI building blocks** (`src/components/ui/`): `HardShadow` (offset pixel shadow), `PixelIcon` (7x7 pixel glyphs; add new ones as grids), `PixelButton`, `Pager` (swipe pages with dots), `ConfirmDialog`, and the settings controls in `controls.tsx`.
-- **Rates**: always use `healingRate()` / `tapValue()` (they include the rebirth boost), never bare `perSecond()`.
+- **Rates**: always use `healingRate()` / `tapValue()` (they include rebirth, active boosts and placed room items), never bare `perSecond()`. Offline earnings pass state without `boosts`.
+- **Time in render**: use `useNow()` for countdowns; the React Compiler rejects `Date.now()` during render.
 - **No invented content**: the owner designs items, mechanics and art. Put placeholders in `docs/TASKS.md` under "Needs your decision".
 - **Multi-file edits**: hot reload applies each saved file on its own, so a half-applied rename can crash the running app. Apply related edits together.
-- **Emulator**: run `adb reverse tcp:8081 tcp:8081` and open `exp://127.0.0.1:8081` in Expo Go. Live reload drops after the app is backgrounded (for example by a file picker), so restart the app if changes don't show.
+- **Emulator**: `bun run android` builds and installs a native debug build (`com.dust.dev.mc`) that loads JS from Metro via `adb reverse tcp:8081 tcp:8081`. For a full test (bundled images and audio) build `cd android && ./gradlew assembleRelease` and `adb install -r app/build/outputs/apk/release/app-release.apk`. Debug builds stream assets from Metro, so first loads are slow and audio can time out; that's not a bug. Live reload drops after the app is backgrounded (for example by a file picker), so restart the app if changes don't show.
 - **Assets**: Reference images from `src/imgs/` and audio from `src/audio/`.
 
-## 🧪 Testing (Future)
-- Use `jest` and `react-native-testing-library` for unit and component tests.
+## 🧪 Testing
+- `bun run test` runs the game-logic unit tests (`src/**/*.test.ts`, Bun's built-in runner; `scripts/test-preload.ts` stubs image/audio imports).
+- UI is tested by hand on the emulator with `docs/TESTING.md`.

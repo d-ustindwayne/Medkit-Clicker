@@ -48,6 +48,20 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] Rebirth stays locked until 1 billion patients in a run; after rebirthing, items reset and the boost shows
 - [ ] Redeem: a wrong code is rejected; the right code opens Jasmine's Rewards; redeeming spends patients and opens the share sheet; the limit is enforced
 
+## Care Coins and boosts
+- [ ] An achievement toast says "+N Care Coins"; the Boosts tab balance goes up
+- [ ] Buying a boost spends coins; a countdown chip appears under the rate and on the card
+- [ ] Timed boosts run out on time; Lucky Stethoscope counts down per tap
+- [ ] Can't afford: shake, invalid sound, warning vibration
+
+## My Room and patients
+- [ ] Staff walk back and forth with a 3-frame step
+- [ ] The pencil button opens decorate mode: page swiping stops, the item tray and room switcher appear
+- [ ] Tap an item to place it, drag to move it, tap the × or the tray item again to put it away
+- [ ] A full room says it's full; locked items and rooms say how to unlock them
+- [ ] A patient arrives with a "!" on the page dot and a toast; tapping them opens their minigame
+- [ ] Injection, rhythm and bandage minigames can be won and lost; a win shows the reward and +1 coin
+
 ## Layout and looks
 - [ ] Phone portrait: the shop sits under the medkit and nothing is cut off; toasts don't hide important buttons
 - [ ] Tablet or landscape: the shop sits beside the medkit
@@ -117,3 +131,16 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - Swipe pages: medkit → Hospital (outside scene) → Ward (inside scene), with 3 dots
 - Toasts: "Welcome back" shows at the bottom and the counter stays visible
 - Offline earnings: 0.2/s for 13 s = 2 patients
+
+### 2026-10-20, 04:30: automated tests
+
+- **`bun run test`: 23 tests, 192 checks, all pass.** They cover:
+  - the shop price ladder and buying
+  - loading old saves
+  - Care Coins
+  - every boost type
+  - ward patients (win, loss, nobody there)
+  - My Room: unlocks, zones, one-of-each items, room limits, locked rooms, the bonus cap
+  - rebirth keeping rooms and coins
+- Typecheck and lint are clean.
+- **Not done:** the on-screen pass of the new features (Boosts tab, My Room, minigames, top-left toasts) on the emulator. Claude Code shut the emulator down for low memory overnight. Rerun the "Care Coins and boosts" and "My Room and patients" sections above.

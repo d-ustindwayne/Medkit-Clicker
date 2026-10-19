@@ -24,13 +24,4 @@ export const HOSPITAL_SCENE: Scene = {
   anchor: 0.85,
 };
 
-/** Second page of the clicker area, next to the medkit: the ward, where sick patients show up. */
-export const WARD_SCENE: Scene = {
-  id: "ward",
-  title: "Ward",
-  image: require("@/imgs/scenes/hospital_inside.png"),
-  aspect: 16 / 9,
-  fillTop: "#eef1f5",
-  fillBottom: "#dfe6ee",
-  anchor: 0.55,
-};
+// The rooms next to the medkit (My Room) live in src/constants/room.ts.

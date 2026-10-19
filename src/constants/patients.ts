@@ -1,6 +1,6 @@
 import type { ImageSourcePropType } from "react-native";
 
-// Sick patients who turn up in the ward at random times. Each one has a quick minigame.
+// Sick patients who turn up in My Room at random times. Each one has a quick minigame.
 // Timings, rewards and wording are PLACEHOLDERS; see docs/TASKS.md "Needs your decision".
 
 export type MinigameId = "injection" | "rhythm" | "bandage";

@@ -107,12 +107,12 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       lastTick.current = now;
       if (seconds > AWAY_THRESHOLD_S) grantAway(seconds);
       else dispatch({ type: "tick", seconds });
-      // Ward: a sick patient turns up now and then, and is transferred if nobody comes.
+      // A sick patient turns up in My Room now and then, and is transferred if nobody comes.
       const s = stateRef.current;
       if (!s.patient && now >= s.nextPatientAt) {
         const p = SICK_PATIENTS[Math.floor(Math.random() * SICK_PATIENTS.length)];
         dispatch({ type: "patientArrives", id: p.id });
-        pushToast({ kind: "info", title: "Patient in the ward", body: `${p.condition}! Swipe the medkit over to the ward to help.`, image: p.image });
+        pushToast({ kind: "info", title: "A patient needs you", body: `${p.condition}! Swipe the medkit over to My Room to help.`, image: p.image });
       } else if (s.patient && now - s.patient.arrivedAt > PATIENT_WAIT_MS) {
         dispatch({ type: "patientLeaves", next: now + nextPatientDelay() });
       }

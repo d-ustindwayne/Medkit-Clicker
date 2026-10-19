@@ -1,4 +1,6 @@
-# My Room (proposal, not built yet)
+# My Room
+
+**Status (2026-10-20): built.** Rooms, items, unlocks, limits and bonuses live in `src/constants/room.ts`; the page is `src/components/room/room-page.tsx`. The numbers are placeholders, listed in TASKS.md. The original proposal follows.
 
 Your idea: the second page next to the medkit becomes **your own room**. It starts as an empty background. You collect pixel-art items, then place and arrange them. The more items your room has, the bigger the boosts.
 
