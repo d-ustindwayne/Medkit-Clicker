@@ -2,6 +2,7 @@ import { createContext, use, useCallback, useEffect, useMemo, useReducer, useRef
 import { AppState, type ImageSourcePropType } from "react-native";
 
 import { ACHIEVEMENTS } from "@/constants/achievements";
+import { PATIENT_WAIT_MS, SICK_PATIENTS, nextPatientDelay } from "@/constants/patients";
 import { healingRate } from "@/constants/rebirth";
 import type { ThemeName } from "@/constants/theme";
 import { formatCount, formatDuration } from "@/lib/format";
@@ -47,7 +48,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
 
   const pushToast = useCallback((toast: Omit<Toast, "id">) => {
     const id = ++toastId.current;
-    // Two at most, at the bottom of the screen, so the counter and medkit stay visible.
+    // Two at most, stacked under the menu button.
     setToasts((t) => [...t.slice(-1), { ...toast, id }]);
   }, []);
   const dismissToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
@@ -55,7 +56,9 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
   const grantAway = useCallback(
     (seconds: number) => {
       const away = Math.min(seconds, MAX_AWAY_S);
-      const earned = healingRate(stateRef.current) * away;
+      // Boosts don't run while the app is closed.
+      const { owned, rebirths } = stateRef.current;
+      const earned = healingRate({ owned, rebirths }) * away;
       if (earned < 1) return;
       dispatch({ type: "earn", amount: earned });
       pushToast({
@@ -104,9 +107,18 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       lastTick.current = now;
       if (seconds > AWAY_THRESHOLD_S) grantAway(seconds);
       else dispatch({ type: "tick", seconds });
+      // Ward: a sick patient turns up now and then, and is transferred if nobody comes.
+      const s = stateRef.current;
+      if (!s.patient && now >= s.nextPatientAt) {
+        const p = SICK_PATIENTS[Math.floor(Math.random() * SICK_PATIENTS.length)];
+        dispatch({ type: "patientArrives", id: p.id });
+        pushToast({ kind: "info", title: "Patient in the ward", body: `${p.condition}! Swipe the medkit over to the ward to help.`, image: p.image });
+      } else if (s.patient && now - s.patient.arrivedAt > PATIENT_WAIT_MS) {
+        dispatch({ type: "patientLeaves", next: now + nextPatientDelay() });
+      }
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [ready, grantAway]);
+  }, [ready, grantAway, pushToast]);
 
   // Autosave on a timer and whenever the app leaves the foreground.
   useEffect(() => {
@@ -135,7 +147,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       if (seenAchievements.current.has(id)) continue;
       seenAchievements.current.add(id);
       const a = ACHIEVEMENTS.find((x) => x.id === id);
-      if (a) pushToast({ kind: "achievement", title: a.name, body: a.description, image: a.image });
+      if (a) pushToast({ kind: "achievement", title: a.name, body: `${a.description} +${a.coins} Care ${a.coins === 1 ? "Coin" : "Coins"}`, image: a.image });
     }
   }, [ready, state.achievements, pushToast]);
 

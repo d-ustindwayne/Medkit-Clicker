@@ -1,5 +1,7 @@
 import { ACHIEVEMENTS, type AchievementId } from "@/constants/achievements";
 import { healingRate, rebirthMultiplier, rebirthPointsFor } from "@/constants/rebirth";
+import { BOOSTS, LUCKY_MULT, boostMultiplier } from "@/constants/boosts";
+import { LOSE_SECONDS, WIN_COINS, WIN_SECONDS } from "@/constants/patients";
 import { REWARD_SECTIONS } from "@/constants/rewards";
 import { SHOP_ITEMS, TAP_RATE_BONUS, itemCost, perSecond, type ItemId } from "@/constants/items";
 
@@ -26,6 +28,20 @@ export type GameState = {
   unlockedSections: string[];
   /** Reward id -> times it was redeemed (ms since epoch). */
   redemptions: Record<string, number[]>;
+  /** Care Coins spent on boosts. The balance is coins earned from achievements minus this. */
+  coinsSpent: number;
+  /** Timed boost id -> when it ends (ms since epoch). */
+  boosts: Record<string, number>;
+  /** Medkit taps left on the Lucky Stethoscope. */
+  luckyTaps: number;
+  /** Care Coins won by treating ward patients (on top of achievement coins). */
+  bonusCoins: number;
+  /** Ward patients treated successfully. */
+  treated: number;
+  /** The sick patient waiting in the ward, if any. */
+  patient: { id: string; arrivedAt: number } | null;
+  /** When the next patient arrives (ms since epoch). */
+  nextPatientAt: number;
 };
 
 export type GameAction =
@@ -39,13 +55,19 @@ export type GameAction =
   | { type: "unlockSection"; id: string }
   | { type: "rebirth" }
   | { type: "redeem"; rewardId: string }
+  | { type: "useBoost"; id: string }
+  | { type: "patientArrives"; id: string }
+  /** The patient was transferred (waited too long) or treated; `next` schedules the next arrival. */
+  | { type: "patientLeaves"; next: number }
+  | { type: "treat"; won: boolean; next: number }
   | { type: "load"; state: GameState }
   /** Like load, but never rolls back reward redemptions or unlocked sections. */
   | { type: "import"; state: GameState }
   | { type: "reset" }
   // Developer tools only (Settings, __DEV__ builds).
   | { type: "devAddItems"; count: number }
-  | { type: "devUnlockAll" };
+  | { type: "devUnlockAll" }
+  | { type: "devAddCoins"; count: number };
 
 export const emptyOwned = (): Record<ItemId, number> =>
   Object.fromEntries(SHOP_ITEMS.map((i) => [i.id, 0])) as Record<ItemId, number>;
@@ -66,11 +88,30 @@ export const newGame = (): GameState => ({
   startedAt: Date.now(),
   unlockedSections: [],
   redemptions: {},
+  coinsSpent: 0,
+  boosts: {},
+  luckyTaps: 0,
+  bonusCoins: 0,
+  treated: 0,
+  patient: null,
+  nextPatientAt: Date.now() + 60_000,
 });
 
-/** Patients per medkit tap, including the rebirth boost. */
-export const tapValue = (s: { owned: Record<ItemId, number>; rebirths: number }) =>
-  (1 + perSecond(s.owned) * TAP_RATE_BONUS) * rebirthMultiplier(s.rebirths);
+/** Patients per medkit tap, including the rebirth boost and (when passed) active boosts. */
+export const tapValue = (s: { owned: Record<ItemId, number>; rebirths: number; boosts?: Record<string, number>; luckyTaps?: number }) =>
+  (1 + perSecond(s.owned) * TAP_RATE_BONUS) *
+  rebirthMultiplier(s.rebirths) *
+  boostMultiplier(s.boosts, "tap") *
+  ((s.luckyTaps ?? 0) > 0 ? LUCKY_MULT : 1);
+
+/** Care Coins: every unlocked achievement pays its reward. */
+export const coinsEarned = (s: Pick<GameState, "achievements">) =>
+  ACHIEVEMENTS.reduce((sum, a) => sum + (s.achievements[a.id] !== undefined ? a.coins : 0), 0);
+export const coinBalance = (s: Pick<GameState, "achievements" | "coinsSpent" | "bonusCoins">) => coinsEarned(s) + s.bonusCoins - s.coinsSpent;
+
+/** What the next unit of an item costs right now, including a running sale. */
+export const priceOf = (s: Pick<GameState, "owned" | "boosts">, item: (typeof SHOP_ITEMS)[number]) =>
+  Math.ceil(itemCost(item, s.owned[item.id]) * boostMultiplier(s.boosts, "price"));
 
 export const totalOwned = (owned: Record<ItemId, number>) =>
   Object.values(owned).reduce((a, b) => a + b, 0);
@@ -96,7 +137,7 @@ const withAchievements = (state: GameState): GameState => {
 const apply = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
     case "tap":
-      return { ...earn(state, tapValue(state)), taps: state.taps + 1 };
+      return { ...earn(state, tapValue(state)), taps: state.taps + 1, luckyTaps: Math.max(0, state.luckyTaps - 1) };
     case "tick": {
       const next = earn(state, healingRate(state) * action.seconds);
       return { ...next, playSeconds: state.playSeconds + action.seconds };
@@ -104,7 +145,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
     case "buy": {
       const item = SHOP_ITEMS.find((i) => i.id === action.item);
       if (!item) return state;
-      const cost = itemCost(item, state.owned[item.id]);
+      const cost = priceOf(state, item);
       if (state.healed < cost) return state;
       return {
         ...state,
@@ -149,6 +190,33 @@ const apply = (state: GameState, action: GameAction): GameState => {
         redemptions: { ...state.redemptions, [reward.id]: [...history, Date.now()] },
       };
     }
+    case "useBoost": {
+      const boost = BOOSTS.find((b) => b.id === action.id);
+      if (!boost || coinBalance(state) < boost.cost) return state;
+      const paid = { ...state, coinsSpent: state.coinsSpent + boost.cost };
+      const e = boost.effect;
+      if (e.kind === "timed") {
+        const now = Date.now();
+        return { ...paid, boosts: { ...state.boosts, [boost.id]: Math.max(now, state.boosts[boost.id] ?? 0) + e.seconds * 1000 } };
+      }
+      if (e.kind === "charges") return { ...paid, luckyTaps: state.luckyTaps + e.taps };
+      // Instant: based on the unboosted rate, and never less than 10 taps early in the game.
+      const base = { owned: state.owned, rebirths: state.rebirths };
+      const amount = e.rateSeconds ? Math.max(healingRate(base) * e.rateSeconds, tapValue(base) * 10) : tapValue(base) * (e.taps ?? 0);
+      return earn(paid, amount);
+    }
+    case "patientArrives":
+      if (state.patient) return state;
+      return { ...state, patient: { id: action.id, arrivedAt: Date.now() } };
+    case "patientLeaves":
+      return { ...state, patient: null, nextPatientAt: action.next };
+    case "treat": {
+      if (!state.patient) return state;
+      const base = { owned: state.owned, rebirths: state.rebirths };
+      const amount = action.won ? Math.max(healingRate(base) * WIN_SECONDS, tapValue(base) * 50) : healingRate(base) * LOSE_SECONDS;
+      const done = { ...state, patient: null, nextPatientAt: action.next };
+      return earn(action.won ? { ...done, treated: state.treated + 1, bonusCoins: state.bonusCoins + WIN_COINS } : done, amount);
+    }
     case "load":
     case "import":
       return action.state;
@@ -159,6 +227,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
       };
     case "devUnlockAll":
       return { ...state, achievements: Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, state.achievements[a.id] ?? Date.now()])) };
+    case "devAddCoins":
+      return { ...state, coinsSpent: state.coinsSpent - action.count };
     case "reset":
       return newGame();
   }
@@ -196,5 +266,12 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     runHealed: typeof s.runHealed === "number" ? s.runHealed : (s.totalHealed ?? 0),
     unlockedSections: Array.isArray(s.unlockedSections) ? s.unlockedSections : [],
     redemptions: { ...(s.redemptions ?? {}) },
+    coinsSpent: typeof s.coinsSpent === "number" ? s.coinsSpent : 0,
+    boosts: { ...(s.boosts ?? {}) },
+    luckyTaps: typeof s.luckyTaps === "number" ? s.luckyTaps : 0,
+    bonusCoins: typeof s.bonusCoins === "number" ? s.bonusCoins : 0,
+    treated: typeof s.treated === "number" ? s.treated : 0,
+    patient: s.patient && typeof s.patient.id === "string" ? s.patient : null,
+    nextPatientAt: typeof s.nextPatientAt === "number" ? s.nextPatientAt : base.nextPatientAt,
   };
 };

@@ -1,14 +1,14 @@
 import { useRef, useState, type ReactNode } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { useAudio } from "@/hooks/use-audio";
 
 type Props = {
   width: number;
   /** One entry per page; `label` names the page for screen readers and the dots. */
-  pages: { key: string; label: string; content: ReactNode }[];
-  /** Where the page dots go relative to the pages. */
-  dots?: "top" | "bottom";
+  pages: { key: string; label: string; content: ReactNode; badge?: boolean }[];
+  /** Where the page dots go: above or below the pages, or floating over their bottom edge. */
+  dots?: "top" | "bottom" | "overlay";
   onPageChange?: (index: number) => void;
   className?: string;
 };
@@ -20,7 +20,10 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, className =
   const [page, setPage] = useState(0);
 
   const dotsRow = pages.length > 1 && (
-    <View className="flex-row items-center justify-center gap-2 py-1.5" accessibilityRole="tablist">
+    <View
+      className={`flex-row items-center justify-center gap-2 ${dots === "overlay" ? "rounded-full border-[1.5px] border-outline bg-surface/85 px-2.5 py-1" : "py-1.5"}`}
+      accessibilityRole="tablist"
+    >
       {pages.map((p, i) => (
         <Pressable
           key={p.key}
@@ -30,13 +33,19 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, className =
           hitSlop={8}
           onPress={() => scroller.current?.scrollTo({ x: i * width, animated: true })}
           className={`h-2.5 border-[1.5px] border-outline ${i === page ? "w-7 bg-ink" : "w-2.5 bg-surface"}`}
-        />
+        >
+          {p.badge && i !== page && (
+            <View className="absolute -right-2 -top-3 h-3.5 w-3.5 items-center justify-center rounded-full border border-outline bg-primary">
+              <Text className="font-pixel text-[8px] leading-[10px] text-ink">!</Text>
+            </View>
+          )}
+        </Pressable>
       ))}
     </View>
   );
 
   return (
-    <View className={className}>
+    <View className={`relative ${className}`}>
       {dots === "top" && dotsRow}
       <ScrollView
         ref={scroller}
@@ -59,6 +68,11 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, className =
         ))}
       </ScrollView>
       {dots === "bottom" && dotsRow}
+      {dots === "overlay" && (
+        <View pointerEvents="box-none" className="absolute inset-x-0 bottom-2 items-center">
+          {dotsRow}
+        </View>
+      )}
     </View>
   );
 }

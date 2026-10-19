@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
 
 import { ACHIEVEMENTS } from "@/constants/achievements";
+import { COIN } from "@/constants/boosts";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { useGameState } from "@/hooks/use-game";
 
@@ -40,6 +41,14 @@ export function AchievementsPage() {
         <Text className="font-body text-sm leading-5 text-ink">
           {currentUnlocked || !current.secret ? current.description : "Keep playing to find out."}
         </Text>
+        {(currentUnlocked || !current.secret) && (
+          <View className="mt-1 flex-row items-center gap-1">
+            <Image source={COIN.image} style={{ width: 14, height: 14 }} contentFit="contain" />
+            <Text className="font-body text-xs text-ink">
+              {current.coins} {current.coins === 1 ? "Care Coin" : "Care Coins"}
+            </Text>
+          </View>
+        )}
         {currentUnlocked ? (
           <Text className="mt-1 font-body text-xs text-ink opacity-70">
             Unlocked {new Date(achievements[current.id]!).toLocaleDateString()}

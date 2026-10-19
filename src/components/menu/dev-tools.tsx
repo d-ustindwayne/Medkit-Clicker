@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 
 import { PixelButton } from "@/components/ui/pixel-button";
+import { SICK_PATIENTS } from "@/constants/patients";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 
 /** Shortcuts for testing late-game content. Only rendered in development builds. */
@@ -15,6 +16,8 @@ export function DevTools() {
     ["+10 of each item", () => dispatch({ type: "devAddItems", count: 10 })],
     ["Skip 1 hour away", () => simulateAway(3600)],
     ["Unlock all achievements", () => dispatch({ type: "devUnlockAll" })],
+    ["+20 Care Coins", () => dispatch({ type: "devAddCoins", count: 20 })],
+    ["Call a patient", () => dispatch({ type: "patientArrives", id: SICK_PATIENTS[Math.floor(Math.random() * SICK_PATIENTS.length)].id })],
   ];
 
   return (

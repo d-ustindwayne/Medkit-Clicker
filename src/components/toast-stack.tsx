@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
-import Animated, { Easing, FadeInUp, FadeOutDown } from "react-native-reanimated";
+import Animated, { Easing, FadeOutLeft, SlideInLeft } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Confetti } from "@/components/fx/confetti";
@@ -26,19 +26,19 @@ function ToastCard({ toast }: { toast: Toast }) {
   }, [toast.id, toast.kind, success]);
 
   return (
-    <Animated.View entering={FadeInUp.duration(280).easing(Easing.out(Easing.cubic))} exiting={FadeOutDown.duration(220)}>
+    <Animated.View entering={SlideInLeft.duration(300).easing(Easing.out(Easing.cubic))} exiting={FadeOutLeft.duration(220)}>
       <HardShadow>
       <Pressable
         accessibilityRole="alert"
         accessibilityLabel={`${toast.kind === "achievement" ? "Achievement unlocked: " : ""}${toast.title}. ${toast.body}`}
         onPress={() => dismissToast(toast.id)}
-        className="w-80 max-w-full flex-row items-center gap-3 border-2 border-outline bg-surface p-3"
+        className="w-64 flex-row items-center gap-2 border-2 border-outline bg-surface p-2"
       >
-        {toast.kind === "achievement" && <Image source={toast.image ?? MEDKIT_IMAGE} style={{ width: 32, height: 32 }} contentFit="contain" />}
+        {(toast.kind === "achievement" || toast.image) && <Image source={toast.image ?? MEDKIT_IMAGE} style={{ width: 28, height: 28 }} contentFit="contain" />}
         <View className="flex-1">
           {toast.kind === "achievement" && <Text className="font-pixel text-xs tracking-[2px] text-primary">ACHIEVEMENT</Text>}
-          <Text className="font-display text-base text-ink">{toast.title}</Text>
-          <Text className="font-body text-sm leading-5 text-ink">{toast.body}</Text>
+          <Text className="font-display text-sm text-ink" numberOfLines={1}>{toast.title}</Text>
+          <Text className="font-body text-xs leading-4 text-ink" numberOfLines={3}>{toast.body}</Text>
         </View>
       </Pressable>
       </HardShadow>
@@ -54,7 +54,8 @@ export function ToastStack() {
   return (
     <>
       {latestAchievement && <Confetti key={latestAchievement.id} seed={latestAchievement.id} />}
-      <View pointerEvents="box-none" className="absolute inset-x-0 bottom-0 items-center gap-2 px-4" style={{ paddingBottom: insets.bottom + 12 }}>
+      {/* Top-left, under the menu button: clear of the counter's centre and the shop. */}
+      <View pointerEvents="box-none" className="absolute left-0 top-0 max-w-[80%] items-start gap-2 pl-3" style={{ paddingTop: insets.top + 72 }}>
         {toasts.map((t) => (
           <ToastCard key={t.id} toast={t} />
         ))}

@@ -23,6 +23,11 @@ const toCsv = (state: GameState) => {
     ["exports", state.exports],
     ["startedAt", state.startedAt],
     ["playlistsHeard", state.playlistsHeard.join(";")],
+    ["coinsSpent", state.coinsSpent],
+    ["luckyTaps", state.luckyTaps],
+    ["bonusCoins", state.bonusCoins],
+    ["treated", state.treated],
+    ...Object.entries(state.boosts).map(([k, v]) => [`boosts.${k}`, v] as [string, number]),
     ...Object.entries(state.owned).map(([k, v]) => [`owned.${k}`, v] as [string, number]),
     ...Object.entries(state.achievements).map(([k, v]) => [`achievements.${k}`, v ?? 0] as [string, number]),
   ];
@@ -30,12 +35,12 @@ const toCsv = (state: GameState) => {
 };
 
 const fromCsv = (text: string): unknown => {
-  const out: Record<string, unknown> = { owned: {}, achievements: {} };
+  const out: Record<string, unknown> = { owned: {}, achievements: {}, boosts: {} };
   for (const line of text.split(/\r?\n/).slice(1)) {
     const [key, value] = line.split(",");
     if (!key || value === undefined) continue;
     const [group, sub] = key.split(".");
-    if (sub && (group === "owned" || group === "achievements")) {
+    if (sub && (group === "owned" || group === "achievements" || group === "boosts")) {
       (out[group] as Record<string, number>)[sub] = Number(value);
     } else if (key === "playlistsHeard") {
       out.playlistsHeard = value ? value.split(";") : [];

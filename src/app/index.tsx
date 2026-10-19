@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Image } from "expo-image";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -10,10 +11,13 @@ import { Shop } from "@/components/shop";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { Pager } from "@/components/ui/pager";
 import { ToastStack } from "@/components/toast-stack";
+import { WardPatient } from "@/components/ward/ward-patient";
+import { BOOSTS, LUCKY_MULT } from "@/constants/boosts";
 import { healingRate } from "@/constants/rebirth";
-import { HOSPITAL_SCENE } from "@/constants/scenes";
+import { WARD_SCENE } from "@/constants/scenes";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameState, useSettings } from "@/hooks/use-game";
+import { useNow } from "@/hooks/use-now";
 import { usePalette } from "@/hooks/use-palette";
 import { formatCount, formatRate } from "@/lib/format";
 import { tapValue } from "@/lib/game";
@@ -44,10 +48,38 @@ function MenuButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+/** Countdown chips for running boosts and Lucky Stethoscope taps. */
+function ActiveBoosts() {
+  const { boosts, luckyTaps } = useGameState();
+  const now = useNow();
+  const active = BOOSTS.filter((b) => (boosts[b.id] ?? 0) > now);
+  if (active.length === 0 && luckyTaps === 0) return null;
+  const left = (ms: number) => {
+    const s = Math.ceil(ms / 1000);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  };
+  return (
+    <View className="mt-1.5 flex-row flex-wrap justify-center gap-1.5">
+      {active.map((b) => (
+        <View key={b.id} className="flex-row items-center gap-1 rounded-full border-[1.5px] border-outline bg-accent px-2 py-0.5" accessibilityLabel={`${b.name} active`}>
+          <Image source={b.image} style={{ width: 14, height: 14 }} contentFit="contain" />
+          <Text className="font-number text-xs text-ink">{left(boosts[b.id] - now)}</Text>
+        </View>
+      ))}
+      {luckyTaps > 0 && (
+        <View className="flex-row items-center gap-1 rounded-full border-[1.5px] border-outline bg-accent px-2 py-0.5" accessibilityLabel={`${luckyTaps} lucky taps left`}>
+          <Image source={BOOSTS.find((b) => b.effect.kind === "charges")!.image} style={{ width: 14, height: 14 }} contentFit="contain" />
+          <Text className="font-number text-xs text-ink">x{LUCKY_MULT} · {luckyTaps}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 function Counter({ compact }: { compact: boolean }) {
-  const { healed, owned, rebirths } = useGameState();
+  const { healed, owned, rebirths, boosts } = useGameState();
   const palette = usePalette();
-  const rate = healingRate({ owned, rebirths });
+  const rate = healingRate({ owned, rebirths, boosts });
   const label = `${Math.floor(healed) === 1 ? "Patient" : "Patients"} Healed`;
   // Hard pixel drop shadow; NativeWind has no text-shadow utilities.
   const shadow = { textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 };
@@ -78,13 +110,14 @@ function Counter({ compact }: { compact: boolean }) {
           </View>
         )}
       </View>
+      <ActiveBoosts />
     </View>
   );
 }
 
-/** Swipeable stage: the medkit, then the outside of the hospital. */
+/** Swipeable stage: the medkit, then the ward. */
 function Clicker({ width, height, compact }: { width: number; height: number; compact: boolean }) {
-  const { owned, rebirths } = useGameState();
+  const { owned, rebirths, boosts, luckyTaps, patient } = useGameState();
   // Leave room for the orbiting supplies around the medkit.
   const size = Math.min((width * (compact ? 0.72 : 0.55)) / ORBIT_SCALE, (height * (compact ? 0.52 : 0.58)) / ORBIT_SCALE, 420);
 
@@ -93,18 +126,28 @@ function Clicker({ width, height, compact }: { width: number; height: number; co
       <Counter compact={compact} />
       <Pager
         width={width}
-        className="flex-1 pb-2"
+        dots="overlay"
+        className="flex-1"
         pages={[
           {
             key: "medkit",
             label: "Medkit",
             content: (
               <View className="flex-1 items-center justify-center">
-                <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths })} owned={owned} />
+                <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths, boosts, luckyTaps })} owned={owned} />
               </View>
             ),
           },
-          { key: HOSPITAL_SCENE.id, label: HOSPITAL_SCENE.title, content: <ScenePage scene={HOSPITAL_SCENE} width={width} /> },
+          {
+            key: WARD_SCENE.id,
+            label: patient ? `${WARD_SCENE.title}, a patient is waiting` : WARD_SCENE.title,
+            badge: !!patient,
+            content: (
+              <ScenePage scene={WARD_SCENE} width={width}>
+                <WardPatient width={width} height={width / WARD_SCENE.aspect} />
+              </ScenePage>
+            ),
+          },
         ]}
       />
     </View>

@@ -10,10 +10,12 @@ It runs on Android, iOS and the web, built with Expo 57, React Native, React 19,
 - **Offline progress:** your team keeps working for up to 8 hours while the app is closed.
 - **111 achievements**, from "First Aid" to healing a vigintillion patients, with progress bars and a few secret ones.
 - **Rebirth:** start a new run for rebirth points and a small permanent healing boost.
+- **Care Coins and boosts:** achievements pay Care Coins. Spend them in the shop's Boosts tab on 13 power-ups, like 2x per tap for 3 minutes or an instant hour of healing.
+- **Ward patients:** sick patients turn up in the ward at random. Treat them in a quick minigame (injection timing, CPR rhythm or a bandage-wrap tap race) for patients and coins.
 - **Redeem codes** unlock hidden sections, like a rewards shop where patients buy real-life treats (with a limit on each).
 - **Music player** with six playlists, play/pause, track skipping and seeking; sound effects with their own volume; vibration feedback (with an off switch) on phones.
 - **Light and dark themes** from the original design, with seven backgrounds, each with its own pattern and colours.
-- **Swipe pages:** the outside of the hospital next to the medkit, and the ward next to the shop, drawn as full-width pixel scenes.
+- **Swipe pages:** the ward next to the medkit, and the outside of the hospital next to the shop, drawn as full-width pixel scenes.
 - **Saves:** autosaves every 10 seconds and when the app is backgrounded. Export (to a folder you choose) or import a save as JSON or CSV.
 - **Responsive layout:** the shop sits beside the medkit on tablets and desktops, and below it on phones.
 
@@ -32,7 +34,7 @@ bun run start
 The songs are copyrighted, so they're not in this repository. To build the app with music:
 
 1. Put your tracks in `src/audio/music/<playlist>/track_N.mp3`. The playlist folders are `cup_of_joe`, `love`, `filipino_rap`, `favourites`, `lo-fi` and `normal`.
-2. Run `bun run music`. This compresses the first 3 tracks of each playlist to 64 kbps in `src/audio/bundle/`, which comes to about 47 MB.
+2. Run `bun run music`. This compresses every track to AAC at 64 kbps in `src/audio/bundle/` (about 110 MB for the full library) and writes the track list the app reads, `src/audio/bundle/index.ts`.
 
 Both folders are gitignored. Playlist names and tracks are set in `src/constants/playlists.ts`.
 
@@ -70,7 +72,9 @@ Game balance (prices, rates and growth) lives in `src/constants/items.ts`. Devel
 - [docs/ART_PLAN.md](docs/ART_PLAN.md): pixel-art rules, where each sprite lives, and the large-art status
 - [docs/TESTING.md](docs/TESTING.md): the test checklist and the latest results
 - [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md): the plan for reward alerts and reminders
-- [docs/SCENE_MECHANICS.md](docs/SCENE_MECHANICS.md): proposed gameplay for the hospital and ward pages
+- [docs/SCENE_MECHANICS.md](docs/SCENE_MECHANICS.md): earlier proposal for the scene pages
+- [docs/ROOM.md](docs/ROOM.md): proposed "My Room" decoration feature
+- [docs/CLOUD.md](docs/CLOUD.md): plan for MongoDB Atlas cloud saves and reward alerts
 
 ## Redeem codes
 

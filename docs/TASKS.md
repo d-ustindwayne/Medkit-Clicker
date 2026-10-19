@@ -38,6 +38,19 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [x] The shop's second page is now the ward scene; its gameplay is proposed in [SCENE_MECHANICS.md](SCENE_MECHANICS.md)
 - [ ] How to Play text on the About page
 - [ ] Real website URL for "Visit website" (`src/constants/app.ts`)
+- [ ] Care Coins (`src/constants/achievements.ts` → `coins` on each achievement): the currency name, and the payout per achievement (1–5, harder pays more)
+- [ ] The 13 boosts in `src/constants/boosts.ts`: names, effects, durations and coin prices
+- [ ] Ward patients (`src/constants/patients.ts`):
+  - a patient arrives every 2–5 minutes and waits 3 minutes
+  - a win pays 2 minutes of production plus 1 Care Coin
+  - a loss pays 10 seconds of production
+- [ ] Minigames (`src/components/ward/treat-modal.tsx`):
+  - Injection: 2 of 3 shots in the vein
+  - Rhythm: 7 of 10 beats at 110 bpm
+  - Bandage: 25 wraps in 5 seconds
+  - the intro lines for each patient
+- [ ] Room or ward for the second page next to the medkit (see [ROOM.md](ROOM.md))
+- [ ] Cloud and alerts plan (see [CLOUD.md](CLOUD.md))
 
 ## Shop items (decided by Claude, 2026-10-20)
 

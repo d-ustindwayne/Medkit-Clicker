@@ -1,60 +1,21 @@
 import type { AudioSource } from "expo-audio";
 
+import { TRACKS } from "@/audio/bundle";
+
 export type Playlist = { id: string; name: string; tracks: AudioSource[] };
 
-// Tracks come from src/audio/bundle, which is built (and gitignored) by `bun run music`.
-export const PLAYLISTS: Playlist[] = [
-  {
-    id: "cup_of_joe",
-    name: "Cup of Joe",
-    tracks: [
-      require("@/audio/bundle/cup_of_joe/track_1.mp3"),
-      require("@/audio/bundle/cup_of_joe/track_2.mp3"),
-      require("@/audio/bundle/cup_of_joe/track_3.mp3"),
-    ],
-  },
-  {
-    id: "love",
-    name: "Love Songs",
-    tracks: [
-      require("@/audio/bundle/love/track_1.mp3"),
-      require("@/audio/bundle/love/track_2.mp3"),
-      require("@/audio/bundle/love/track_3.mp3"),
-    ],
-  },
-  {
-    id: "filipino_rap",
-    name: "Pinoy Rap",
-    tracks: [
-      require("@/audio/bundle/filipino_rap/track_1.mp3"),
-      require("@/audio/bundle/filipino_rap/track_2.mp3"),
-      require("@/audio/bundle/filipino_rap/track_3.mp3"),
-    ],
-  },
-  {
-    id: "favourites",
-    name: "My Favs",
-    tracks: [
-      require("@/audio/bundle/favourites/track_1.mp3"),
-      require("@/audio/bundle/favourites/track_2.mp3"),
-      require("@/audio/bundle/favourites/track_3.mp3"),
-    ],
-  },
-  {
-    id: "lo-fi",
-    name: "Lo-fi",
-    tracks: [require("@/audio/bundle/lo-fi/track_1.mp3"), require("@/audio/bundle/lo-fi/track_2.mp3")],
-  },
-  {
-    id: "normal",
-    name: "Everyday",
-    tracks: [
-      require("@/audio/bundle/normal/track_1.mp3"),
-      require("@/audio/bundle/normal/track_2.mp3"),
-      require("@/audio/bundle/normal/track_3.mp3"),
-    ],
-  },
+// Every track of each playlist, from the bundle built by `bun run music` (src/audio/bundle, gitignored).
+// Playlists with no tracks in the bundle are left out.
+const PLAYLIST_NAMES: [id: string, name: string][] = [
+  ["cup_of_joe", "Cup of Joe"],
+  ["love", "Love Songs"],
+  ["filipino_rap", "Pinoy Rap"],
+  ["favourites", "My Favs"],
+  ["lo-fi", "Lo-fi"],
+  ["normal", "Everyday"],
 ];
+
+export const PLAYLISTS: Playlist[] = PLAYLIST_NAMES.map(([id, name]) => ({ id, name, tracks: TRACKS[id] ?? [] })).filter((p) => p.tracks.length > 0);
 
 export const SFX = {
   click: require("@/audio/sfx/click.mp3"),

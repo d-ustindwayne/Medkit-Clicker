@@ -1,6 +1,7 @@
 // Rebirth (prestige): start a fresh run in exchange for rebirth points, a currency that carries over.
 // Every number here is a PLACEHOLDER for balancing; see docs/TASKS.md "Needs your decision".
 
+import { boostMultiplier } from "@/constants/boosts";
 import { perSecond, type ItemId } from "@/constants/items";
 
 /** Production boost per rebirth, kept deliberately small: 1 rebirth = x1.02, 10 rebirths = x1.2. */
@@ -8,9 +9,12 @@ export const REBIRTH_BONUS_PER = 0.02;
 
 export const rebirthMultiplier = (rebirths: number) => 1 + REBIRTH_BONUS_PER * rebirths;
 
-/** Patients healed per second including the rebirth boost. Use this instead of bare perSecond(). */
-export const healingRate = (s: { owned: Record<ItemId, number>; rebirths: number }) =>
-  perSecond(s.owned) * rebirthMultiplier(s.rebirths);
+/**
+ * Patients healed per second including the rebirth boost and, when `boosts` is passed, active
+ * timed boosts. Use this instead of bare perSecond(). Offline earnings leave boosts out.
+ */
+export const healingRate = (s: { owned: Record<ItemId, number>; rebirths: number; boosts?: Record<string, number> }) =>
+  perSecond(s.owned) * rebirthMultiplier(s.rebirths) * boostMultiplier(s.boosts, "rate");
 
 /** Patients that must be healed in the current run before rebirthing is allowed. */
 export const REBIRTH_MIN_HEALED = 1e9;

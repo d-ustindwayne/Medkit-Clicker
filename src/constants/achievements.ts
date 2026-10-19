@@ -13,6 +13,8 @@ export type Achievement = {
   image: ImageSourcePropType;
   /** Hidden until unlocked. */
   secret?: boolean;
+  /** Care Coins paid when unlocked (spent on boosts). */
+  coins: number;
   check: (s: GameState) => boolean;
   /** 0-1 progress towards unlocking, for milestone-style achievements. */
   progress?: (s: GameState) => number;
@@ -72,6 +74,13 @@ const totalItemMilestones: Milestone[] = [
   [1_000, "Logistics Department"],
 ];
 
+const treatedMilestones: Milestone[] = [
+  [1, "Bedside Manner"],
+  [10, "Ward Round"],
+  [50, "Attending Nurse"],
+  [100, "Healing Hands"],
+];
+
 const playMilestones: [seconds: number, name: string, description: string][] = [
   [3_600, "Double Shift", "Play for a total of one hour."],
   [36_000, "Residency", "Play for a total of ten hours."],
@@ -119,14 +128,16 @@ export const ACHIEVEMENTS: Achievement[] = [
     name,
     description: n === 1 ? "Heal your first patient." : `Heal ${formatCount(n)} patients.`,
     image: tierTrophy(i, healedMilestones.length),
+    coins: 1 + Math.floor(i / 3),
     check: (s: GameState) => s.totalHealed >= n,
     progress: (s: GameState) => s.totalHealed / n,
   })),
-  ...tapMilestones.map(([n, name]) => ({
+  ...tapMilestones.map(([n, name], i) => ({
     id: `taps_${n}`,
     name,
     description: `Tap the medkit ${formatCount(n)} times.`,
     image: MEDAL,
+    coins: 1 + i,
     check: (s: GameState) => s.taps >= n,
     progress: (s: GameState) => s.taps / n,
   })),
@@ -136,25 +147,37 @@ export const ACHIEVEMENTS: Achievement[] = [
       name: itemTitles[item.id][i],
       description: n === 1 ? `Buy your first ${item.name.toLowerCase()}.` : `Own ${n} ${item.name.toLowerCase()}.`,
       image: item.image,
+      coins: [1, 1, 2, 3, 4][i],
       check: (s: GameState) => s.owned[item.id] >= n,
       progress: (s: GameState) => s.owned[item.id] / n,
     })),
   ),
-  ...totalItemMilestones.map(([n, name]) => ({
+  ...totalItemMilestones.map(([n, name], i) => ({
     id: `items_${n}`,
     name,
     description: `Own ${formatCount(n)} supplies in total.`,
     image: HOSPITAL_IMAGE,
+    coins: 2 + i,
     check: (s: GameState) => totalOwned(s) >= n,
     progress: (s: GameState) => totalOwned(s) / n,
   })),
-  ...rateMilestones.map(([n, name]) => ({
+  ...rateMilestones.map(([n, name], i) => ({
     id: `rate_${n}`,
     name,
     description: `Heal ${formatCount(n)} patients per second.`,
     image: WINGED_HEART,
+    coins: 1 + i,
     check: (s: GameState) => healingRate(s) >= n,
     progress: (s: GameState) => healingRate(s) / n,
+  })),
+  ...treatedMilestones.map(([n, name], i) => ({
+    id: `treated_${n}`,
+    name,
+    description: n === 1 ? "Treat your first patient in the ward." : `Treat ${n} patients in the ward.`,
+    image: TROPHY.nurse,
+    coins: 2 + i,
+    check: (s: GameState) => s.treated >= n,
+    progress: (s: GameState) => s.treated / n,
   })),
   ...playMilestones.map(([seconds, name, description], i) => ({
     // Keeps the original id for the first tier so existing saves stay unlocked.
@@ -162,6 +185,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     name,
     description,
     image: CLOCK_MOON,
+    coins: 3 + i * 2,
     secret: i === 0,
     check: (s: GameState) => s.playSeconds >= seconds,
     progress: (s: GameState) => s.playSeconds / seconds,
@@ -172,6 +196,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: "Play between midnight and 5 a.m. Go to sleep!",
     image: CLOCK_MOON,
     secret: true,
+    coins: 3,
     check: () => new Date().getHours() < 5,
   },
   {
@@ -180,6 +205,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: "Listen to every playlist.",
     image: TROPHY.nurse,
     secret: true,
+    coins: 3,
     check: (s) => PLAYLISTS.every((p) => s.playlistsHeard.includes(p.id)),
   },
   {
@@ -188,6 +214,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: "Switch between light and dark mode.",
     image: TROPHY.star,
     secret: true,
+    coins: 3,
     check: (s) => s.themeSwitches >= 1,
   },
   {
@@ -196,6 +223,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: "Export your save file.",
     image: TROPHY.purple,
     secret: true,
+    coins: 3,
     check: (s) => s.exports >= 1,
   },
 ];
