@@ -10,15 +10,11 @@ Everything below is art the game is ready for but doesn't have yet. Until a file
 2. Wire it up where the "Hook" column says. Usually that means swapping a `null` for `require("@/imgs/...")`.
 3. Save. The app reloads with the art.
 
-## Hospital (swipe page next to the medkit)
+## Hospital (swipe pages next to the medkit)
 
-| File | Size | What it is | Hook |
-| --- | --- | --- | --- |
-| `src/imgs/scenes/hospital.png` | 1024 × 1024 (square), opaque | The inside of the hospital: a single full illustration. It's shown in a square frame about the size of the medkit circle. | `src/constants/scenes.ts`: set `image` for the `hospital` scene |
+Done: `src/imgs/scenes/hospital_outside.png` and `hospital_inside.png` (1280 × 720, drawn at 320 × 180). They're wired in `src/constants/scenes.ts`.
 
-To add more swipe pages later (a ward, a pharmacy and so on), add another entry to `SCENES` in `src/constants/scenes.ts` with its own 1024 × 1024 PNG. Each entry becomes one more page and one more dot.
-
-If you'd like the hospital to change as the game progresses (for example, rooms lighting up as you buy supplies), draw it as **layers**: one opaque background plus transparent PNGs of the same 1024 × 1024 size for each part. Tell me the layers and when each should appear, and I'll stack them.
+To add more swipe pages (a pharmacy, a lab and so on), add an entry to `SCENES` with a PNG and its `aspect`. Each entry becomes one more page and one more dot.
 
 ## Shop second page
 

@@ -20,8 +20,6 @@
   ],
   "exclude": [
     "node_modules",
-    "example",
-    "src/sample",
     "scripts"
   ]
 }

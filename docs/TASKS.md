@@ -8,7 +8,7 @@ Art that's still needed is listed in [ASSETS.md](ASSETS.md). The sprite polish b
 The core game is done and was tested on the Android emulator and on web. These all work:
 - tapping and buying
 - autosave, plus earnings while the app is closed
-- 71 achievements
+- 13 shop items and 111 achievements
 - music (with a full player) and sound effects
 - light and dark themes, and 7 backgrounds
 - export/import of saves
@@ -22,11 +22,10 @@ Committed and pushed to GitHub (`main`). Next up: the sprite polish in [ART_PLAN
 
 These are placeholders I invented so the game works. Each one is yours to keep, change or remove.
 
-- [ ] Shop prices and rates (`src/constants/items.ts`): Syringe 15 at 0.1/s, Stethoscope 100 at 1/s, Facemask 1,100 at 8/s, Gloves 12,000 at 47/s, Medicine 130,000 at 260/s. Each purchase raises the price by 15%.
 - [ ] Tap bonus (`TAP_RATE_BONUS`): each tap heals 1 + 2% of per-second. Set it to 0 for a flat +1 per tap.
 - [ ] Offline earnings: up to 8 hours at the full rate (`MAX_AWAY_S` in `src/hooks/use-game.tsx`).
 - [ ] Locked shop items show as a "???" silhouette until you've earned half their price.
-- [ ] Achievement names, descriptions and thresholds (`src/constants/achievements.ts`), 71 in total.
+- [ ] Achievement names, descriptions and thresholds (`src/constants/achievements.ts`), 111 in total, including names for the 8 new items' achievements.
 - [ ] Rebirth numbers (`src/constants/rebirth.ts`):
   - you need 1 billion patients in a run to rebirth
   - points = cube root of (run patients ÷ 1 billion)
@@ -40,41 +39,46 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [ ] How to Play text on the About page
 - [ ] Real website URL for "Visit website" (`src/constants/app.ts`)
 
-## Proposed shop order (waiting for your OK)
+## Shop items (decided by Claude, 2026-10-20)
 
-This keeps the 5 current items exactly as they are, at the same prices, rates and ids, so saves are safe. It adds 8 items from the new icons: the bandage goes between gloves and medicine, as you suggested, and the rest extend the late game. That also fixes the late-achievement concern below. You delegated the numbers to me; they follow the existing price ladder (each tier costs about 10× the last).
+You handed this over, so it's built. The order follows medical practice: everyday bedside care and infection control first, then vital signs, then treatment, then the lab. Each tier costs about 10× the last and pays back more slowly (the classic clicker curve). Every purchase still raises that item's price by 15%. Saves store items by id, so the reorder and the new items are safe for existing progress.
 
-| # | Item | Status | Base price | Heals/s |
-| --- | --- | --- | --- | --- |
-| 1 | Syringe | existing | 15 | 0.1 |
-| 2 | Stethoscope | existing | 100 | 1 |
-| 3 | Facemask | existing | 1,100 | 8 |
-| 4 | Gloves | existing | 12,000 | 47 |
-| 5 | Bandage (the white roll, `shop/bandage_roll.png`) | new | 40,000 | 120 |
-| 6 | Medicine | existing | 130,000 | 260 |
-| 7 | Thermometer | new | 1.4M | 1,400 |
-| 8 | BP tester | new | 20M | 7,800 |
-| 9 | IV bag | new | 330M | 44,000 |
-| 10 | Blood vial | new | 5.1B | 260,000 |
-| 11 | COVID test | new | 75B | 1.6M |
-| 12 | Microscope | new | 1T | 10M |
-| 13 | DNA | new | 14T | 65M |
+| # | Item | Price | Heals/s |
+| --- | --- | --- | --- |
+| 1 | Bandage (roll) | 15 | 0.1 |
+| 2 | Gloves | 100 | 1 |
+| 3 | Facemask | 1,100 | 8 |
+| 4 | Thermometer | 12,000 | 47 |
+| 5 | Stethoscope | 130,000 | 260 |
+| 6 | BP Cuff | 1.4M | 1,400 |
+| 7 | Syringe | 20M | 7,800 |
+| 8 | Medicine | 330M | 44,000 |
+| 9 | IV Bag | 5.1B | 260,000 |
+| 10 | Blood Test | 75B | 1.6M |
+| 11 | Rapid Test | 1T | 10M |
+| 12 | Microscope | 14T | 65M |
+| 13 | DNA Lab | 170T | 430M |
 
-Grouping: bedside tools, then protection, then treatment, then vital signs, then lab and research.
+A simulated player tapping once a second unlocks:
+- the first 6 items within the first hour
+- Medicine at about 5 hours, which is also when the first rebirth (1 billion patients) opens up
+- the DNA Lab after about 16 days of nonstop play, sooner with offline earnings
 
-Suggested uses for the icons that aren't shop items:
-- coin: the rebirth-points currency
-- clock with moon: night-shift and offline achievements
-- medal and the 7 trophies: achievement tiers
-- winged heart: rebirth
-- apple, heart and the plaster bandage: in `misc/` until you decide
+**Achievement art:**
+- lifetime-healed milestones climb bronze, gold, platinum and diamond trophies
+- tap milestones use the medal
+- per-second milestones use the winged heart
+- play-time and Night Shift use the clock with moon
+- DJ Nurse, Lights Out and Charting Complete use the nurse, star and purple trophies
 
-Nothing is wired in yet. Adding items also means extending `ItemId`, the item achievements and the orbit.
+Still unused:
+- `misc/`: apple, coin, plaster bandage, heart
+- I'd suggest the coin for rebirth points
 
 ## Concerns to address
 
-- [ ] **Late achievements are out of reach.** With 5 items the rate tops out around tens of thousands per second, so trillion-plus milestones need more items, upgrades or rebirth spending.
-- [ ] **Reward notifications are manual.** Redeeming opens the share sheet so Jasmine can send you the message. Automatic alerts need a small server, for example a Discord webhook, ntfy.sh push or Firebase. Decide if that's wanted.
+- [ ] **The last achievements are still out of reach.** 13 items get to about a billion per second after weeks, so the 10^15 healed milestones are reachable but the tail (10^18 and up) needs upgrades or rebirth spending. That's intentional for a long game, but worth a look when rebirth points get a use.
+- [ ] **Reward notifications are manual.** Redeeming opens the share sheet so Jasmine can send you the message. See [NOTIFICATIONS.md](NOTIFICATIONS.md) for the plan (ntfy.sh alerts, plus local reminders).
 - [ ] **Everything is on-device, so it isn't tamper-proof.** Someone could edit an exported save and import it to give themselves patients. The redeem code is stored only as a hash, so it can't be read from the code, but a determined person could still bypass the check. That's fine for a gift; it would need a server to be secure.
 - [ ] **Rewards survive Delete progress and imports on purpose,** so the 3-chocolate limit can't be reset. Reinstalling the app or clearing its data does reset it, because there's no server.
 - [ ] **Saving to Download:** Android 11+ won't let apps pick the root of Download. Export asks for a folder once (Documents by default, or a subfolder of Download) and then remembers it.
@@ -109,7 +113,7 @@ Nothing is wired in yet. Adding items also means extending `ItemId`, the item ac
 - [x] 7 backgrounds, each with its own pattern and colours in light and dark mode
 - [x] Swipe pages for the medkit area (Hospital) and the shop (placeholder)
 - [x] Export saves to a folder (remembered); import fixed for Android
-- [x] Numbers up to vigintillion, 71 achievements
+- [x] Numbers up to vigintillion, 111 achievements
 - [x] Developer tools in Settings (development builds only)
 
 ### Phase 2b: Features added (done)
@@ -118,9 +122,9 @@ Nothing is wired in yet. Adding items also means extending `ItemId`, the item ac
 - [x] Rebirth: new run for rebirth points (a currency) plus a small permanent healing boost
 
 ### Phase 3: Pre-release content (your design)
-- [ ] Hospital interior art ([ASSETS.md](ASSETS.md))
+- [x] Hospital art: outside and inside scenes, plus the Nightingale painting and 16 characters (see [ART_PLAN.md](ART_PLAN.md))
 - [ ] Decide the shop's second page
-- [ ] More shop items (sprites from you)
+- [x] More shop items: 13 in total, with order and prices decided by Claude
 - [ ] What rebirth points buy, and the per-rebirth unlocks
 - [ ] More achievements and easter eggs
 - [ ] More rewards in Jasmine's Rewards (each: name, cost, limit)
@@ -128,7 +132,7 @@ Nothing is wired in yet. Adding items also means extending `ItemId`, the item ac
 
 ### Phase 4: Release
 - [ ] Unit tests for the game logic
-- [ ] Final app icon and splash art
+- [ ] Final app icon and splash art (now using the new outline-free medkit)
 - [ ] Commit, then `eas build` for an installable Android APK
 - [ ] iOS build (needs an Apple developer account)
 

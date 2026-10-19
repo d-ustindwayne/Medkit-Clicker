@@ -8,7 +8,7 @@ Built with Expo 57, React Native, React 19, NativeWind v4 and Reanimated 4.
 
 - **Tap and grow:** every tap heals patients. Syringes, stethoscopes, facemasks, gloves and medicine keep healing while you rest. Each purchase raises the next price by 15%.
 - **Offline progress:** your team keeps working for up to 8 hours while the app is closed.
-- **71 achievements**, from "First Aid" to healing a vigintillion patients, with progress bars and a few secret ones.
+- **111 achievements**, from "First Aid" to healing a vigintillion patients, with progress bars and a few secret ones.
 - **Rebirth:** start a new run for rebirth points and a small permanent healing boost.
 - **Redeem codes** unlock hidden sections, like a rewards shop where patients buy real-life treats (with a limit on each).
 - **Music player** with six playlists, play/pause, track skipping and seeking; sound effects with their own volume; light haptics on native.

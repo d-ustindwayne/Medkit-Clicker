@@ -1,7 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Image } from "expo-image";
-import * as Haptics from "expo-haptics";
-import { Platform, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -18,6 +17,7 @@ import { BURST_MS, TapBurst } from "@/components/fx/tap-burst";
 import { MEDKIT_IMAGE, type ItemId } from "@/constants/items";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions } from "@/hooks/use-game";
+import { useHaptics } from "@/hooks/use-haptics";
 import { usePalette } from "@/hooks/use-palette";
 import { formatShort } from "@/lib/format";
 
@@ -34,6 +34,7 @@ type Props = { size: number; tapAmount: number; owned: Record<ItemId, number> };
 export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned }: Props) {
   const { dispatch } = useGameActions();
   const { playSfx, unlock } = useAudio();
+  const haptic = useHaptics();
   const palette = usePalette();
   const reduceMotion = useReducedMotion();
   const [bursts, setBursts] = useState<Burst[]>([]);
@@ -64,7 +65,7 @@ export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned 
     unlock();
     dispatch({ type: "tap" });
     playSfx("medkit");
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    haptic.tap();
 
     // Touch coordinates are relative to whichever child was hit (and differ on web),
     // so scatter the numbers over the top half of the medkit instead.
@@ -73,7 +74,7 @@ export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned 
     const y = size * (0.2 + Math.random() * 0.25);
     setBursts((b) => [...b.slice(-(MAX_BURSTS - 1)), { id, x, y, label: `+${formatShort(tapAmount)}` }]);
     setTimeout(() => setBursts((b) => b.filter((p) => p.id !== id)), BURST_MS);
-  }, [dispatch, playSfx, unlock, tapAmount, size]);
+  }, [dispatch, playSfx, unlock, haptic, tapAmount, size]);
 
   const box = size * ORBIT_SCALE;
   const sun = size * SUNBURST_SCALE;

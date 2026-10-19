@@ -1,5 +1,5 @@
 import { createContext, use, useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
-import { AppState } from "react-native";
+import { AppState, type ImageSourcePropType } from "react-native";
 
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { healingRate } from "@/constants/rebirth";
@@ -14,7 +14,7 @@ const AUTOSAVE_MS = 10_000;
 const AWAY_THRESHOLD_S = 5;
 const MAX_AWAY_S = 8 * 3600;
 
-export type Toast = { id: number; title: string; body: string; kind: "achievement" | "info" };
+export type Toast = { id: number; title: string; body: string; kind: "achievement" | "info"; image?: ImageSourcePropType };
 
 type GameActions = {
   dispatch: (action: GameAction) => void;
@@ -47,7 +47,8 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
 
   const pushToast = useCallback((toast: Omit<Toast, "id">) => {
     const id = ++toastId.current;
-    setToasts((t) => [...t.slice(-2), { ...toast, id }]);
+    // Two at most, at the bottom of the screen, so the counter and medkit stay visible.
+    setToasts((t) => [...t.slice(-1), { ...toast, id }]);
   }, []);
   const dismissToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
@@ -134,7 +135,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       if (seenAchievements.current.has(id)) continue;
       seenAchievements.current.add(id);
       const a = ACHIEVEMENTS.find((x) => x.id === id);
-      if (a) pushToast({ kind: "achievement", title: a.name, body: a.description });
+      if (a) pushToast({ kind: "achievement", title: a.name, body: a.description, image: a.image });
     }
   }, [ready, state.achievements, pushToast]);
 

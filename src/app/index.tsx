@@ -109,7 +109,7 @@ function Clicker({ width, height, compact }: { width: number; height: number; co
             label: scene.title,
             content: (
               <View className="flex-1 items-center justify-center">
-                <ScenePage scene={scene} size={size * 1.1} />
+                <ScenePage scene={scene} size={size * 1.1} maxWidth={width - 32} />
               </View>
             ),
           })),

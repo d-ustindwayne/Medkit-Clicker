@@ -1,6 +1,6 @@
 import type { ImageSourcePropType } from "react-native";
 
-import { HOSPITAL_IMAGE, MEDKIT_IMAGE, SHOP_ITEMS } from "@/constants/items";
+import { HOSPITAL_IMAGE, SHOP_ITEMS, type ItemId } from "@/constants/items";
 import { PLAYLISTS } from "@/constants/playlists";
 import { healingRate } from "@/constants/rebirth";
 import type { GameState } from "@/lib/game";
@@ -80,22 +80,45 @@ const playMilestones: [seconds: number, name: string, description: string][] = [
 
 // Per-item names for owning 1, 25, 100, 250 and 500 of each shop item.
 const OWNED_TIERS = [1, 25, 100, 250, 500] as const;
-const itemTitles: Record<string, string[]> = {
-  syringe: ["First Injection", "Vaccine Drive", "Sharps Container", "Needle in a Haystack", "Immunity for All"],
-  stethoscope: ["Heartbeat Heard", "Lub-Dub", "Cardiology Wing", "Listening Closely", "Echo Chamber"],
-  facemask: ["Masked Up", "Infection Control", "Sterile Field", "Clean Room", "Airborne Precautions"],
+const itemTitles: Record<ItemId, string[]> = {
+  bandage: ["Wrapped Up", "Pressure Dressing", "Wound Care Team", "Mummy Mode", "Gauze Galore"],
   gloves: ["Gloved Up", "Double Gloving", "Glove Box Empty", "Latex Legion", "Hands of Healing"],
+  facemask: ["Masked Up", "Infection Control", "Sterile Field", "Clean Room", "Airborne Precautions"],
+  thermometer: ["Taking Temps", "Fever Check", "Afebrile", "Hot Readings", "Thermal Mastery"],
+  stethoscope: ["Heartbeat Heard", "Lub-Dub", "Cardiology Wing", "Listening Closely", "Echo Chamber"],
+  bp_cuff: ["Under Pressure", "Systolic Start", "Korotkoff Sounds", "Normotensive", "Pressure Perfect"],
+  syringe: ["First Injection", "Vaccine Drive", "Sharps Container", "Needle in a Haystack", "Immunity for All"],
   medicine: ["Prescribed", "Pharmacy Run", "Fully Stocked", "Compounding Lab", "Cure-All Cabinet"],
+  iv_bag: ["IV Started", "Fluid Bolus", "Drip Rate", "Hydration Station", "Maintenance Fluids"],
+  blood_vial: ["First Draw", "Phlebotomist", "Blood Bank", "Lab Courier", "Order of Draw"],
+  covid_test: ["Swabbed", "Two Lines", "Mass Testing", "Contact Tracing", "Negative Again"],
+  microscope: ["Under the Lens", "Cell Count", "Gram Stain", "Pathology Lab", "Microbe Hunter"],
+  dna: ["Double Helix", "Genome Mapped", "Gene Therapy", "Precision Medicine", "Code of Life"],
 };
+
+// Achievement art from src/imgs/achievements. Lifetime milestones climb the trophy tiers.
+const TROPHY = {
+  bronze: require("@/imgs/achievements/trophy_bronze.png"),
+  gold: require("@/imgs/achievements/trophy_gold.png"),
+  platinum: require("@/imgs/achievements/trophy_platinum.png"),
+  diamond: require("@/imgs/achievements/trophy_diamond.png"),
+  star: require("@/imgs/achievements/trophy_star.png"),
+  nurse: require("@/imgs/achievements/trophy_nurse.png"),
+  purple: require("@/imgs/achievements/trophy_purple.png"),
+};
+const MEDAL = require("@/imgs/achievements/medal.png");
+const WINGED_HEART = require("@/imgs/achievements/winged_heart.png");
+const CLOCK_MOON = require("@/imgs/achievements/clock_moon.png");
+const tierTrophy = (i: number, count: number) => [TROPHY.bronze, TROPHY.gold, TROPHY.platinum, TROPHY.diamond][Math.min(3, Math.floor((i / count) * 4))];
 
 const totalOwned = (s: GameState) => Object.values(s.owned).reduce((a, b) => a + b, 0);
 
 export const ACHIEVEMENTS: Achievement[] = [
-  ...healedMilestones.map(([n, name]) => ({
+  ...healedMilestones.map(([n, name], i) => ({
     id: `healed_${n}`,
     name,
     description: n === 1 ? "Heal your first patient." : `Heal ${formatCount(n)} patients.`,
-    image: MEDKIT_IMAGE,
+    image: tierTrophy(i, healedMilestones.length),
     check: (s: GameState) => s.totalHealed >= n,
     progress: (s: GameState) => s.totalHealed / n,
   })),
@@ -103,7 +126,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: `taps_${n}`,
     name,
     description: `Tap the medkit ${formatCount(n)} times.`,
-    image: MEDKIT_IMAGE,
+    image: MEDAL,
     check: (s: GameState) => s.taps >= n,
     progress: (s: GameState) => s.taps / n,
   })),
@@ -129,7 +152,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: `rate_${n}`,
     name,
     description: `Heal ${formatCount(n)} patients per second.`,
-    image: HOSPITAL_IMAGE,
+    image: WINGED_HEART,
     check: (s: GameState) => healingRate(s) >= n,
     progress: (s: GameState) => healingRate(s) / n,
   })),
@@ -138,7 +161,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: i === 0 ? "double_shift" : `play_${seconds}`,
     name,
     description,
-    image: HOSPITAL_IMAGE,
+    image: CLOCK_MOON,
     secret: i === 0,
     check: (s: GameState) => s.playSeconds >= seconds,
     progress: (s: GameState) => s.playSeconds / seconds,
@@ -147,7 +170,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: "night_shift",
     name: "Night Shift",
     description: "Play between midnight and 5 a.m. Go to sleep!",
-    image: HOSPITAL_IMAGE,
+    image: CLOCK_MOON,
     secret: true,
     check: () => new Date().getHours() < 5,
   },
@@ -155,7 +178,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: "dj_nurse",
     name: "DJ Nurse",
     description: "Listen to every playlist.",
-    image: MEDKIT_IMAGE,
+    image: TROPHY.nurse,
     secret: true,
     check: (s) => PLAYLISTS.every((p) => s.playlistsHeard.includes(p.id)),
   },
@@ -163,7 +186,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: "lights_out",
     name: "Lights Out",
     description: "Switch between light and dark mode.",
-    image: MEDKIT_IMAGE,
+    image: TROPHY.star,
     secret: true,
     check: (s) => s.themeSwitches >= 1,
   },
@@ -171,7 +194,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: "charting_complete",
     name: "Charting Complete",
     description: "Export your save file.",
-    image: MEDKIT_IMAGE,
+    image: TROPHY.purple,
     secret: true,
     check: (s) => s.exports >= 1,
   },

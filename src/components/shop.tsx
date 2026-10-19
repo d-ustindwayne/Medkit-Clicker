@@ -10,6 +10,7 @@ import { Pager } from "@/components/ui/pager";
 import { PixelIcon } from "@/components/ui/pixel-icon";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameState } from "@/hooks/use-game";
+import { useHaptics } from "@/hooks/use-haptics";
 import { usePalette } from "@/hooks/use-palette";
 import { formatCount, formatRate } from "@/lib/format";
 
@@ -27,6 +28,7 @@ type CardProps = {
 const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progress, hidden }: CardProps) {
   const { dispatch } = useGameActions();
   const { playSfx, unlock } = useAudio();
+  const haptic = useHaptics();
   const palette = usePalette();
   const scale = useSharedValue(1);
   const shake = useSharedValue(0);
@@ -43,10 +45,12 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
           unlock();
           if (!affordable) {
             shake.set(withSequence(withTiming(-6, { duration: 40 }), withTiming(6, { duration: 60 }), withTiming(-4, { duration: 60 }), withTiming(0, { duration: 40 })));
+            haptic.denied();
             return playSfx("invalid");
           }
           dispatch({ type: "buy", item: item.id });
           playSfx("buy");
+          haptic.buy();
           scale.set(withSequence(withTiming(1.05, { duration: 70 }), withSpring(1, { damping: 8, stiffness: 300 })));
         }}
         className={`overflow-hidden border-[3px] border-outline bg-surface active:translate-x-0.5 active:translate-y-0.5 ${affordable ? "" : "opacity-80"}`}

@@ -65,6 +65,7 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
         <Field label="Sound effects">
           <VolumeControl label="Sound effects volume" value={settings.sfxVolume} steps={VOLUME_STEPS} onChange={(v) => updateSettings({ sfxVolume: v })} />
         </Field>
+        <Toggle label="Vibration" value={settings.haptics} onChange={(haptics) => updateSettings({ haptics })} />
       </SettingsGroup>
 
       <SettingsGroup title="LOOK" icon={settings.theme === "dark" ? "moon" : "sun"}>

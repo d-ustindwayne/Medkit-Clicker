@@ -15,6 +15,8 @@ export type Settings = {
   sfxVolume: number;
   background: number;
   theme: ThemeName;
+  /** Vibration on taps, purchases and achievements. */
+  haptics: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sfxVolume: 4,
   background: 0,
   theme: "light",
+  haptics: true,
 };
 
 type StoredGame = { state: GameState; savedAt: number };
