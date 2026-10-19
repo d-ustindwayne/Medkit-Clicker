@@ -1,7 +1,7 @@
 # Medkit Clicker: status and task board
 
 Run `bun run tasks` for a progress summary. Tick a box by changing `[ ]` to `[x]`.
-Art that's still needed is listed in [ASSETS.md](ASSETS.md).
+Art that's still needed is listed in [ASSETS.md](ASSETS.md). The sprite polish brief and its progress are in [ART_PLAN.md](ART_PLAN.md).
 
 ## Where we are (2026-10-19)
 
@@ -16,7 +16,7 @@ The core game is done and was tested on the Android emulator and on web. These a
 - rebirth
 - swipe pages for the medkit/Hospital area and the shop
 
-Nothing is committed to git yet. Next up: your decisions below, then content (items, achievements, art), then a standalone build.
+Committed and pushed to GitHub (`main`). Next up: the sprite polish in [ART_PLAN.md](ART_PLAN.md), your decisions below, then content (items, achievements, art), then a standalone build.
 
 ## Needs your decision
 
@@ -51,7 +51,7 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [ ] **Music is copyrighted and not in git.** A fresh clone needs `bun run music` with your own MP3s. The bundle is about 47 MB.
 - [ ] **Old native build on the emulator:** `com.dust.dev.mc` is from before the audio and save libraries. Use Expo Go, or run `bunx expo prebuild --clean` then `bun run android` to replace it.
 - [ ] **No unit tests yet** for the reducer, number formatting, rebirth or rewards.
-- [ ] **Nothing is committed to git.**
+- [x] **Nothing is committed to git.** Done: pushed to https://github.com/d-ustindwayne/Medkit-Clicker (`main`).
 - [ ] **Achievement and welcome-back toasts briefly cover the counter.** Consider moving them or making them smaller.
 
 ## Roadmap

@@ -1,5 +1,7 @@
 # Assets to draw
 
+The brief for polishing and drawing 32 × 32 sprites (style rules, phases) is in [ART_PLAN.md](ART_PLAN.md).
+
 Everything below is art the game is ready for but doesn't have yet. Until a file exists, the game shows a placeholder. Match the existing sprites in `src/imgs/`: pixel art, transparent PNG, scaled up with nearest-neighbour so the pixels stay sharp.
 
 ## How to add one
