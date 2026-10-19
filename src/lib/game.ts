@@ -3,6 +3,7 @@ import { healingRate, rebirthMultiplier, rebirthPointsFor } from "@/constants/re
 import { BOOSTS, LUCKY_MULT, boostMultiplier } from "@/constants/boosts";
 import { LOSE_SECONDS, WIN_COINS, WIN_SECONDS } from "@/constants/patients";
 import { REWARD_SECTIONS } from "@/constants/rewards";
+import { ROOMS, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, type RoomState } from "@/constants/room";
 import { SHOP_ITEMS, TAP_RATE_BONUS, itemCost, perSecond, type ItemId } from "@/constants/items";
 
 export type GameState = {
@@ -42,6 +43,8 @@ export type GameState = {
   patient: { id: string; arrivedAt: number } | null;
   /** When the next patient arrives (ms since epoch). */
   nextPatientAt: number;
+  /** My Room: which room is shown, and the items placed in each. */
+  room: RoomState;
 };
 
 export type GameAction =
@@ -60,6 +63,10 @@ export type GameAction =
   /** The patient was transferred (waited too long) or treated; `next` schedules the next arrival. */
   | { type: "patientLeaves"; next: number }
   | { type: "treat"; won: boolean; next: number }
+  | { type: "setRoom"; room: string }
+  /** Place an item (or move it, including from another room) at x, y: fractions of the room art. */
+  | { type: "placeItem"; room: string; item: string; x: number; y: number }
+  | { type: "removeItem"; room: string; item: string }
   | { type: "load"; state: GameState }
   /** Like load, but never rolls back reward redemptions or unlocked sections. */
   | { type: "import"; state: GameState }
@@ -95,12 +102,14 @@ export const newGame = (): GameState => ({
   treated: 0,
   patient: null,
   nextPatientAt: Date.now() + 60_000,
+  room: { current: ROOMS[0].id, placed: {} },
 });
 
 /** Patients per medkit tap, including the rebirth boost and (when passed) active boosts. */
-export const tapValue = (s: { owned: Record<ItemId, number>; rebirths: number; boosts?: Record<string, number>; luckyTaps?: number }) =>
+export const tapValue = (s: { owned: Record<ItemId, number>; rebirths: number; boosts?: Record<string, number>; luckyTaps?: number; room?: RoomState }) =>
   (1 + perSecond(s.owned) * TAP_RATE_BONUS) *
   rebirthMultiplier(s.rebirths) *
+  (1 + roomBonus(s.room, "tap")) *
   boostMultiplier(s.boosts, "tap") *
   ((s.luckyTaps ?? 0) > 0 ? LUCKY_MULT : 1);
 
@@ -217,6 +226,28 @@ const apply = (state: GameState, action: GameAction): GameState => {
       const done = { ...state, patient: null, nextPatientAt: action.next };
       return earn(action.won ? { ...done, treated: state.treated + 1, bonusCoins: state.bonusCoins + WIN_COINS } : done, amount);
     }
+    case "setRoom": {
+      const room = ROOMS.find((r) => r.id === action.room);
+      if (!room || !isUnlocked(room.unlock, state)) return state;
+      return { ...state, room: { ...state.room, current: room.id } };
+    }
+    case "placeItem": {
+      const room = ROOMS.find((r) => r.id === action.room);
+      const item = ROOM_ITEMS.find((i) => i.id === action.item);
+      if (!room || !item || !isUnlocked(item.unlock, state)) return state;
+      // One of each item: take it out of wherever it is first.
+      const placed = Object.fromEntries(Object.entries(state.room.placed).map(([k, v]) => [k, v.filter((p) => p.item !== item.id)]));
+      const here = placed[room.id] ?? [];
+      if (here.length >= room.limit) return state;
+      const zone = ZONES[item.place];
+      const x = Math.min(0.95, Math.max(0.05, action.x));
+      const y = Math.min(zone.maxY, Math.max(zone.minY, action.y));
+      return { ...state, room: { ...state.room, placed: { ...placed, [room.id]: [...here, { item: item.id, x, y }] } } };
+    }
+    case "removeItem": {
+      const here = state.room.placed[action.room] ?? [];
+      return { ...state, room: { ...state.room, placed: { ...state.room.placed, [action.room]: here.filter((p) => p.item !== action.item) } } };
+    }
     case "load":
     case "import":
       return action.state;
@@ -273,5 +304,6 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     treated: typeof s.treated === "number" ? s.treated : 0,
     patient: s.patient && typeof s.patient.id === "string" ? s.patient : null,
     nextPatientAt: typeof s.nextPatientAt === "number" ? s.nextPatientAt : base.nextPatientAt,
+    room: s.room && typeof s.room.current === "string" ? { current: s.room.current, placed: { ...(s.room.placed ?? {}) } } : base.room,
   };
 };

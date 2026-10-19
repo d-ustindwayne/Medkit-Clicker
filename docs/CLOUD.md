@@ -2,6 +2,16 @@
 
 Goal: move the save to the cloud and get a notification on Dustin's phone when Jasmine redeems a real-life reward or buys something that matters.
 
+## Will it fit the free tier? Yes.
+
+| | Size |
+| --- | --- |
+| A new save | ~0.6 KB |
+| A maxed late-game save (all achievements, 500 of every item, rewards redeemed) | ~4 KB |
+| Atlas M0 free tier | 512 MB |
+
+That's room for over 100,000 full saves. Even keeping a daily snapshot for years uses only a few MB. Music and images ship inside the app and never go in the database.
+
 ## Why there has to be a small API in between
 
 The app must **never hold the database password**. Anything in the app, including `EXPO_PUBLIC_*` values, can be read out of the APK. MongoDB has also retired its "talk to the database straight from the app" services: the Atlas Data API, HTTPS Endpoints and Device Sync reached end of life in September 2025. So the setup is:

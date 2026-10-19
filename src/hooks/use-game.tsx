@@ -57,8 +57,8 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
     (seconds: number) => {
       const away = Math.min(seconds, MAX_AWAY_S);
       // Boosts don't run while the app is closed.
-      const { owned, rebirths } = stateRef.current;
-      const earned = healingRate({ owned, rebirths }) * away;
+      const { owned, rebirths, room } = stateRef.current;
+      const earned = healingRate({ owned, rebirths, room }) * away;
       if (earned < 1) return;
       dispatch({ type: "earn", amount: earned });
       pushToast({

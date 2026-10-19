@@ -10,16 +10,18 @@ type Props = {
   /** Where the page dots go: above or below the pages, or floating over their bottom edge. */
   dots?: "top" | "bottom" | "overlay";
   onPageChange?: (index: number) => void;
+  /** Turn swiping off, e.g. while dragging things around on a page. */
+  scrollEnabled?: boolean;
   className?: string;
 };
 
 /** Horizontal swipe pages with tappable pixel dots. */
-export function Pager({ width, pages, dots = "bottom", onPageChange, className = "" }: Props) {
+export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabled = true, className = "" }: Props) {
   const { playSfx } = useAudio();
   const scroller = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
 
-  const dotsRow = pages.length > 1 && (
+  const dotsRow = pages.length > 1 && scrollEnabled && (
     <View
       className={`flex-row items-center justify-center gap-2 ${dots === "overlay" ? "rounded-full border-[1.5px] border-outline bg-surface/85 px-2.5 py-1" : "py-1.5"}`}
       accessibilityRole="tablist"
@@ -51,6 +53,7 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, className =
         ref={scroller}
         horizontal
         pagingEnabled
+        scrollEnabled={scrollEnabled}
         showsHorizontalScrollIndicator={false}
         style={{ width, flexGrow: 1 }}
         onMomentumScrollEnd={(e) => {

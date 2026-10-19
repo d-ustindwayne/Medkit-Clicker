@@ -6,15 +6,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BackgroundPattern } from "@/components/background-pattern";
 import { MedkitButton, ORBIT_SCALE } from "@/components/medkit-button";
 import { MenuDrawer } from "@/components/menu/menu-drawer";
-import { ScenePage } from "@/components/scene-page";
 import { Shop } from "@/components/shop";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { Pager } from "@/components/ui/pager";
 import { ToastStack } from "@/components/toast-stack";
-import { WardPatient } from "@/components/ward/ward-patient";
+import { RoomPage } from "@/components/room/room-page";
 import { BOOSTS, LUCKY_MULT } from "@/constants/boosts";
 import { healingRate } from "@/constants/rebirth";
-import { WARD_SCENE } from "@/constants/scenes";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameState, useSettings } from "@/hooks/use-game";
 import { useNow } from "@/hooks/use-now";
@@ -77,9 +75,9 @@ function ActiveBoosts() {
 }
 
 function Counter({ compact }: { compact: boolean }) {
-  const { healed, owned, rebirths, boosts } = useGameState();
+  const { healed, owned, rebirths, boosts, room } = useGameState();
   const palette = usePalette();
-  const rate = healingRate({ owned, rebirths, boosts });
+  const rate = healingRate({ owned, rebirths, boosts, room });
   const label = `${Math.floor(healed) === 1 ? "Patient" : "Patients"} Healed`;
   // Hard pixel drop shadow; NativeWind has no text-shadow utilities.
   const shadow = { textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 };
@@ -115,9 +113,10 @@ function Counter({ compact }: { compact: boolean }) {
   );
 }
 
-/** Swipeable stage: the medkit, then the ward. */
+/** Swipeable stage: the medkit, then My Room. */
 function Clicker({ width, height, compact }: { width: number; height: number; compact: boolean }) {
-  const { owned, rebirths, boosts, luckyTaps, patient } = useGameState();
+  const { owned, rebirths, boosts, luckyTaps, patient, room } = useGameState();
+  const [editing, setEditing] = useState(false);
   // Leave room for the orbiting supplies around the medkit.
   const size = Math.min((width * (compact ? 0.72 : 0.55)) / ORBIT_SCALE, (height * (compact ? 0.52 : 0.58)) / ORBIT_SCALE, 420);
 
@@ -127,6 +126,7 @@ function Clicker({ width, height, compact }: { width: number; height: number; co
       <Pager
         width={width}
         dots="overlay"
+        scrollEnabled={!editing}
         className="flex-1"
         pages={[
           {
@@ -134,19 +134,15 @@ function Clicker({ width, height, compact }: { width: number; height: number; co
             label: "Medkit",
             content: (
               <View className="flex-1 items-center justify-center">
-                <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths, boosts, luckyTaps })} owned={owned} />
+                <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths, boosts, luckyTaps, room })} owned={owned} />
               </View>
             ),
           },
           {
-            key: WARD_SCENE.id,
-            label: patient ? `${WARD_SCENE.title}, a patient is waiting` : WARD_SCENE.title,
+            key: "room",
+            label: patient ? "My Room, a patient is waiting" : "My Room",
             badge: !!patient,
-            content: (
-              <ScenePage scene={WARD_SCENE} width={width}>
-                <WardPatient width={width} height={width / WARD_SCENE.aspect} />
-              </ScenePage>
-            ),
+            content: <RoomPage width={width} editing={editing} onEditingChange={setEditing} />,
           },
         ]}
       />

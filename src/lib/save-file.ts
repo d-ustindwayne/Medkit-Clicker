@@ -27,6 +27,8 @@ const toCsv = (state: GameState) => {
     ["luckyTaps", state.luckyTaps],
     ["bonusCoins", state.bonusCoins],
     ["treated", state.treated],
+    // Nested, so stored as URI-encoded JSON (no commas to break the CSV).
+    ["room", encodeURIComponent(JSON.stringify(state.room))],
     ...Object.entries(state.boosts).map(([k, v]) => [`boosts.${k}`, v] as [string, number]),
     ...Object.entries(state.owned).map(([k, v]) => [`owned.${k}`, v] as [string, number]),
     ...Object.entries(state.achievements).map(([k, v]) => [`achievements.${k}`, v ?? 0] as [string, number]),
@@ -42,6 +44,12 @@ const fromCsv = (text: string): unknown => {
     const [group, sub] = key.split(".");
     if (sub && (group === "owned" || group === "achievements" || group === "boosts")) {
       (out[group] as Record<string, number>)[sub] = Number(value);
+    } else if (key === "room") {
+      try {
+        out.room = JSON.parse(decodeURIComponent(value));
+      } catch {
+        // ignore a damaged room row; normalizeSave falls back to an empty room
+      }
     } else if (key === "playlistsHeard") {
       out.playlistsHeard = value ? value.split(";") : [];
     } else {
