@@ -1,56 +1,83 @@
-# Welcome to your Expo app 👋
+# Medkit Clicker
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A nursing-themed clicker game for iOS, Android and the web, made by Dustin Dwayne Diaz for Jasmine Sison Taboy, to relieve her stress. Tap the medkit to heal patients, then spend them on supplies that keep healing for you.
 
-## Get started
+Built with Expo 57, React Native, React 19, NativeWind v4 and Reanimated 4.
 
-1. Install dependencies
+## Features
 
-   ```bash
-   npm install
-   ```
+- **Tap and grow:** every tap heals patients. Syringes, stethoscopes, facemasks, gloves and medicine keep healing while you rest. Each purchase raises the next price by 15%.
+- **Offline progress:** your team keeps working for up to 8 hours while the app is closed.
+- **71 achievements**, from "First Aid" to healing a vigintillion patients, with progress bars and a few secret ones.
+- **Rebirth:** start a new run for rebirth points and a small permanent healing boost.
+- **Redeem codes** unlock hidden sections, like a rewards shop where patients buy real-life treats (with a limit on each).
+- **Music player** with six playlists, play/pause, track skipping and seeking; sound effects with their own volume; light haptics on native.
+- **Light and dark themes** from the original design, with seven backgrounds, each with its own pattern and colours.
+- **Swipe pages** next to the medkit (the hospital) and in the shop.
+- **Saves:** autosaves every 10 seconds and when the app is backgrounded. Export (to a folder you choose) or import a save as JSON or CSV.
+- **Responsive layout:** the shop sits beside the medkit on tablets and desktops, and below it on phones.
 
-2. Start the app
+## Getting started
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Requires [Bun](https://bun.sh/) and, for the music bundle, [ffmpeg](https://ffmpeg.org/).
 
 ```bash
-npm run reset-project
+bun install
+bun run music    # builds src/audio/bundle from your music library (see below)
+bun run start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Music
 
-### Other setup steps
+The songs are copyrighted, so they're not in this repository. To build the app with music:
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+1. Put your tracks in `src/audio/music/<playlist>/track_N.mp3`. The playlist folders are `cup_of_joe`, `love`, `filipino_rap`, `favourites`, `lo-fi` and `normal`.
+2. Run `bun run music`. This compresses the first 3 tracks of each playlist to 64 kbps in `src/audio/bundle/`, which comes to about 47 MB.
 
-## Learn more
+Both folders are gitignored. Playlist names and tracks are set in `src/constants/playlists.ts`.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Scripts
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+| Command | What it does |
+| --- | --- |
+| `bun run start` | Start the Expo dev server |
+| `bun run android` / `bun run ios` | Build and run on a device or emulator |
+| `bun run web` | Run in the browser |
+| `bun run music` | Build the trimmed music bundle |
+| `bun run lint` | Lint with ESLint |
+| `bun run typecheck` | Type-check with TypeScript |
+| `bun run tasks` | Progress summary of the task board in `docs/TASKS.md` |
+| `bun run add-code <section> <code>` | Register a redeem code. Only its hash is stored, in `.env.local` (gitignored). Restart the dev server afterwards. |
 
-## Join the community
+## Project structure
 
-Join our community of developers creating universal apps.
+```
+src/
+  app/            Expo Router screens (_layout.tsx, index.tsx)
+  components/     Medkit button, shop, side menu, toasts, UI controls
+  constants/      Shop items, achievements, playlists, theme palettes
+  hooks/          Game state provider and audio provider
+  lib/            Game reducer, number formatting, storage, save export/import
+  imgs/ fonts/ audio/ media/   Sprites, fonts, sound, design references
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Game balance (prices, rates and growth) lives in `src/constants/items.ts`. Development builds show a **Dev tools** section at the bottom of Settings for testing late-game content (add patients or items, unlock achievements, skip time). Achievements live in `src/constants/achievements.ts`.
+
+## Docs
+
+- [docs/TASKS.md](docs/TASKS.md): status, roadmap, open decisions and concerns
+- [docs/ASSETS.md](docs/ASSETS.md): art that's still needed, with sizes and where it goes
+
+## Redeem codes
+
+Reward sections are defined in `src/constants/rewards.ts`. Each one is unlocked by a code, and the code itself never appears in the source or in git. To set one up:
+
+```bash
+bun run add-code jasmine "the-code"
+```
+
+This writes the code's SHA-256 hash to `.env.local`. Builds made on another machine need the same `.env.local`, or the code won't match.
+
+## License
+
+The code is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for the licenses of bundled fonts. Music is not included and is not covered by this license.

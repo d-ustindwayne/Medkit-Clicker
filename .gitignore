@@ -41,3 +41,11 @@ example
 # generated native folders
 /ios
 /android
+
+# Music: full library and the trimmed bundle are copyrighted, keep them out of git (see README)
+src/audio/music/
+src/audio/bundle/
+
+# Commercial font, not redistributable
+src/fonts/arialroundedmt.ttf
+src/fonts/arlrdbd.ttf

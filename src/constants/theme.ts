@@ -1,65 +1,75 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
+import { vars } from "nativewind";
 
-import '@/global.css';
+export type ThemeName = "light" | "dark";
 
-import { Platform } from 'react-native';
+type Palette = {
+  primary: string;
+  surface: string;
+  ink: string;
+  success: string;
+  danger: string;
+  accent: string;
+  backdrop: string;
+  outline: string;
+  /** Hard drop shadow under cards and the medkit. */
+  shadow: string;
+  /** Sunburst rays behind the medkit (drawn at low opacity). */
+  glow: string;
+  /** Hard shadow under big display text. */
+  textShadow: string;
+};
 
-export const Colors = {
+// Palettes from src/media/photos/plan-and-brainstorm.png
+export const palettes: Record<ThemeName, Palette> = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    primary: "#dd1122",
+    surface: "#fafdf3",
+    ink: "#000000",
+    success: "#4edb4e",
+    danger: "#f34747",
+    accent: "#ffc0cb",
+    backdrop: "#f9e8e8",
+    outline: "#000000",
+    shadow: "#000000",
+    glow: "#ffffff",
+    textShadow: "#ffb3c1",
   },
+  // Night shift: deep ward teal with the same red, kept bright enough to read.
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    primary: "#a3182a",
+    surface: "#172631",
+    ink: "#eef3f6",
+    success: "#2f9e4f",
+    danger: "#cf3a40",
+    accent: "#24475a",
+    backdrop: "#0f1c24",
+    outline: "#d6e1e8",
+    shadow: "#05090c",
+    glow: "#4f8fae",
+    textShadow: "#000000",
   },
-} as const;
+};
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+const toRgbChannels = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`;
+};
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
+const toVars = (p: Palette) =>
+  vars({
+    "--color-primary": toRgbChannels(p.primary),
+    "--color-surface": toRgbChannels(p.surface),
+    "--color-ink": toRgbChannels(p.ink),
+    "--color-success": toRgbChannels(p.success),
+    "--color-danger": toRgbChannels(p.danger),
+    "--color-accent": toRgbChannels(p.accent),
+    "--color-backdrop": toRgbChannels(p.backdrop),
+    "--color-outline": toRgbChannels(p.outline),
+    "--color-shadow": toRgbChannels(p.shadow),
+  });
 
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
-} as const;
-
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+/** NativeWind CSS variables for each theme; apply on the root view. */
+export const themeVars: Record<ThemeName, ReturnType<typeof vars>> = {
+  light: toVars(palettes.light),
+  dark: toVars(palettes.dark),
+};
