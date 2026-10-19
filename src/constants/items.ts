@@ -18,11 +18,11 @@ export const COST_GROWTH = 1.15;
 export const TAP_RATE_BONUS = 0.02;
 
 export const SHOP_ITEMS: ShopItem[] = [
-  { id: "syringe", name: "Syringe", image: require("@/imgs/syringe.png"), baseCost: 15, rate: 0.1 },
-  { id: "stethoscope", name: "Stethoscope", image: require("@/imgs/stethoscope.png"), baseCost: 100, rate: 1 },
-  { id: "facemask", name: "Facemask", image: require("@/imgs/facemask.png"), baseCost: 1_100, rate: 8 },
-  { id: "gloves", name: "Gloves", image: require("@/imgs/gloves.png"), baseCost: 12_000, rate: 47 },
-  { id: "medicine", name: "Medicine", image: require("@/imgs/medicines.png"), baseCost: 130_000, rate: 260 },
+  { id: "syringe", name: "Syringe", image: require("@/imgs/shop/syringe.png"), baseCost: 15, rate: 0.1 },
+  { id: "stethoscope", name: "Stethoscope", image: require("@/imgs/shop/stethoscope.png"), baseCost: 100, rate: 1 },
+  { id: "facemask", name: "Facemask", image: require("@/imgs/shop/facemask.png"), baseCost: 1_100, rate: 8 },
+  { id: "gloves", name: "Gloves", image: require("@/imgs/shop/gloves.png"), baseCost: 12_000, rate: 47 },
+  { id: "medicine", name: "Medicine", image: require("@/imgs/shop/medicines.png"), baseCost: 130_000, rate: 260 },
 ];
 
 export const MEDKIT_IMAGE: ImageSourcePropType = require("@/imgs/medkit.png");

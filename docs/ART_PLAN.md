@@ -26,14 +26,18 @@ The brief for polishing the existing sprites and drawing new ones. Read this bef
 
 ## Where the files are
 
-| What | `.aseprite` source (32 × 32) | Game PNG (1024 × 1024) |
-| --- | --- | --- |
-| 7 in-game sprites (medkit, syringe, stethoscope, facemask, gloves, medicines, hospital) | `src/media/photos/sprites/items/` | `src/imgs/<name>.png` (same paths as before) |
-| Apple, heart (your sources, enhanced in place) | `src/media/photos/sprites/Apple.aseprite`, `heart.aseprite` | `src/imgs/icons/apple.png`, `heart.png` |
-| 12 new icons | `src/media/photos/sprites/icons/` | `src/imgs/icons/` |
-| Trophies | `src/media/photos/sprites/trophies/` (gold = the original `trophy.aseprite`) | `src/imgs/trophies/` |
+Sprites are grouped by what they're used for. Sources live in `src/media/photos/sprites/<folder>/` and the game PNGs in `src/imgs/<folder>/`, under the same names.
 
-The originals from before this work are in commit `62c51f2`, so any one can be restored with `git checkout 62c51f2 -- <path>`.
+| Folder | Used for | Sprites |
+| --- | --- | --- |
+| (root) | The main game art | medkit, hospital |
+| `shop/` | Shop upgrades | syringe, stethoscope, facemask, gloves, medicines (in the shop now); bandage_roll, thermometer, bp_tester, iv_bag, blood_vial, covid_test, microscope, dna (proposed) |
+| `achievements/` | Achievements | trophy_gold (source: the original `trophy.aseprite`), trophy_diamond, trophy_platinum, trophy_bronze, trophy_star, trophy_nurse, trophy_purple, medal, winged_heart, clock_moon |
+| `misc/` | Purpose not decided yet | apple (source `Apple.aseprite`), coin, bandage (the plaster), heart |
+
+`Tree.aseprite` and `rock1.aseprite` stay in the sprites root, unused and untouched.
+
+The originals from before this work are in commit `62c51f2`, so any one can be restored with `git checkout 62c51f2 -- <old path>`.
 
 Lighting follows each original. The items, apple, heart and icons are lit from the top-left, with an outline one shade darker than the fill: lighter on the lit edge, darker on the shadow edge. The trophies copy `trophy.aseprite`: no outline, lit from the right, highlight stripes on the right and copper bands on the left.
 

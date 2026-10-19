@@ -36,7 +36,7 @@ If you'd like the hospital to change as the game progresses (for example, rooms 
 
 | File | Size | What it is |
 | --- | --- | --- |
-| `src/imgs/<item>.png` | 1024 × 1024, transparent (like `syringe.png`) | One sprite per new item. It's reused automatically for the shop card, the orbit around the medkit and achievement tiles. |
+| `src/imgs/shop/<item>.png` (source in `src/media/photos/sprites/shop/`) | 1024 × 1024, transparent (like `shop/syringe.png`) | One sprite per new item. It's reused automatically for the shop card, the orbit around the medkit and achievement tiles. |
 
 ## App icon and splash (release)
 
@@ -48,4 +48,4 @@ If you'd like the hospital to change as the game progresses (for example, rooms 
 
 ## Already provided (no action)
 
-Sprites: medkit, hospital, syringe, stethoscope, facemask, gloves, medicines; 12 medical icons and 7 trophies (32 × 32, see [ART_PLAN.md](ART_PLAN.md)), not wired into the game yet. Fonts: Silkscreen, Mallanna, Inter Bold, Nunito. Sound: click, medkit click, buy, invalid buy, plus the music library.
+Sprites: medkit, hospital, syringe, stethoscope, facemask, gloves, medicines; new shop, achievement and misc sprites (32 × 32, see [ART_PLAN.md](ART_PLAN.md)), not wired into the game yet. Fonts: Silkscreen, Mallanna, Inter Bold, Nunito. Sound: click, medkit click, buy, invalid buy, plus the music library.

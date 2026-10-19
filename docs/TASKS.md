@@ -50,7 +50,7 @@ This keeps the 5 current items exactly as they are, at the same prices, rates an
 | 2 | Stethoscope | existing | 100 | 1 |
 | 3 | Facemask | existing | 1,100 | 8 |
 | 4 | Gloves | existing | 12,000 | 47 |
-| 5 | Bandage | new | 40,000 | 120 |
+| 5 | Bandage (the white roll, `shop/bandage_roll.png`) | new | 40,000 | 120 |
 | 6 | Medicine | existing | 130,000 | 260 |
 | 7 | Thermometer | new | 1.4M | 1,400 |
 | 8 | BP tester | new | 20M | 7,800 |
@@ -67,7 +67,7 @@ Suggested uses for the icons that aren't shop items:
 - clock with moon: night-shift and offline achievements
 - medal and the 7 trophies: achievement tiers
 - winged heart: rebirth
-- apple and heart: spare
+- apple, heart and the plaster bandage: in `misc/` until you decide
 
 Nothing is wired in yet. Adding items also means extending `ItemId`, the item achievements and the orbit.
 
