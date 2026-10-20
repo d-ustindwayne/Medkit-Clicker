@@ -38,7 +38,8 @@ CREATE INDEX IF NOT EXISTS redemptions_reward_idx ON redemptions (reward_id);
 -- Upgrades for databases created before these changes.
 ALTER TABLE rewards ALTER COLUMN max_uses DROP NOT NULL;
 ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS note TEXT;
-ALTER TABLE rewards ADD COLUMN IF NOT EXISTS per_year INT CHECK (per_year > 0);   -- at most this many per calendar year   -- the answer given when redeeming (a title, a date...)
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS per_year INT CHECK (per_year > 0);   -- at most this many per calendar year
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS cooldown_hours INT CHECK (cooldown_hours > 0);   -- wait this long between redemptions   -- the answer given when redeeming (a title, a date...)
 
 -- The old code-unlocked music (playlists, tracks) is retired. If those tables are still there,
 -- they can be removed with: DROP TABLE tracks, playlists;

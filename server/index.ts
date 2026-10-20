@@ -113,12 +113,16 @@ Bun.serve({
     if (path === "/redeem" && req.method === "POST") {
       const { rewardId, deviceId, note } = (await req.json().catch(() => ({}))) as { rewardId?: string; deviceId?: string; note?: string };
       const answer = typeof note === "string" ? note.trim().slice(0, 200) : "";
-      const [reward] = await sql`SELECT r.id, r.name, r.max_uses, r.per_year, a.title FROM rewards r JOIN access_codes a ON a.section = r.section WHERE r.id = ${rewardId ?? ""} AND r.section = ${section}`;
+      const [reward] = await sql`SELECT r.id, r.name, r.max_uses, r.per_year, r.cooldown_hours, a.title FROM rewards r JOIN access_codes a ON a.section = r.section WHERE r.id = ${rewardId ?? ""} AND r.section = ${section}`;
       if (!reward) return json({ error: "Unknown reward" }, 404);
       const result = await sql.begin(async (tx) => {
         const [{ used }] = await tx`SELECT count(*)::int AS used FROM redemptions WHERE reward_id = ${reward.id} FOR UPDATE`;
         // max_uses NULL means no limit.
         if (reward.max_uses !== null && used >= reward.max_uses) return null;
+        if (reward.cooldown_hours !== null) {
+          const [{ recent }] = await tx`SELECT count(*)::int AS recent FROM redemptions WHERE reward_id = ${reward.id} AND redeemed_at > now() - make_interval(hours => ${reward.cooldown_hours})`;
+          if (recent > 0) return null;
+        }
         if (reward.per_year !== null) {
           const [{ year }] = await tx`SELECT count(*)::int AS year FROM redemptions WHERE reward_id = ${reward.id} AND redeemed_at >= date_trunc('year', now())`;
           if (year >= reward.per_year) return null;

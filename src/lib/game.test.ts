@@ -8,7 +8,7 @@ import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, dayPhase, hospitalTi
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
 import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, roomBonus } from "@/constants/room";
 import { formatCount, formatShort } from "@/lib/format";
-import { bulkCost, coinBalance, coinsEarned, emergencyReward, maxAwaySeconds, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
+import { bulkCost, cooldownLeft, coinBalance, coinsEarned, emergencyReward, maxAwaySeconds, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
 
 const run = (s: GameState, ...actions: GameAction[]) => actions.reduce(gameReducer, s);
 const rich = () => run(newGame(), { type: "earn", amount: 1e15 });
@@ -216,6 +216,16 @@ describe("server sync", () => {
     const s = run(newGame(), { type: "syncRedemptions", history: { chocolate_bar: [1, 2] } });
     expect(s.redemptions.chocolate_bar).toEqual([1, 2]);
     expect(run(s, { type: "syncRedemptions", history: { chocolate_bar: [1] } }).redemptions.chocolate_bar).toEqual([1, 2]);
+  });
+});
+
+describe("reward cooldowns", () => {
+  test("a reward waits its cooldown after the last redemption", () => {
+    const day = { cooldownHours: 24 };
+    expect(cooldownLeft(day, [], 1000)).toBe(0);
+    expect(cooldownLeft(day, [0], 3_600_000)).toBe(23 * 3_600_000);
+    expect(cooldownLeft(day, [0], 25 * 3_600_000)).toBe(0);
+    expect(cooldownLeft({}, [0], 1)).toBe(0);
   });
 });
 

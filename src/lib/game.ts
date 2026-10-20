@@ -180,6 +180,12 @@ export const coinsEarned = (s: Pick<GameState, "achievements">) =>
   ACHIEVEMENTS.reduce((sum, a) => sum + (s.achievements[a.id] !== undefined ? a.coins : 0), 0);
 export const coinBalance = (s: Pick<GameState, "achievements" | "coinsSpent" | "bonusCoins">) => coinsEarned(s) + s.bonusCoins - s.coinsSpent;
 
+/** Milliseconds until a reward can be redeemed again (0 = ready). */
+export const cooldownLeft = (reward: { cooldownHours?: number }, times: number[], now = Date.now()) => {
+  if (!reward.cooldownHours || times.length === 0) return 0;
+  return Math.max(0, Math.max(...times) + reward.cooldownHours * 3_600_000 - now);
+};
+
 /** How many of these redemption times fall in the current calendar year. */
 export const redeemedThisYear = (times: number[], now = Date.now()) => {
   const year = new Date(now).getFullYear();
@@ -291,6 +297,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
       if ((reward.limit !== null && history.length >= reward.limit) || state.healed < reward.cost) return state;
       if (reward.minRebirths && state.rebirths < reward.minRebirths) return state;
       if (reward.perYear !== undefined && redeemedThisYear(history) >= reward.perYear) return state;
+      if (cooldownLeft(reward, history) > 0) return state;
       return {
         ...state,
         healed: state.healed - reward.cost,

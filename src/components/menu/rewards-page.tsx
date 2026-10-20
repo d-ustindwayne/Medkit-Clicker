@@ -12,7 +12,8 @@ import { useGameActions, useGameState } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
 import { cloudEnabled, fetchRewards, getToken, redeemOnline } from "@/lib/cloud";
 import { formatCount } from "@/lib/format";
-import { redeemedThisYear } from "@/lib/game";
+import { cooldownLeft, redeemedThisYear } from "@/lib/game";
+import { useNow } from "@/hooks/use-now";
 
 const countLabel = (reward: Reward, index: number) => (reward.limit === null ? `#${index + 1}` : `${index + 1} of ${reward.limit}`);
 
@@ -81,6 +82,14 @@ function RewardInput({ reward, value, onChange }: { reward: Reward; value: strin
   );
 }
 
+/** "2 days 3 h", "5 h 20 min", "12 min". */
+const formatWait = (ms: number) => {
+  const min = Math.ceil(ms / 60_000), h = Math.floor(min / 60), d = Math.floor(h / 24);
+  if (d > 0) return `${d} ${d === 1 ? "day" : "days"}${h % 24 ? ` ${h % 24} h` : ""}`;
+  if (h > 0) return `${h} h${min % 60 ? ` ${min % 60} min` : ""}`;
+  return `${min} min`;
+};
+
 /** A random fun fact for the "Random fun fact" reward. */
 async function fetchFunFact() {
   const res = await fetch("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en");
@@ -100,6 +109,8 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
   const yearLeft = reward.perYear !== undefined ? reward.perYear - redeemedThisYear(history) : Infinity;
   const left = Math.min(unlimited ? Infinity : reward.limit! - history.length, yearLeft);
   const lockedUntil = reward.minRebirths && rebirths < reward.minRebirths ? reward.minRebirths : 0;
+  const now = useNow(30_000);
+  const waitMs = cooldownLeft(reward, history, now);
   const affordable = healed >= reward.cost;
   const answer = note.trim();
 
@@ -167,7 +178,10 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
           </View>
         )}
 
-        {left > 0 && !lockedUntil && <PixelButton tone="success" disabled={!affordable} onPress={() => setConfirming(true)} label="Redeem" />}
+        {left > 0 && !lockedUntil && waitMs > 0 && (
+          <Text className="font-body text-sm text-ink">Available again in {formatWait(waitMs)}.</Text>
+        )}
+        {left > 0 && !lockedUntil && waitMs === 0 && <PixelButton tone="success" disabled={!affordable} onPress={() => setConfirming(true)} label="Redeem" />}
         {left > 0 && !lockedUntil && !affordable && <Text className="font-body text-xs text-ink opacity-70">You need {formatCount(reward.cost - healed)} more patients.</Text>}
 
         {history.length > 0 && (
