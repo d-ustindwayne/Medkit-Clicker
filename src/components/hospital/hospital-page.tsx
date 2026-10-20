@@ -277,7 +277,8 @@ export function HospitalPage({ width, active }: { width: number; active: boolean
   const { tier } = hospitalTier(rebirths);
   const height = width * (ART_H / ART_W);
   return (
-    <View className="flex-1">
+    // Clip: clouds and cars start off the page's edges and would otherwise show over the next page.
+    <View className="flex-1 overflow-hidden">
       <ScenePage scene={{ ...HOSPITAL_SCENE, anchor: 1 }} width={width}>
         {CLOUDS.map((c) => (
           <Cloud key={c.y} cloud={c} width={width} />
