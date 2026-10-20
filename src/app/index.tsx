@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Image } from "expo-image";
 import { useKeepAwake } from "expo-keep-awake";
-import { PanResponder, Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -169,25 +169,25 @@ function Clicker({ width, height, compact }: { width: number; height: number; co
 
 /** Drag the shop's top edge up to give the shop more room (and down to give it back); a tap toggles. */
 function ShopGrip({ expanded, onChange }: { expanded: boolean; onChange: (expanded: boolean) => void }) {
-  // The responder is created once; it reads the latest values through this ref.
-  const latest = useRef({ expanded, onChange });
-  useEffect(() => {
-    latest.current = { expanded, onChange };
-  }, [expanded, onChange]);
-  const [responder] = useState(() =>
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6,
-      onPanResponderRelease: (_, g) => {
-        const { expanded: up, onChange: set } = latest.current;
-        if (g.dy < -24) set(true);
-        else if (g.dy > 24) set(false);
-        else if (Math.abs(g.dy) < 6) set(!up);
-      },
-    }),
-  );
+  // Touch-responder props; the start point is only read inside the handlers.
+  const startY = useRef(0);
   return (
-    <View {...responder.panHandlers} accessibilityRole="button" accessibilityLabel={expanded ? "Shrink the shop" : "Expand the shop"} className="absolute left-0 right-0 top-0 z-20 h-6 items-center justify-center">
+    <View
+      onStartShouldSetResponder={() => true}
+      onMoveShouldSetResponder={() => true}
+      onResponderGrant={(e) => {
+        startY.current = e.nativeEvent.pageY;
+      }}
+      onResponderRelease={(e) => {
+        const dy = e.nativeEvent.pageY - startY.current;
+        if (dy < -24) onChange(true);
+        else if (dy > 24) onChange(false);
+        else if (Math.abs(dy) < 6) onChange(!expanded);
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={expanded ? "Shrink the shop" : "Expand the shop"}
+      className="absolute left-0 right-0 top-0 z-20 h-6 items-center justify-center"
+    >
       <View className="h-1.5 w-12 rounded-full bg-ink/40" />
     </View>
   );
