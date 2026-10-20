@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Image } from "expo-image";
 import { useKeepAwake } from "expo-keep-awake";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { PanResponder, Pressable, Text, View, useWindowDimensions } from "react-native";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BackgroundPattern } from "@/components/background-pattern";
@@ -166,6 +167,32 @@ function Clicker({ width, height, compact }: { width: number; height: number; co
   );
 }
 
+/** Drag the shop's top edge up to give the shop more room (and down to give it back); a tap toggles. */
+function ShopGrip({ expanded, onChange }: { expanded: boolean; onChange: (expanded: boolean) => void }) {
+  // The responder is created once; it reads the latest values through this ref.
+  const latest = useRef({ expanded, onChange });
+  useEffect(() => {
+    latest.current = { expanded, onChange };
+  }, [expanded, onChange]);
+  const [responder] = useState(() =>
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6,
+      onPanResponderRelease: (_, g) => {
+        const { expanded: up, onChange: set } = latest.current;
+        if (g.dy < -24) set(true);
+        else if (g.dy > 24) set(false);
+        else if (Math.abs(g.dy) < 6) set(!up);
+      },
+    }),
+  );
+  return (
+    <View {...responder.panHandlers} accessibilityRole="button" accessibilityLabel={expanded ? "Shrink the shop" : "Expand the shop"} className="absolute left-0 right-0 top-0 z-20 h-6 items-center justify-center">
+      <View className="h-1.5 w-12 rounded-full bg-ink/40" />
+    </View>
+  );
+}
+
 export default function GameScreen() {
   // Keep the phone awake while the game is open (idle games are watched, not tapped).
   useKeepAwake();
@@ -174,14 +201,18 @@ export default function GameScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const wide = width >= WIDE_BREAKPOINT;
   const clickerWidth = wide ? width - SIDEBAR_WIDTH : width;
-  const clickerHeight = wide ? height : height * 0.56;
+  // Phones: the shop can be pulled up for a longer list; the medkit area shrinks to match.
+  const [shopUp, setShopUp] = useState(false);
+  const clickerHeight = wide ? height : height * (shopUp ? 0.36 : 0.56);
+  const animatedHeight = useSharedValue(clickerHeight);
+  useEffect(() => {
+    animatedHeight.set(withTiming(clickerHeight, { duration: 260, easing: Easing.out(Easing.cubic) }));
+  }, [animatedHeight, clickerHeight]);
+  const clickerStyle = useAnimatedStyle(() => ({ height: animatedHeight.get() }));
 
   return (
     <View className={`flex-1 bg-backdrop ${wide ? "flex-row" : "flex-col"}`}>
-      <View
-        className="relative overflow-hidden"
-        style={{ width: clickerWidth, height: clickerHeight, paddingTop: insets.top, paddingLeft: insets.left }}
-      >
+      <Animated.View style={[{ width: clickerWidth, paddingTop: insets.top, paddingLeft: insets.left, position: "relative", overflow: "hidden" }, clickerStyle]}>
         <Backdrop width={clickerWidth} height={clickerHeight} />
         <View className="absolute left-4 z-10" style={{ top: insets.top + 12 }}>
           <MenuButton onPress={() => setMenuOpen(true)} />
@@ -190,12 +221,13 @@ export default function GameScreen() {
           <CurrencyBar />
         </View>
         <Clicker width={clickerWidth} height={clickerHeight - insets.top} compact={!wide} />
-      </View>
+      </Animated.View>
 
       <View
         className={wide ? "border-l-[3px] border-outline" : "flex-1 border-t-[3px] border-outline"}
         style={wide ? { width: SIDEBAR_WIDTH, paddingTop: insets.top, paddingRight: insets.right } : { paddingBottom: insets.bottom }}
       >
+        {!wide && <ShopGrip expanded={shopUp} onChange={setShopUp} />}
         <Shop compact={!wide} width={wide ? SIDEBAR_WIDTH : width} />
       </View>
 
