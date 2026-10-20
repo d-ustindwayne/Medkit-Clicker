@@ -12,7 +12,8 @@ export type Unlock =
   | { achievements: number }
   | { rebirths: number }
   | { treated: number }
-  | { item: ItemId; owned: number };
+  | { item: ItemId; owned: number }
+  | { gem: string };
 
 export type Room = Scene & { unlock: Unlock; /** How many items fit. */ limit: number; /** Staff who walk around in it (character file numbers). */ staff: string[] };
 
@@ -35,6 +36,8 @@ export type RoomItem = {
   /** Permanent bonus while placed, as a fraction (0.02 = +2%). */
   bonus: { rate?: number; tap?: number };
   unlock: Unlock;
+  /** Animation frames (the first is `image`), for items bought in the Gem Shop. */
+  frames?: ImageSourcePropType[];
 };
 
 export const ROOM_ITEMS: RoomItem[] = [
@@ -52,6 +55,10 @@ export const ROOM_ITEMS: RoomItem[] = [
   { id: "xray_viewer", name: "X-ray Viewer", image: require("@/imgs/room/xray_viewer.png"), place: "wall", bonus: { rate: 0.03 }, unlock: { item: "microscope", owned: 1 } },
   { id: "crash_cart", name: "Crash Cart", image: require("@/imgs/room/crash_cart.png"), place: "floor", bonus: { tap: 0.04 }, unlock: { treated: 25 } },
   { id: "aed", name: "AED", image: require("@/imgs/room/aed.png"), place: "wall", bonus: { rate: 0.04 }, unlock: { rebirths: 3 } },
+  // Animated, from the Gem Shop
+  { id: "aquarium", name: "Aquarium", image: require("@/imgs/room/aquarium_1.png"), frames: [require("@/imgs/room/aquarium_1.png"), require("@/imgs/room/aquarium_2.png"), require("@/imgs/room/aquarium_3.png"), require("@/imgs/room/aquarium_4.png")], place: "floor", bonus: { rate: 0.04 }, unlock: { gem: "aquarium" } },
+  { id: "lava_lamp", name: "Lava Lamp", image: require("@/imgs/room/lava_lamp_1.png"), frames: [require("@/imgs/room/lava_lamp_1.png"), require("@/imgs/room/lava_lamp_2.png"), require("@/imgs/room/lava_lamp_3.png"), require("@/imgs/room/lava_lamp_4.png")], place: "floor", bonus: { tap: 0.04 }, unlock: { gem: "lava_lamp" } },
+  { id: "patient_monitor", name: "Patient Monitor", image: require("@/imgs/room/patient_monitor_1.png"), frames: [require("@/imgs/room/patient_monitor_1.png"), require("@/imgs/room/patient_monitor_2.png"), require("@/imgs/room/patient_monitor_3.png"), require("@/imgs/room/patient_monitor_4.png")], place: "wall", bonus: { rate: 0.05 }, unlock: { gem: "patient_monitor" } },
 ];
 
 /** Total room bonuses are capped so decorating stays a nice extra, not the whole economy. */
@@ -67,15 +74,17 @@ export const unlockHint = (u: Unlock) => {
   if ("achievements" in u) return `Unlock ${u.achievements} achievements`;
   if ("rebirths" in u) return u.rebirths === 1 ? "Rebirth once" : `Rebirth ${u.rebirths} times`;
   if ("treated" in u) return u.treated === 1 ? "Treat a ward patient" : `Treat ${u.treated} ward patients`;
+  if ("gem" in u) return "Buy it in the Gem Shop";
   return `Own ${u.owned} ${u.item.replace("_", " ")}`;
 };
 
-type Progress = { achievements: Record<string, number | undefined>; rebirths: number; treated: number; owned: Record<ItemId, number> };
+type Progress = { achievements: Record<string, number | undefined>; rebirths: number; treated: number; owned: Record<ItemId, number>; gemItems?: string[] };
 export const isUnlocked = (u: Unlock, s: Progress) => {
   if (!u) return true;
   if ("achievements" in u) return Object.keys(s.achievements).length >= u.achievements;
   if ("rebirths" in u) return s.rebirths >= u.rebirths;
   if ("treated" in u) return s.treated >= u.treated;
+  if ("gem" in u) return s.gemItems?.includes(u.gem) ?? false;
   return (s.owned[u.item] ?? 0) >= u.owned;
 };
 

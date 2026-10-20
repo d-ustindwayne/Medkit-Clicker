@@ -5,6 +5,7 @@ import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, w
 
 import { ScenePage } from "@/components/scene-page";
 import { HardShadow } from "@/components/ui/hard-shadow";
+import { AnimatedSprite } from "@/components/ui/animated-sprite";
 import { PixelIcon } from "@/components/ui/pixel-icon";
 import { WardPatient } from "@/components/ward/ward-patient";
 import { CHARACTER_PX, ITEM_PX, ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, unlockHint, type Placement, type RoomItem } from "@/constants/room";
@@ -87,7 +88,7 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
       accessibilityLabel={item.name}
       style={{ position: "absolute", left, top, width: size, height: size, zIndex: drag ? 50 : Math.round(p.y * 40) }}
     >
-      <Image source={item.image} style={{ width: size, height: size }} contentFit="contain" />
+      {item.frames ? <AnimatedSprite frames={item.frames} size={size} /> : <Image source={item.image} style={{ width: size, height: size }} contentFit="contain" />}
       {editing && (
         <>
           <View pointerEvents="none" className="absolute inset-0 border border-dashed border-ink/60" />

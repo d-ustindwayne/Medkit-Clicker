@@ -1,14 +1,15 @@
 // Background presets for the clicker area. Pure data: drawn by components/background-pattern.tsx.
 
 export type PatternKind = "grid" | "crosses" | "dots" | "stripes" | "checker" | "hearts" | "plain";
-export type AnimatedKind = "rain" | "ecg" | "stars" | "cells";
+export type AnimatedKind = "rain" | "ecg" | "stars" | "cells" | "sakura" | "fireflies" | "snowfall" | "aurora";
 export type Colors = { bg: string; line: string; accent?: string };
 
 /**
  * Background presets: each has its own pattern and its own colours per theme. Order is saved by
- * index, so add new ones at the end. Animated ones cost Care Coins (`price`).
+ * index, so add new ones at the end. Animated ones cost Care Coins (`price`); premium ones are bought
+ * with Natal Gems in the Gem Shop (`gems`, see GEM_ITEMS).
  */
-export const BACKGROUNDS: { id: string; name: string; pattern: PatternKind | AnimatedKind; light: Colors; dark: Colors; price?: number }[] = [
+export const BACKGROUNDS: { id: string; name: string; pattern: PatternKind | AnimatedKind; light: Colors; dark: Colors; price?: number; gems?: boolean }[] = [
   { id: "rose_grid", name: "Rose Grid", pattern: "grid", light: { bg: "#f9e8e8", line: "#f8cdd4" }, dark: { bg: "#0f1c24", line: "#1b3341" } },
   { id: "mint_crosses", name: "Mint Crosses", pattern: "crosses", light: { bg: "#e5f6ec", line: "#b9e4c9" }, dark: { bg: "#0c1d16", line: "#1a3a2b" } },
   { id: "lavender_dots", name: "Lavender Dots", pattern: "dots", light: { bg: "#eeeafc", line: "#cdc4f4" }, dark: { bg: "#15132a", line: "#2c2752" } },
@@ -20,11 +21,16 @@ export const BACKGROUNDS: { id: string; name: string; pattern: PatternKind | Ani
   { id: "heart_monitor", name: "Heart Monitor", pattern: "ecg", price: 15, light: { bg: "#e4f6ec", line: "#2a9d5c", accent: "#c3e8d3" }, dark: { bg: "#04170f", line: "#39e07a", accent: "#0c3321" } },
   { id: "night_sky", name: "Night Shift Sky", pattern: "stars", price: 10, light: { bg: "#dfe4f8", line: "#f2b938", accent: "#b9c3ec" }, dark: { bg: "#0b1030", line: "#fff3b8", accent: "#1c2456" } },
   { id: "blood_stream", name: "Blood Stream", pattern: "cells", price: 10, light: { bg: "#fdecef", line: "#ec7d8f", accent: "#d85a70" }, dark: { bg: "#250a12", line: "#b2384c", accent: "#7f2234" } },
+  // Premium (Gem Shop)
+  { id: "sakura", name: "Sakura Breeze", pattern: "sakura", gems: true, light: { bg: "#fff0f5", line: "#f7c4d6", accent: "#cfe9f7" }, dark: { bg: "#241626", line: "#5a3350", accent: "#1a2a3a" } },
+  { id: "fireflies", name: "Firefly Night", pattern: "fireflies", gems: true, light: { bg: "#e3f0e0", line: "#9cc79a", accent: "#c7e2c2" }, dark: { bg: "#08160f", line: "#123323", accent: "#0b2018" } },
+  { id: "snowfall", name: "First Snow", pattern: "snowfall", gems: true, light: { bg: "#e6f1fb", line: "#ffffff", accent: "#cfe1f2" }, dark: { bg: "#0d1a2c", line: "#e8f2ff", accent: "#18304d" } },
+  { id: "aurora", name: "Aurora Ward", pattern: "aurora", gems: true, light: { bg: "#dfe9f7", line: "#7fe0c4", accent: "#b08cf0" }, dark: { bg: "#070c1f", line: "#4fe0a8", accent: "#8a5cf0" } },
 ];
 
 /** Free presets are always owned; priced ones once bought. */
 export const ownsBackground = (index: number, owned: string[]) => {
   const b = BACKGROUNDS[index % BACKGROUNDS.length];
-  return !b.price || owned.includes(b.id);
+  return (!b.price && !b.gems) || owned.includes(b.id);
 };
 

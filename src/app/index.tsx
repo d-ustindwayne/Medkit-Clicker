@@ -126,7 +126,7 @@ function Backdrop({ width, height }: { width: number; height: number }) {
 
 /** Swipeable stage: the medkit, then My Room. */
 function Clicker({ width, height, compact }: { width: number; height: number; compact: boolean }) {
-  const { owned, rebirths, boosts, luckyTaps, patient, room } = useGameState();
+  const { owned, rebirths, boosts, luckyTaps, patient, room, gemUpgrades, medkitSkin, tapEffect } = useGameState();
   const [editing, setEditing] = useState(false);
   const [page, setPage] = useState(0);
   // Leave room for the orbiting supplies around the medkit.
@@ -152,7 +152,7 @@ function Clicker({ width, height, compact }: { width: number; height: number; co
             label: "Medkit",
             content: (
               <View className="flex-1 items-center justify-center">
-                <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths, boosts, luckyTaps, room })} owned={owned} />
+                <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths, boosts, luckyTaps, room, gemUpgrades })} owned={owned} skin={medkitSkin} effect={tapEffect} />
               </View>
             ),
           },

@@ -27,10 +27,15 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [ ] Locked shop items show as a "???" silhouette until you've earned half their price.
 - [ ] Achievement names, descriptions and thresholds (`src/constants/achievements.ts`), 111 in total, including names for the 8 new items' achievements.
 - [x] Rebirth numbers (decided 2026-10-20): the first rebirth needs 1 billion patients in a run, each one after needs 2.5x more; 1 Natal Gem per rebirth (name kept); +2% healing per rebirth
-- [ ] **To build: the Natal Gem shop** (decided 2026-10-20)
-  - permanent upgrades, 5 levels each costing 1, 2, 3, 5, 8 gems: +10% per tap; +1 h offline time (4 h becomes up to 9 h)
-  - cosmetics: medkit skins, gem-only animated backgrounds, rare My Room items, alternate app icons, and sticker PNGs to download
-- [ ] What each rebirth unlocks (`REBIRTH_UNLOCKS`, currently empty)
+- [x] **Natal Gem shop** (built 2026-10-20; the shop's third page, "GEMS"). Upgrades and items beyond the two you named were picked by Claude:
+  - upgrades, 5 levels at 1, 2, 3, 5, 8 gems: Steady Hands +10% per tap, Night Owl +1 h offline, Bedside Manner +20% ward rewards, Rapid Response +25% emergency rewards, Bulk Orders -2% shop prices, Head Start +10 bandages and +5 gloves each run
+  - medkit skins: Golden (rebirth 1, 2 gems), Candy (2, 2), Night Shift (4, 3), Crystal (8, 5); Dustin pixel and photo (code only, 1 gem each)
+  - tap effects: Heart Burst (1, 1), Sparkles (3, 2), Bubbles (6, 3)
+  - animated backgrounds: Sakura Breeze (2, 3), Firefly Night (5, 4), First Snow (7, 4), Aurora Ward (10, 6)
+  - animated My Room items: Aquarium (3, 3; +4% healing), Lava Lamp (7, 3; +4% tap), Patient Monitor (12, 4; +5% healing)
+  - these cosmetics are the rebirth unlocks; the rebirth card shows the next one
+- [ ] Still to build from the gem shop list: alternate app icons (needs a native build change) and sticker PNGs to download
+- [x] What each rebirth unlocks: the Gem Shop cosmetics above (`REBIRTH_UNLOCKS` is built from them)
 - [x] Rewards section title is now "Care Package" (app and database, 2026-10-20); the gift icon and the "Tell Dustin" wording are kept
 - [x] Background names and colours (Rose Grid, Mint Crosses, Lavender Dots, Peach Stripes, Sky Checker, Candy Hearts, Plain), kept 2026-10-20
 - [ ] Hospital page numbers (`src/constants/hospital.ts`), picked by Claude:
@@ -111,7 +116,7 @@ Still unused:
 - [ ] **iOS is untested.** It needs a Mac or a cloud build (`eas build`) to check.
 - [x] **Music is copyrighted:** retired. The app plays only its own BeepBox soundtrack; the code no longer unlocks music (2026-10-20).
 - [ ] **Old native build on the emulator:** `com.dust.dev.mc` is from before the audio and save libraries. Use Expo Go, or run `bunx expo prebuild --clean` then `bun run android` to replace it.
-- [x] **Unit tests:** `bun test` runs 31 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
+- [x] **Unit tests:** `bun test` runs 35 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
 - [x] **Nothing is committed to git.** Done: pushed to https://github.com/d-ustindwayne/Medkit-Clicker (`main`).
 - [ ] **Achievement and welcome-back toasts briefly cover the counter.** Consider moving them or making them smaller.
 

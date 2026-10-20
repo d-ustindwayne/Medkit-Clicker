@@ -14,6 +14,7 @@ import Animated, {
 import { Orbit } from "@/components/fx/orbit";
 import { Sunburst } from "@/components/fx/sunburst";
 import { BURST_MS, TapBurst } from "@/components/fx/tap-burst";
+import { MEDKIT_SKINS, ROUND_SKINS } from "@/constants/gems";
 import { MEDKIT_IMAGE, type ItemId } from "@/constants/items";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions } from "@/hooks/use-game";
@@ -28,10 +29,14 @@ const SUNBURST_SCALE = 2.1;
 
 type Burst = { id: number; x: number; y: number; label: string };
 
-type Props = { size: number; tapAmount: number; owned: Record<ItemId, number> };
+/** `skin` and `effect` are equipped Gem Shop items (null = the originals). */
+type Props = { size: number; tapAmount: number; owned: Record<ItemId, number>; skin?: string | null; effect?: string | null };
 
 /** The big round medkit with its heartbeat, sunburst and orbiting supplies. Memoized against the 10Hz tick. */
-export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned }: Props) {
+export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned, skin = null, effect = null }: Props) {
+  const image = (skin && MEDKIT_SKINS[skin]) || MEDKIT_IMAGE;
+  // Portrait skins fill more of the button than the medkit sprite does.
+  const art = size * (skin && ROUND_SKINS.has(skin) ? 0.82 : 0.66);
   const { dispatch } = useGameActions();
   const { playSfx, unlock } = useAudio();
   const haptic = useHaptics();
@@ -107,12 +112,12 @@ export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned 
               style={{ width: size, height: size }}
               className="items-center justify-center rounded-full border-[6px] border-b-[12px] border-outline border-b-shadow bg-surface"
             >
-              <Image source={MEDKIT_IMAGE} style={{ width: size * 0.66, height: size * 0.66 }} contentFit="contain" />
+              <Image source={image} style={{ width: art, height: art }} contentFit="contain" />
             </View>
           </Animated.View>
         </Pressable>
         {bursts.map((b) => (
-          <TapBurst key={b.id} size={size} x={b.x} y={b.y} label={b.label} seed={b.id} />
+          <TapBurst key={b.id} size={size} x={b.x} y={b.y} label={b.label} seed={b.id} effect={effect} />
         ))}
       </View>
     </View>

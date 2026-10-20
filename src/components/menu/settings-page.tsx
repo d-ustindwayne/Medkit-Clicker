@@ -74,7 +74,10 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
             onNext={() => updateSettings({ background: cycle(settings.background, 1, BACKGROUNDS.length) })}
           />
         </Field>
-        {!owned && (
+        {!owned && background.gems && (
+          <Text className="font-body text-sm text-ink">Premium background: get it in the Gem Shop (swipe the shop to Gems).</Text>
+        )}
+        {!owned && !background.gems && (
           <View className="flex-row items-center gap-3">
             <Image source={COIN.image} style={{ width: 20, height: 20 }} contentFit="contain" />
             <Text className="flex-1 font-body text-sm text-ink">

@@ -7,7 +7,7 @@ import { SICK_PATIENTS, minigameTuning } from "@/constants/patients";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
 import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, roomBonus } from "@/constants/room";
-import { coinBalance, coinsEarned, emergencyReward, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
+import { coinBalance, coinsEarned, emergencyReward, maxAwaySeconds, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
 
 const run = (s: GameState, ...actions: GameAction[]) => actions.reduce(gameReducer, s);
 const rich = () => run(newGame(), { type: "earn", amount: 1e15 });
@@ -215,6 +215,34 @@ describe("server sync", () => {
     const s = run(newGame(), { type: "syncRedemptions", history: { chocolate_bar: [1, 2] } });
     expect(s.redemptions.chocolate_bar).toEqual([1, 2]);
     expect(run(s, { type: "syncRedemptions", history: { chocolate_bar: [1] } }).redemptions.chocolate_bar).toEqual([1, 2]);
+  });
+});
+
+describe("gem shop", () => {
+  const withGems = (n: number, extra: Partial<GameState> = {}) => ({ ...newGame(), rebirths: n, rebirthPoints: n, ...extra });
+  test("upgrade levels cost 1, 2, 3, 5, 8 and stop at 5", () => {
+    let s = withGems(30);
+    for (let i = 0; i < 6; i++) s = run(s, { type: "buyGemUpgrade", id: "steady_hands" });
+    expect(s.gemUpgrades.steady_hands).toBe(5);
+    expect(s.gemsSpent).toBe(19);
+    expect(tapValue(s)).toBeCloseTo(tapValue({ ...s, gemUpgrades: {} }) * 1.5);
+  });
+  test("Night Owl adds an hour of offline time per level", () => {
+    expect(maxAwaySeconds(newGame())).toBe(4 * 3600);
+    expect(maxAwaySeconds({ gemUpgrades: { night_owl: 3 } })).toBe(7 * 3600);
+  });
+  test("cosmetics need enough rebirths, gems and (for code-only ones) the code", () => {
+    expect(run(withGems(1), { type: "buyGemItem", id: "skin_night" }).gemItems).toEqual([]); // needs 4 rebirths
+    const s = run(withGems(4), { type: "buyGemItem", id: "skin_night" });
+    expect(s.gemItems).toEqual(["skin_night"]);
+    expect(s.medkitSkin).toBe("skin_night");
+    expect(run(withGems(4), { type: "buyGemItem", id: "skin_dustin_pixel" }).gemItems).toEqual([]);
+    expect(run(withGems(4, { unlockedSections: ["jasmine"] }), { type: "buyGemItem", id: "skin_dustin_pixel" }).gemItems).toEqual(["skin_dustin_pixel"]);
+  });
+  test("Head Start gives free supplies on rebirth", () => {
+    const s = run({ ...withGems(0), gemUpgrades: { head_start: 2 }, runHealed: 1e9 }, { type: "rebirth" });
+    expect(s.owned.bandage).toBe(20);
+    expect(s.owned.gloves).toBe(10);
   });
 });
 

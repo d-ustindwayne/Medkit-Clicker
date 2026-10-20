@@ -4,6 +4,7 @@
 import type { ImageSourcePropType } from "react-native";
 
 import { boostMultiplier } from "@/constants/boosts";
+import { GEM_ITEMS, GEM_KIND_LABEL } from "@/constants/gems";
 import { perSecond, type ItemId } from "@/constants/items";
 import { roomBonus, type RoomState } from "@/constants/room";
 
@@ -34,8 +35,7 @@ export const GEM = {
 /** Gems earned by rebirthing now: 1 once the run has healed enough, otherwise 0. */
 export const gemsForRebirth = (runHealed: number, rebirths: number) => (runHealed < rebirthTarget(rebirths) ? 0 : 1);
 
-/**
- * Content that opens up at each rebirth count. Empty until designed; the Rebirth page lists these
- * so players can see what's next.
- */
-export const REBIRTH_UNLOCKS: { rebirths: number; title: string; description: string }[] = [];
+/** What each rebirth count opens up in the Gem Shop (cosmetics), so players can see what's next. */
+export const REBIRTH_UNLOCKS: { rebirths: number; title: string; description: string }[] = GEM_ITEMS.filter((i) => !i.section && i.rebirths > 0)
+  .sort((a, b) => a.rebirths - b.rebirths)
+  .map((i) => ({ rebirths: i.rebirths, title: i.name, description: `New in the Gem Shop: ${GEM_KIND_LABEL[i.kind].toLowerCase()}` }));

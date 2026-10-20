@@ -1,4 +1,5 @@
 import { memo, useEffect } from "react";
+import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 import Svg, { Circle, Defs, G, Path, Pattern, Rect } from "react-native-svg";
@@ -13,7 +14,15 @@ const DRIFT_MS = 3_500;
 const HEART = pixelPath([".##.##.", "#######", "#######", ".#####.", "..###..", "...#..."]);
 const MOON = pixelPath(["..###..", ".##....", "##.....", "##.....", "##.....", ".##....", "..###.."]);
 
-const isAnimated = (k: PatternKind | AnimatedKind): k is AnimatedKind => k === "rain" || k === "ecg" || k === "stars" || k === "cells";
+const ANIMATED = new Set<string>(["rain", "ecg", "stars", "cells", "sakura", "fireflies", "snowfall", "aurora"]);
+const isAnimated = (k: PatternKind | AnimatedKind): k is AnimatedKind => ANIMATED.has(k);
+
+const SPRITES = {
+  petal: require("@/imgs/gems/p_petal.png"),
+  petal2: require("@/imgs/gems/p_petal2.png"),
+  firefly: require("@/imgs/gems/p_firefly.png"),
+  snow: require("@/imgs/gems/p_snow.png"),
+};
 
 /** Deterministic 0-1 noise per index, so layouts don't jump between renders. */
 const noise = (i: number, salt = 1) => {
@@ -101,6 +110,68 @@ const Cell = memo(function Cell({ i, width, top, colors }: { i: number; width: n
   );
 });
 
+/** Sakura Breeze and First Snow: a sprite drifting down and sideways, swaying and turning. */
+const Faller = memo(function Faller({ i, width, height, image, px, wind, spin }: { i: number; width: number; height: number; image: number; px: number; wind: number; spin: boolean }) {
+  const y = useSharedValue(0);
+  const ms = 6000 + noise(i, 21) * 6000;
+  useEffect(() => {
+    y.set(withDelay(noise(i, 22) * ms, withRepeat(withTiming(1, { duration: ms, easing: Easing.linear }), -1, false)));
+  }, [y, i, ms]);
+  const x0 = noise(i, 23) * width;
+  const style = useAnimatedStyle(() => {
+    const k = y.get();
+    return {
+      transform: [
+        { translateX: x0 + wind * k * width * 0.35 + Math.sin(k * 6.28 * 2 + i) * 14 },
+        { translateY: -px + k * (height + px * 2) },
+        { rotate: spin ? `${k * 360 * (i % 2 ? 1 : -1)}deg` : "0deg" },
+      ],
+    };
+  });
+  return (
+    <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: px, height: px, opacity: 0.6 + noise(i, 24) * 0.4 }, style]}>
+      <Image source={image} style={{ width: px, height: px }} contentFit="contain" />
+    </Animated.View>
+  );
+});
+
+/** Firefly Night: a firefly wandering slowly and glowing on and off. */
+const Firefly = memo(function Firefly({ i, width, height }: { i: number; width: number; height: number }) {
+  const t = useSharedValue(0);
+  const glow = useSharedValue(0.2);
+  const ms = 7000 + noise(i, 31) * 7000;
+  useEffect(() => {
+    t.set(withRepeat(withTiming(1, { duration: ms, easing: Easing.inOut(Easing.sin) }), -1, true));
+    glow.set(withDelay(noise(i, 32) * 2000, withRepeat(withTiming(1, { duration: 900 + noise(i, 33) * 900, easing: Easing.inOut(Easing.quad) }), -1, true)));
+  }, [t, glow, i, ms]);
+  const cx = noise(i, 34) * width;
+  const cy = height * (0.3 + noise(i, 35) * 0.65);
+  const rx = 30 + noise(i, 36) * 50;
+  const ry = 20 + noise(i, 37) * 30;
+  const style = useAnimatedStyle(() => ({
+    opacity: glow.get(),
+    transform: [{ translateX: cx + Math.cos(t.get() * 6.28 + i) * rx }, { translateY: cy + Math.sin(t.get() * 6.28 * 1.5 + i) * ry }, { scale: 0.8 + glow.get() * 0.5 }],
+  }));
+  return (
+    <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: 18, height: 18 }, style]}>
+      <Image source={SPRITES.firefly} style={{ width: 18, height: 18 }} contentFit="contain" />
+    </Animated.View>
+  );
+});
+
+/** Aurora Ward: a wide ribbon of light that waves and breathes. */
+const AuroraBand = memo(function AuroraBand({ i, width, height, color }: { i: number; width: number; height: number; color: string }) {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.set(withRepeat(withTiming(1, { duration: 9000 + i * 2500, easing: Easing.inOut(Easing.sin) }), -1, true));
+  }, [t, i]);
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.18 + 0.22 * t.get(),
+    transform: [{ translateX: -width * 0.25 + t.get() * width * 0.25 * (i % 2 ? -1 : 1) }, { rotate: `${-12 + i * 9 + t.get() * 6}deg` }, { scaleY: 0.8 + t.get() * 0.4 }],
+  }));
+  return <Animated.View style={[{ position: "absolute", left: -width * 0.25, top: height * (0.12 + i * 0.13), width: width * 1.5, height: height * 0.14, borderRadius: height * 0.07, backgroundColor: color }, style]} />;
+});
+
 const ECG_PERIOD = 160;
 /** One heartbeat of trace from x0: flat, P wave, QRS spike, T wave, flat. `spike` sets the R height. */
 const beatPath = (x0: number, y: number, spike: number) =>
@@ -184,6 +255,45 @@ function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind;
         <>
           {many(14).map((i) => (
             <Cell key={i} i={i} width={width} top={noise(i, 14) * height} colors={colors} />
+          ))}
+        </>
+      );
+    case "sakura":
+      return (
+        <>
+          <View style={{ position: "absolute", left: 0, right: 0, top: 0, height: height * 0.45, backgroundColor: colors.accent, opacity: 0.35 }} />
+          {many(22).map((i) => (
+            <Faller key={i} i={i} width={width} height={height} image={i % 3 ? SPRITES.petal : SPRITES.petal2} px={14 + noise(i, 25) * 10} wind={0.8} spin />
+          ))}
+        </>
+      );
+    case "fireflies":
+      return (
+        <>
+          <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: height * 0.22, backgroundColor: colors.line }} />
+          <View style={{ position: "absolute", left: 0, right: 0, bottom: height * 0.22, height: height * 0.06, backgroundColor: colors.accent }} />
+          {many(18).map((i) => (
+            <Firefly key={i} i={i} width={width} height={height} />
+          ))}
+        </>
+      );
+    case "snowfall":
+      return (
+        <>
+          <View style={{ position: "absolute", left: -20, right: -20, bottom: -height * 0.05, height: height * 0.16, borderTopLeftRadius: height * 0.2, borderTopRightRadius: height * 0.3, backgroundColor: colors.line, opacity: 0.85 }} />
+          {many(30).map((i) => (
+            <Faller key={i} i={i} width={width} height={height} image={SPRITES.snow} px={10 + noise(i, 26) * 10} wind={-0.3} spin={false} />
+          ))}
+        </>
+      );
+    case "aurora":
+      return (
+        <>
+          {many(3).map((i) => (
+            <AuroraBand key={i} i={i} width={width} height={height} color={i === 1 ? (colors.accent ?? colors.line) : colors.line} />
+          ))}
+          {many(30).map((i) => (
+            <Star key={i} i={i} left={noise(i, 9) * width} top={noise(i, 10) * height} color={colors.line} />
           ))}
         </>
       );

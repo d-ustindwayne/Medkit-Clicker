@@ -6,14 +6,13 @@ import { PATIENT_WAIT_MS, SICK_PATIENTS, nextPatientDelay } from "@/constants/pa
 import { healingRate } from "@/constants/rebirth";
 import type { ThemeName } from "@/constants/theme";
 import { formatCount, formatDuration } from "@/lib/format";
-import { gameReducer, newGame, type GameAction, type GameState } from "@/lib/game";
+import { gameReducer, maxAwaySeconds, newGame, type GameAction, type GameState } from "@/lib/game";
 import { DEFAULT_SETTINGS, clearGame, loadGame, loadSettings, saveGame, saveSettings, type Settings } from "@/lib/storage";
 
 const TICK_MS = 100;
 const AUTOSAVE_MS = 10_000;
 /** Gaps longer than this (app closed, backgrounded, tab hidden) count as time away. */
 const AWAY_THRESHOLD_S = 5;
-const MAX_AWAY_S = 4 * 3600;
 
 export type Toast = { id: number; title: string; body: string; kind: "achievement" | "info"; image?: ImageSourcePropType };
 
@@ -55,9 +54,9 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
 
   const grantAway = useCallback(
     (seconds: number) => {
-      const away = Math.min(seconds, MAX_AWAY_S);
       // Boosts don't run while the app is closed.
       const { owned, rebirths, room } = stateRef.current;
+      const away = Math.min(seconds, maxAwaySeconds(stateRef.current));
       const earned = healingRate({ owned, rebirths, room }) * away;
       if (earned < 1) return;
       dispatch({ type: "earn", amount: earned });

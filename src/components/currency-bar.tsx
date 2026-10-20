@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { Text, View } from "react-native";
 
 import { COIN } from "@/constants/boosts";
+import { gemBalance } from "@/constants/gems";
 import { MEDKIT_IMAGE } from "@/constants/items";
 import { GEM } from "@/constants/rebirth";
 import { useGameState } from "@/hooks/use-game";
@@ -25,7 +26,7 @@ export function CurrencyBar() {
     <View className="gap-1" pointerEvents="none">
       <Chip image={MEDKIT_IMAGE as number} value={formatShort(state.healed)} label={`${Math.floor(state.healed)} patients`} />
       <Chip image={COIN.image as number} value={formatShort(coins)} label={`${coins} ${COIN.name}`} />
-      <Chip image={GEM.image as number} value={formatShort(state.rebirthPoints)} label={`${state.rebirthPoints} ${GEM.name}`} />
+      <Chip image={GEM.image as number} value={formatShort(gemBalance(state))} label={`${gemBalance(state)} ${GEM.name}`} />
     </View>
   );
 }

@@ -7,6 +7,7 @@ import { BOOSTS, COIN, type Boost } from "@/constants/boosts";
 import { MEDKIT_IMAGE, SHOP_ITEMS, itemCost, type ShopItem } from "@/constants/items";
 import { HOSPITAL_SCENE } from "@/constants/scenes";
 import { Shine } from "@/components/fx/shine";
+import { GemShop } from "@/components/hospital/gem-shop";
 import { HospitalPage } from "@/components/hospital/hospital-page";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { Pager } from "@/components/ui/pager";
@@ -92,10 +93,11 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
   );
 });
 
-// Pages you can swipe to in the shop panel: the shop, then the outside of the hospital.
+// Pages you can swipe to in the shop panel: the shop, the outside of the hospital, then the Gem Shop.
 const SHOP_PAGES = [
-  { id: "supplies", title: "SHOP" },
-  { id: HOSPITAL_SCENE.id, title: HOSPITAL_SCENE.title.toUpperCase() },
+  { id: "supplies", title: "SHOP", label: "Supplies" },
+  { id: HOSPITAL_SCENE.id, title: HOSPITAL_SCENE.title.toUpperCase(), label: HOSPITAL_SCENE.title },
+  { id: "gems", title: "GEMS", label: "Gem Shop" },
 ];
 
 function SuppliesList() {
@@ -252,8 +254,8 @@ export function Shop({ compact, width }: { compact: boolean; width: number }) {
         onPageChange={setPage}
         pages={SHOP_PAGES.map((p) => ({
           key: p.id,
-          label: p.id === "supplies" ? "Supplies" : HOSPITAL_SCENE.title,
-          content: p.id === "supplies" ? <ShopPage /> : <HospitalPage width={width} active={page === 1} />,
+          label: p.label,
+          content: p.id === "supplies" ? <ShopPage /> : p.id === "gems" ? <GemShop /> : <HospitalPage width={width} active={page === 1} />,
         }))}
       />
     </View>

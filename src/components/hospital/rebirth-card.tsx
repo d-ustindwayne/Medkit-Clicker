@@ -35,7 +35,7 @@ export function RebirthCard() {
           <View className="flex-1">
             <Text className="font-display text-base text-ink">{look.tier.name}</Text>
             <Text className="font-body text-xs text-ink opacity-70">
-              {formatCount(rebirths)} done · {formatCount(rebirthPoints)} {GEM.name} · healing ×{rebirthMultiplier(rebirths).toFixed(2)}
+              {formatCount(rebirths)} done · {formatCount(rebirthPoints)} {GEM.name} earned · healing ×{rebirthMultiplier(rebirths).toFixed(2)}
             </Text>
           </View>
         </View>

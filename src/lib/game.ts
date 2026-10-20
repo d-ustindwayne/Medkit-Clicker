@@ -3,6 +3,7 @@ import { gemsForRebirth, healingRate, rebirthMultiplier } from "@/constants/rebi
 import { BACKGROUNDS } from "@/constants/backgrounds";
 import { BOOSTS, LUCKY_MULT, boostMultiplier } from "@/constants/boosts";
 import { LOSE_SECONDS, WIN_COINS, WIN_SECONDS } from "@/constants/patients";
+import { GEM_ITEMS, GEM_LEVEL_COSTS, GEM_UPGRADES, gemBalance, gemLevel, type GemUpgradeId } from "@/constants/gems";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS } from "@/constants/hospital";
 import { REWARD_SECTIONS } from "@/constants/rewards";
 import { ROOMS, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, type RoomState } from "@/constants/room";
@@ -47,8 +48,17 @@ export type GameState = {
   nextPatientAt: number;
   /** My Room: which room is shown, and the items placed in each. */
   room: RoomState;
-  /** Paid backgrounds bought with Care Coins (ids). Kept through rebirth. */
+  /** Paid backgrounds bought with Care Coins or Natal Gems (ids). Kept through rebirth. */
   ownedBackgrounds: string[];
+  /** Natal Gems spent in the Gem Shop. The balance is rebirthPoints minus this. */
+  gemsSpent: number;
+  /** Gem upgrade id -> level (0-5). */
+  gemUpgrades: Record<string, number>;
+  /** Gem Shop cosmetics owned (ids from GEM_ITEMS). */
+  gemItems: string[];
+  /** Equipped medkit skin and tap effect (gem item ids), or null for the originals. */
+  medkitSkin: string | null;
+  tapEffect: string | null;
 };
 
 export type GameAction =
@@ -71,6 +81,9 @@ export type GameAction =
   | { type: "treat"; won: boolean; next: number }
   | { type: "setRoom"; room: string }
   | { type: "buyBackground"; id: string }
+  | { type: "buyGemUpgrade"; id: string }
+  | { type: "buyGemItem"; id: string }
+  | { type: "equip"; slot: "skin" | "tap"; id: string | null }
   /** Place an item (or move it, including from another room) at x, y: fractions of the room art. */
   | { type: "placeItem"; room: string; item: string; x: number; y: number }
   | { type: "removeItem"; room: string; item: string }
@@ -111,12 +124,21 @@ export const newGame = (): GameState => ({
   nextPatientAt: Date.now() + 60_000,
   room: { current: ROOMS[0].id, placed: {} },
   ownedBackgrounds: [],
+  gemsSpent: 0,
+  gemUpgrades: {},
+  gemItems: [],
+  medkitSkin: null,
+  tapEffect: null,
 });
 
+/** Multiplier from a gem upgrade: 1 + per-level step x level. */
+const gemMult = (s: { gemUpgrades?: Record<string, number> }, id: GemUpgradeId, step: number) => 1 + step * gemLevel(s, id);
+
 /** Patients per medkit tap, including the rebirth boost and (when passed) active boosts. */
-export const tapValue = (s: { owned: Record<ItemId, number>; rebirths: number; boosts?: Record<string, number>; luckyTaps?: number; room?: RoomState }) =>
+export const tapValue = (s: { owned: Record<ItemId, number>; rebirths: number; boosts?: Record<string, number>; luckyTaps?: number; room?: RoomState; gemUpgrades?: Record<string, number> }) =>
   (1 + perSecond(s.owned) * TAP_RATE_BONUS) *
   rebirthMultiplier(s.rebirths) *
+  gemMult(s, "steady_hands", 0.1) *
   (1 + roomBonus(s.room, "tap")) *
   boostMultiplier(s.boosts, "tap") *
   ((s.luckyTaps ?? 0) > 0 ? LUCKY_MULT : 1);
@@ -127,20 +149,24 @@ export const coinsEarned = (s: Pick<GameState, "achievements">) =>
 export const coinBalance = (s: Pick<GameState, "achievements" | "coinsSpent" | "bonusCoins">) => coinsEarned(s) + s.bonusCoins - s.coinsSpent;
 
 /** Patients paid for treating a ward patient: minutes of production, with a floor early in the game. */
-export const treatReward = (s: { owned: Record<ItemId, number>; rebirths: number }, won: boolean) => {
+export const treatReward = (s: { owned: Record<ItemId, number>; rebirths: number; gemUpgrades?: Record<string, number> }, won: boolean) => {
   const base = { owned: s.owned, rebirths: s.rebirths };
-  return won ? Math.max(healingRate(base) * WIN_SECONDS, tapValue(base) * 50) : Math.max(healingRate(base) * LOSE_SECONDS, tapValue(base) * 5);
+  const amount = won ? Math.max(healingRate(base) * WIN_SECONDS, tapValue(base) * 50) : Math.max(healingRate(base) * LOSE_SECONDS, tapValue(base) * 5);
+  return amount * gemMult(s, "bedside_manner", 0.2);
 };
 
 /** Patients admitted by tapping the emergency ambulance on the Hospital page. */
-export const emergencyReward = (s: { owned: Record<ItemId, number>; rebirths: number }) => {
+export const emergencyReward = (s: { owned: Record<ItemId, number>; rebirths: number; gemUpgrades?: Record<string, number> }) => {
   const base = { owned: s.owned, rebirths: s.rebirths };
-  return Math.max(healingRate(base) * EMERGENCY_SECONDS, tapValue(base) * EMERGENCY_TAPS);
+  return Math.max(healingRate(base) * EMERGENCY_SECONDS, tapValue(base) * EMERGENCY_TAPS) * gemMult(s, "rapid_response", 0.25);
 };
 
+/** Offline earnings cap: 4 hours, plus 1 hour per Night Owl level. */
+export const maxAwaySeconds = (s: { gemUpgrades?: Record<string, number> }) => (4 + gemLevel(s, "night_owl")) * 3600;
+
 /** What the next unit of an item costs right now, including a running sale. */
-export const priceOf = (s: Pick<GameState, "owned" | "boosts">, item: (typeof SHOP_ITEMS)[number]) =>
-  Math.ceil(itemCost(item, s.owned[item.id]) * boostMultiplier(s.boosts, "price"));
+export const priceOf = (s: Pick<GameState, "owned" | "boosts"> & { gemUpgrades?: Record<string, number> }, item: (typeof SHOP_ITEMS)[number]) =>
+  Math.ceil(itemCost(item, s.owned[item.id]) * boostMultiplier(s.boosts, "price") * gemMult(s, "bulk_orders", -0.02));
 
 export const totalOwned = (owned: Record<ItemId, number>) =>
   Object.values(owned).reduce((a, b) => a + b, 0);
@@ -199,7 +225,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
         ...state,
         healed: 0,
         runHealed: 0,
-        owned: emptyOwned(),
+        // Head Start: each level gives 10 bandages and 5 gloves to begin with.
+        owned: { ...emptyOwned(), bandage: 10 * gemLevel(state, "head_start"), gloves: 5 * gemLevel(state, "head_start") },
         rebirths: state.rebirths + 1,
         rebirthPoints: state.rebirthPoints + gems,
       };
@@ -260,6 +287,31 @@ const apply = (state: GameState, action: GameAction): GameState => {
       const bg = BACKGROUNDS.find((b) => b.id === action.id);
       if (!bg?.price || state.ownedBackgrounds.includes(bg.id) || coinBalance(state) < bg.price) return state;
       return { ...state, coinsSpent: state.coinsSpent + bg.price, ownedBackgrounds: [...state.ownedBackgrounds, bg.id] };
+    }
+    case "buyGemUpgrade": {
+      if (!GEM_UPGRADES.some((u) => u.id === action.id)) return state;
+      const level = state.gemUpgrades[action.id] ?? 0;
+      const cost = GEM_LEVEL_COSTS[level];
+      if (cost === undefined || gemBalance(state) < cost) return state;
+      return { ...state, gemsSpent: state.gemsSpent + cost, gemUpgrades: { ...state.gemUpgrades, [action.id]: level + 1 } };
+    }
+    case "buyGemItem": {
+      const item = GEM_ITEMS.find((i) => i.id === action.id);
+      if (!item || state.gemItems.includes(item.id) || state.rebirths < item.rebirths || gemBalance(state) < item.cost) return state;
+      if (item.section && !state.unlockedSections.includes(item.section)) return state;
+      return {
+        ...state,
+        gemsSpent: state.gemsSpent + item.cost,
+        gemItems: [...state.gemItems, item.id],
+        // Backgrounds join the backgrounds list; skins and tap effects are put on straight away.
+        ownedBackgrounds: item.kind === "background" ? [...state.ownedBackgrounds, item.id] : state.ownedBackgrounds,
+        medkitSkin: item.kind === "skin" ? item.id : state.medkitSkin,
+        tapEffect: item.kind === "tap" ? item.id : state.tapEffect,
+      };
+    }
+    case "equip": {
+      if (action.id !== null && !state.gemItems.includes(action.id)) return state;
+      return action.slot === "skin" ? { ...state, medkitSkin: action.id } : { ...state, tapEffect: action.id };
     }
     case "setRoom": {
       const room = ROOMS.find((r) => r.id === action.room);
@@ -342,6 +394,11 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     // Natal Gems are one per rebirth; older saves had cube-root rebirth points, so cap them at the rebirth count.
     rebirthPoints: Math.min(typeof s.rebirthPoints === "number" ? s.rebirthPoints : 0, typeof s.rebirths === "number" ? s.rebirths : 0),
     ownedBackgrounds: Array.isArray(s.ownedBackgrounds) ? s.ownedBackgrounds : [],
+    gemsSpent: typeof s.gemsSpent === "number" ? s.gemsSpent : 0,
+    gemUpgrades: { ...(s.gemUpgrades ?? {}) },
+    gemItems: Array.isArray(s.gemItems) ? s.gemItems : [],
+    medkitSkin: typeof s.medkitSkin === "string" ? s.medkitSkin : null,
+    tapEffect: typeof s.tapEffect === "string" ? s.tapEffect : null,
     room: s.room && typeof s.room.current === "string" ? { current: s.room.current, placed: { ...(s.room.placed ?? {}) } } : base.room,
   };
 };
