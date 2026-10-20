@@ -2,7 +2,9 @@
 
 **Status (2026-10-20):**
 - The Aiven database is set up: tables created, Jasmine's code and the 11 Care Package rewards uploaded.
-- The code-unlocked music was retired (2026-10-20). The old `playlists` and `tracks` tables still hold 123 MB; remove them with `DROP TABLE tracks, playlists;` if the space is needed.
+- Jasmine's 53 songs (123 MB) are in `playlists` and `tracks`; her code downloads them (the playlist switcher is in Settings). Everyone else hears only the game's soundtrack.
+- Promo codes: `bun run add-promo <code> <medkits|coins|gems> <amount> [max-claims] [message]`. Anyone can enter one (code entry unlocks from the About icon); one claim per phone.
+- Players who reach rebirth 50 can leave their name, email and feedback (`hall_of_fame`).
 - The API was tested end to end against it from this laptop.
 - The API is live on Render (free plan) and was tested end to end from outside: wrong codes rejected and rewards served.
 - The app reads its address from `EXPO_PUBLIC_API_URL` in `.env.local`.
@@ -16,7 +18,7 @@ The database holds only what shouldn't ship inside the app:
 | **Redeem codes** (hash only) and **reward sections** | The code check moves to the server. |
 | **Rewards and redemptions** | The server enforces limits, so a reinstall can't reset them. Each redemption alerts you, with the answer if the reward asks one (a movie title, a date). |
 
-The game itself (progress, items, achievements, rooms) stays on the phone, so the game works offline and for anyone. Everyone gets the same game and soundtrack. The code is hidden (five taps on the hospital icon in About) and only unlocks Jasmine's Care Package.
+The game itself (progress, items, achievements, rooms) stays on the phone, so the game works offline and for anyone. Everyone gets the same game and soundtrack. Code entry is hidden (tap the About icon until it unlocks); Jasmine's code opens her Care Package and downloads her playlists.
 
 **No user accounts:** the redeem code is the only key. `POST /unlock` trades the code for a token (an HMAC signature of the section name), and that token opens the section's rewards. Each phone also sends a random device id with redemptions, so you can tell phones apart. It's not a login.
 
