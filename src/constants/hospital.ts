@@ -1,5 +1,7 @@
 import type { ImageSourcePropType } from "react-native";
 
+import { CAR_SPRITES } from "@/constants/cars";
+
 // The Hospital page (shop, page 2). Everything here is drawn on the scene's 320x180 art-pixel grid.
 
 /** The hospital grows with rebirths. Each look is a 320x180 scene with a transparent sky. */
@@ -32,12 +34,8 @@ export const CLOUDS = [
 ];
 export const CLOUD_H = 14;
 
-export const CARS: ImageSourcePropType[] = [
-  require("@/imgs/hospital/car_red.png"),
-  require("@/imgs/hospital/car_blue.png"),
-  require("@/imgs/hospital/taxi.png"),
-  require("@/imgs/hospital/van_green.png"),
-];
+/** Every model in every colour, so traffic rarely repeats (see src/constants/cars.ts). */
+export const CARS: ImageSourcePropType[] = CAR_SPRITES;
 export const AMBULANCE: ImageSourcePropType = require("@/imgs/hospital/ambulance.png");
 
 /** Two lanes: the far one drives left, the near one right. `y` is where the wheels touch. */
