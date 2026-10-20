@@ -34,7 +34,8 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
   - animated backgrounds: Sakura Breeze (2, 3), Firefly Night (5, 4), First Snow (7, 4), Aurora Ward (10, 6)
   - animated My Room items: Aquarium (3, 3; +4% healing), Lava Lamp (7, 3; +4% tap), Patient Monitor (12, 4; +5% healing)
   - these cosmetics are the rebirth unlocks; the rebirth card shows the next one
-- [ ] Still to build from the gem shop list: alternate app icons (needs a native build change) and sticker PNGs to download
+- [x] Stickers (2026-10-20): 18 die-cut pixel stickers in the Gem Shop, 1 gem each (Florence Nightingale 2). Once bought, "Save" puts the PNG in your photos. New art: Happy Medkit, Happy Pill, Bandaid Buddy, Love Stethoscope, Stayin' Alive, Grumpy Germ, Fever!, Coffee IV, Sleepy Cap, Zoom Zoom, Heal Yeah!, Need Coffee; from the game: Nightingale, Nurse, Doctor, Winged Heart, Natal Gem, Golden Medkit
+- [ ] Alternate app icons: needs `expo-alternate-app-icons`, one adaptive icon per option and a native rebuild (waiting for your go-ahead)
 - [x] What each rebirth unlocks: the Gem Shop cosmetics above (`REBIRTH_UNLOCKS` is built from them)
 - [x] Rewards section title is now "Care Package" (app and database, 2026-10-20); the gift icon and the "Tell Dustin" wording are kept
 - [x] Background names and colours (Rose Grid, Mint Crosses, Lavender Dots, Peach Stripes, Sky Checker, Candy Hearts, Plain), kept 2026-10-20

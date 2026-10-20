@@ -20,7 +20,7 @@ export type GemUpgradeId = "steady_hands" | "night_owl" | "bedside_manner" | "ra
 /** Level of an upgrade (0-5) in a save. */
 export const gemLevel = (s: { gemUpgrades?: Record<string, number> }, id: GemUpgradeId) => s.gemUpgrades?.[id] ?? 0;
 
-export type GemItemKind = "skin" | "tap" | "background" | "room";
+export type GemItemKind = "skin" | "tap" | "background" | "room" | "sticker";
 export type GemItem = {
   id: string;
   name: string;
@@ -54,9 +54,32 @@ export const GEM_ITEMS: GemItem[] = [
   { id: "aquarium", name: "Aquarium", kind: "room", cost: 3, rebirths: 3, image: require("@/imgs/room/aquarium_1.png") },
   { id: "lava_lamp", name: "Lava Lamp", kind: "room", cost: 3, rebirths: 7, image: require("@/imgs/room/lava_lamp_1.png") },
   { id: "patient_monitor", name: "Patient Monitor", kind: "room", cost: 4, rebirths: 12, image: require("@/imgs/room/patient_monitor_1.png") },
+  // Stickers: once bought, save the PNG to your photos
+  ...(
+    [
+      ["nightingale", "Florence Nightingale", 2, require("@/imgs/stickers/nightingale.png")],
+      ["kawaii_medkit", "Happy Medkit", 1, require("@/imgs/stickers/kawaii_medkit.png")],
+      ["happy_pill", "Happy Pill", 1, require("@/imgs/stickers/happy_pill.png")],
+      ["bandaid_buddy", "Bandaid Buddy", 1, require("@/imgs/stickers/bandaid_buddy.png")],
+      ["love_stetho", "Love Stethoscope", 1, require("@/imgs/stickers/love_stetho.png")],
+      ["stayin_alive", "Stayin' Alive", 1, require("@/imgs/stickers/stayin_alive.png")],
+      ["grumpy_germ", "Grumpy Germ", 1, require("@/imgs/stickers/grumpy_germ.png")],
+      ["fever_thermo", "Fever!", 1, require("@/imgs/stickers/fever_thermo.png")],
+      ["coffee_iv", "Coffee IV", 1, require("@/imgs/stickers/coffee_iv.png")],
+      ["sleepy_cap", "Sleepy Cap", 1, require("@/imgs/stickers/sleepy_cap.png")],
+      ["ambulance_zoom", "Zoom Zoom", 1, require("@/imgs/stickers/ambulance_zoom.png")],
+      ["heal_yeah", "Heal Yeah!", 1, require("@/imgs/stickers/heal_yeah.png")],
+      ["need_coffee", "Need Coffee", 1, require("@/imgs/stickers/need_coffee.png")],
+      ["nurse_pink", "Nurse", 1, require("@/imgs/stickers/nurse_pink.png")],
+      ["doctor", "Doctor", 1, require("@/imgs/stickers/doctor.png")],
+      ["winged_heart", "Winged Heart", 1, require("@/imgs/stickers/winged_heart.png")],
+      ["natal_gem", "Natal Gem", 1, require("@/imgs/stickers/natal_gem.png")],
+      ["golden_medkit", "Golden Medkit", 1, require("@/imgs/stickers/golden_medkit.png")],
+    ] as const
+  ).map(([id, name, cost, image]): GemItem => ({ id: `sticker_${id}`, name, kind: "sticker", cost, rebirths: 0, image })),
 ];
 
-export const GEM_KIND_LABEL: Record<GemItemKind, string> = { skin: "Medkit skin", tap: "Tap effect", background: "Animated background", room: "My Room item" };
+export const GEM_KIND_LABEL: Record<GemItemKind, string> = { skin: "Medkit skin", tap: "Tap effect", background: "Animated background", room: "My Room item", sticker: "Sticker" };
 
 export const MEDKIT_SKINS: Record<string, ImageSourcePropType> = Object.fromEntries(GEM_ITEMS.filter((i) => i.kind === "skin").map((i) => [i.id, i.image]));
 /** Skins drawn as photos/portraits fill the button; pixel medkits keep the medkit's proportions. */

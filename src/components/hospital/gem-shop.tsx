@@ -9,6 +9,7 @@ import { GEM } from "@/constants/rebirth";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
+import { saveSticker } from "@/lib/stickers";
 
 const MAX_LEVEL = GEM_LEVEL_COSTS.length;
 
@@ -85,6 +86,13 @@ function ItemTile({ item }: { item: GemItem }) {
     if (item.kind === "background") updateSettings({ background: bgIndex });
     if (item.kind === "room") pushToast({ kind: "info", title: item.name, body: "It's in your My Room tray now. Swipe the medkit to My Room to place it.", image: item.image });
   };
+  const save = () => {
+    saveSticker(item.image as number)
+      .then((ok) =>
+        pushToast(ok ? { kind: "info", title: "Sticker saved", body: `${item.name} is in your photos.`, image: item.image } : { kind: "info", title: "Can't save yet", body: "Allow saving to photos to keep stickers." }),
+      )
+      .catch(() => pushToast({ kind: "info", title: "Couldn't save", body: "Something went wrong saving the sticker. Try again." }));
+  };
   const use = () => {
     if (item.kind === "skin") dispatch({ type: "equip", slot: "skin", id: equipped ? null : item.id });
     else if (item.kind === "tap") dispatch({ type: "equip", slot: "tap", id: equipped ? null : item.id });
@@ -104,6 +112,8 @@ function ItemTile({ item }: { item: GemItem }) {
           ) : owned ? (
             item.kind === "room" ? (
               <Text className="text-center font-body text-xs text-ink opacity-70">In your My Room tray</Text>
+            ) : item.kind === "sticker" ? (
+              <PixelButton label="Save" tone="success" onPress={save} />
             ) : (
               <PixelButton label={equipped ? "Using" : "Use"} tone={equipped ? "plain" : "success"} onPress={use} />
             )
@@ -119,8 +129,8 @@ function ItemTile({ item }: { item: GemItem }) {
   );
 }
 
-const KINDS: GemItemKind[] = ["skin", "tap", "background", "room"];
-const SECTION_TITLE: Record<GemItemKind, string> = { skin: "MEDKIT SKINS", tap: "TAP EFFECTS", background: "ANIMATED BACKGROUNDS", room: "ANIMATED ROOM ITEMS" };
+const KINDS: GemItemKind[] = ["skin", "tap", "background", "room", "sticker"];
+const SECTION_TITLE: Record<GemItemKind, string> = { skin: "MEDKIT SKINS", tap: "TAP EFFECTS", background: "ANIMATED BACKGROUNDS", room: "ANIMATED ROOM ITEMS", sticker: "STICKERS" };
 
 /** Third page of the shop: spend Natal Gems on permanent upgrades and cosmetics. */
 export function GemShop() {
