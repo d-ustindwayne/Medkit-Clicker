@@ -43,7 +43,7 @@ export function AboutPage() {
       </HardShadow>
 
       <Text className="font-body text-sm leading-5 text-ink">
-        {CREDIT} Code released under the {APP_INFO.license}. Music belongs to its respective artists.
+        {CREDIT} Code released under the {APP_INFO.license}. Original soundtrack made in BeepBox; songs in unlocked playlists belong to their artists.
       </Text>
     </View>
   );

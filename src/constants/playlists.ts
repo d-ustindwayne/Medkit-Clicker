@@ -14,7 +14,13 @@ export const BUNDLED_PLAYLISTS: Playlist[] = PLAYLIST_NAMES.map(([id, name]) => 
 export const SOUNDTRACK: Playlist = {
   id: "soundtrack",
   name: "Medkit Clicker OST",
-  tracks: [require("@/audio/soundtrack/waiting_room.mp3"), require("@/audio/soundtrack/night_shift.mp3"), require("@/audio/soundtrack/recovery_room.mp3")],
+  tracks: [
+    require("@/audio/soundtrack/waiting_room.mp3"),
+    require("@/audio/soundtrack/morning_rounds.mp3"),
+    require("@/audio/soundtrack/night_shift.mp3"),
+    require("@/audio/soundtrack/visiting_hours.mp3"),
+    require("@/audio/soundtrack/recovery_room.mp3"),
+  ],
 };
 
 export const SFX = {

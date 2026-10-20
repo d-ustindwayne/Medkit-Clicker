@@ -45,7 +45,8 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [x] Rebirth moved from the menu to the Hospital page; the menu keeps only non-game things (achievements, settings, redeem, website, about, rewards)
 - [x] The shop's second page is now the outside of the hospital; the page next to the medkit is My Room (see [ROOM.md](ROOM.md))
 - [ ] How to Play text on the About page
-- [ ] Real website URL for "Visit website" (`src/constants/app.ts`). Plan: your own site (Vue, Bulma/SCSS, three.js) on GitHub Pages, built another day
+- [x] "Visit website" links to https://d-ustindwayne.github.io/MedkitClicker (empty until the site is built after the game; plan and starter prompt in [WEBSITE.md](WEBSITE.md))
+- [ ] Where the website code lives: its own `MedkitClicker` repo (recommended) or a `website/` folder here
 - [ ] Care Coins (`src/constants/achievements.ts` → `coins` on each achievement): the currency name, and the payout per achievement (1–5, harder pays more)
 - [ ] The 13 boosts in `src/constants/boosts.ts`: names, effects, durations and coin prices
 - [ ] Ward patients (`src/constants/patients.ts`):
@@ -62,7 +63,7 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
   - room unlocks: 15 achievements, 1 rebirth, 10 patients treated, 40 achievements
   - each item's unlock and bonus
   - the +50% bonus cap
-- [ ] Create the Aiven PostgreSQL service, host the API and run `bun run db:setup` (see [DATABASE.md](DATABASE.md))
+- [x] Create the Aiven PostgreSQL service, host the API and run `bun run db:setup` (see [DATABASE.md](DATABASE.md))
 - [ ] Natal Gem name and icon ("Natal" means "of birth"; alternatives: Cradle Gem, Bloom Gem)
 - [ ] Paid background prices: Purple Rain 15, Heart Monitor 15, Night Shift Sky 10, Blood Stream 10 Care Coins
 

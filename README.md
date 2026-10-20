@@ -16,7 +16,7 @@ It runs on Android, iOS and the web, built with Expo 57, React Native, React 19,
 - **My Room:** decorate hospital rooms (Empty Room, Reception, Lab, Pharmacy, Children's Ward) with 14 pixel-art hospital items you unlock by playing. Each placed item gives a small permanent bonus, and nurses and the doctor walk around.
 - **Sick patients** turn up in your room at random. Treat them in a quick minigame (injection timing, CPR rhythm or a bandage-wrap tap race) for patients and coins.
 - **Redeem codes** unlock hidden sections, like a rewards shop where patients buy real-life treats (with a limit on each).
-- **Original soundtrack:** three chill lo-fi loops made in BeepBox (*Waiting Room*, *Night Shift*, *Recovery Room*), included for every player.
+- **Original soundtrack:** five chill lo-fi loops made in BeepBox (*Waiting Room*, *Morning Rounds*, *Night Shift*, *Visiting Hours* (a waltz), *Recovery Room*), included for every player.
 - **Music player** with the soundtrack plus six playlists unlocked by code, play/pause, track skipping and seeking; sound effects with their own volume; vibration feedback (with an off switch) on phones.
 - **Light and dark themes** from the original design, with seven backgrounds, each with its own pattern and colours.
 - **Swipe pages:** My Room next to the medkit, and the outside of the hospital next to the shop, drawn as full-width pixel scenes.
@@ -87,6 +87,7 @@ Game balance (prices, rates and growth) lives in `src/constants/items.ts`. Devel
 - [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md): the plan for reward alerts and reminders
 - [docs/ROOM.md](docs/ROOM.md): how My Room works (rooms, items, unlocks, bonuses)
 - [docs/DATABASE.md](docs/DATABASE.md): Aiven PostgreSQL, the API, and how to set them up
+- [docs/WEBSITE.md](docs/WEBSITE.md): the website plan, your vision, and a starter prompt for building it
 
 ## Redeem codes
 
