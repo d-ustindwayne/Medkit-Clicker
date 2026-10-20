@@ -1,29 +1,57 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Asset } from "expo-asset";
+import { Directory, File } from "expo-file-system";
 import { Asset as MediaAsset, requestPermissionsAsync } from "expo-media-library";
-import * as Sharing from "expo-sharing";
+import { Platform } from "react-native";
+
+const FOLDER_KEY = "mc/stickers/folder/v1";
+
+/** A bundled image copied to a real file in the app's cache (bundled images live inside the app). */
+async function stickerFile(source: number) {
+  const asset = Asset.fromModule(source);
+  await asset.downloadAsync();
+  return asset.localUri ?? asset.uri;
+}
 
 /**
- * Saves a bundled sticker PNG to the phone's photos. If that isn't possible (permission refused,
- * or this Android version won't take the file), it opens the share sheet instead, where "Save
- * image" or a gallery app works too. Returns how it went.
+ * Saves a bundled sticker PNG.
+ * 1. To the phone's photos, when the photo permission is given.
+ * 2. Otherwise (Android), into a folder the player picks once (Pictures, Downloads...), written
+ *    directly, so no photo permission is needed. The folder is remembered for next time.
+ * Returns where it went, or "cancelled" if no folder was picked.
  */
-export async function saveSticker(source: number): Promise<"saved" | "shared" | "failed"> {
-  // Bundled images live inside the app; this copies one to a real file in the cache first.
-  const file = Asset.fromModule(source);
-  await file.downloadAsync();
-  const uri = file.localUri ?? file.uri;
+export async function saveSticker(source: number, name: string): Promise<"photos" | "folder" | "cancelled"> {
+  const uri = await stickerFile(source);
   try {
     const permission = await requestPermissionsAsync(true, ["photo"]);
     if (permission.granted) {
       await MediaAsset.create(uri);
-      return "saved";
+      return "photos";
     }
   } catch {
-    // fall through to sharing
+    // fall back to a folder below
   }
-  if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: "Save sticker" });
-    return "shared";
+  if (Platform.OS !== "android") throw new Error("Photos access is needed to save stickers.");
+
+  const bytes = await new File(uri).bytes();
+  const fileName = `medkit-clicker-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  const write = (dir: Directory) => dir.createFile(fileName, "image/png").write(bytes);
+
+  const saved = await AsyncStorage.getItem(FOLDER_KEY);
+  if (saved) {
+    try {
+      write(new Directory(saved));
+      return "folder";
+    } catch {
+      await AsyncStorage.removeItem(FOLDER_KEY); // folder gone or access revoked: ask again
+    }
   }
-  return "failed";
+  try {
+    const dir = await Directory.pickDirectoryAsync();
+    write(dir);
+    await AsyncStorage.setItem(FOLDER_KEY, dir.uri);
+    return "folder";
+  } catch {
+    return "cancelled";
+  }
 }

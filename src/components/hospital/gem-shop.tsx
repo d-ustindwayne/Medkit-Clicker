@@ -100,12 +100,12 @@ function ItemTile({ item }: { item: GemItem }) {
     if (item.kind === "room") pushToast({ kind: "info", title: item.name, body: "It's in your My Room tray now. Swipe the medkit to My Room to place it.", image: item.image });
   };
   const save = () => {
-    saveSticker(item.image as number)
-      .then((how) => {
-        if (how === "saved") pushToast({ kind: "info", title: "Sticker saved", body: `${item.name} is in your photos.`, image: item.image });
-        else if (how === "failed") pushToast({ kind: "info", title: "Couldn't save", body: "This phone won't let the app save images." });
+    saveSticker(item.image as number, item.name)
+      .then((where) => {
+        if (where === "photos") pushToast({ kind: "info", title: "Sticker saved", body: `${item.name} is in your photos.`, image: item.image });
+        else if (where === "folder") pushToast({ kind: "info", title: "Sticker saved", body: `${item.name} is in the folder you picked.`, image: item.image });
       })
-      .catch(() => pushToast({ kind: "info", title: "Couldn't save", body: "Something went wrong saving the sticker. Try again." }));
+      .catch((e: unknown) => pushToast({ kind: "info", title: "Couldn't save", body: e instanceof Error ? e.message : "Something went wrong saving the sticker. Try again." }));
   };
   // Changing the icon can close the app on Android, so it waits: restart now, or it's applied the
   // next time the app is left.
