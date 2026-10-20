@@ -3,7 +3,7 @@ import type { ImageSourcePropType } from "react-native";
 // Sick patients who turn up in My Room at random times. Each one has a quick minigame.
 // Timings, rewards and wording are PLACEHOLDERS; see docs/TASKS.md "Needs your decision".
 
-export type MinigameId = "injection" | "rhythm" | "bandage";
+export type MinigameId = "injection" | "rhythm" | "bandage" | "pulse" | "pills" | "xray" | "germs" | "breath" | "memory";
 
 export type SickPatient = {
   id: string;
@@ -20,6 +20,12 @@ export const SICK_PATIENTS: SickPatient[] = [
   { id: "flu", image: require("@/imgs/characters/05_chinese_woman_sick.png"), condition: "Bad flu", intro: "Time for a flu shot. Stop the needle inside the vein!", game: "injection" },
   { id: "sprain", image: require("@/imgs/characters/09_dad_sick.png"), condition: "Sprained arm", intro: "Wrap that arm before the swelling sets in. Tap fast!", game: "bandage" },
   { id: "breathless", image: require("@/imgs/characters/10_young_man_sick.png"), condition: "Short of breath", intro: "Coach his breathing. Tap in time with the heartbeat!", game: "rhythm" },
+  { id: "palpitations", image: require("@/imgs/characters/01_red_hair_woman.png"), condition: "Racing heart", intro: "Check her pulse. Count every beat!", game: "pulse" },
+  { id: "mixed_meds", image: require("@/imgs/characters/04_old_man_sick.png"), condition: "Mixed-up meds", intro: "His pills got mixed up. Sort out the right ones!", game: "pills" },
+  { id: "fall", image: require("@/imgs/characters/07_kid_gamer.png"), condition: "Skateboard fall", intro: "Ouch! Find the fracture on the X-ray.", game: "xray" },
+  { id: "tummy_bug", image: require("@/imgs/characters/08_teen_girl.png"), condition: "Tummy bug", intro: "Germs everywhere! Bust them before they spread.", game: "germs" },
+  { id: "panic", image: require("@/imgs/characters/03_blonde_woman.png"), condition: "Panic attack", intro: "Help her slow down. Breathe in, then let go at the top.", game: "breath" },
+  { id: "allergy", image: require("@/imgs/characters/06_teacher.png"), condition: "Allergy check", intro: "Match the medicines to find the right one.", game: "memory" },
 ];
 
 /** A new patient arrives 1-3 minutes after the last one leaves. */

@@ -3,32 +3,18 @@ import { Image } from "expo-image";
 import { Modal, Pressable, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
+import { MORE_GAMES } from "@/components/ward/more-games";
+import { useDone, type GameProps } from "@/components/ward/game-kit";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { COIN } from "@/constants/boosts";
-import { WIN_COINS, minigameTuning, nextPatientDelay, type MinigameTuning, type SickPatient } from "@/constants/patients";
+import { WIN_COINS, minigameTuning, nextPatientDelay, type SickPatient } from "@/constants/patients";
 import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { formatCount } from "@/lib/format";
 import { treatReward } from "@/lib/game";
-
-type GameProps = { onDone: (won: boolean) => void; tuning: MinigameTuning };
-
-/** Keeps the latest onDone without re-running timers when the parent re-renders. */
-function useDone(onDone: (won: boolean) => void) {
-  const ref = useRef(onDone);
-  const finished = useRef(false);
-  useEffect(() => {
-    ref.current = onDone;
-  }, [onDone]);
-  return (won: boolean) => {
-    if (finished.current) return;
-    finished.current = true;
-    ref.current(won);
-  };
-}
 
 // ---------- Injection: stop the sliding needle inside the vein, 2 of 3 ----------
 const ZONES = [0.55, 0.22, 0.64];
@@ -184,7 +170,7 @@ function BandageGame({ onDone, tuning }: GameProps) {
   );
 }
 
-const GAMES = { injection: InjectionGame, rhythm: RhythmGame, bandage: BandageGame };
+const GAMES = { injection: InjectionGame, rhythm: RhythmGame, bandage: BandageGame, ...MORE_GAMES };
 
 /** Treating a ward patient: intro, the patient's minigame, then the result. */
 export function TreatModal({ patient, onClose }: { patient: SickPatient; onClose: () => void }) {

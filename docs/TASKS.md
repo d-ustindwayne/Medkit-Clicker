@@ -61,6 +61,8 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
   - Injection: 2 of 3 shots in the vein; the needle speeds up to 1.2x and the vein narrows from 18% to 15%
   - Rhythm: 7 of 10 beats, 110 bpm rising to 120 bpm, with a tighter timing window
   - Bandage: 25 wraps rising to 30, in 5 seconds
+- [x] Six more minigames (2026-10-20), each with a new ward patient: Pulse Check (count the beats), Sort the Meds (tap one colour of pill), Spot the Fracture (X-ray), Germ Buster (tap 7 of 10 germs), Deep Breaths (hold and release at the top, 2 of 3), Match the Meds (3 pairs)
+- [x] Nine more My Room items (2026-10-20): Wall Clock, Heart Poster, Teddy Bear, Armchair, Toy Box, Floor Lamp, Flower Vase, Bookshelf, String Lights (bonuses and unlocks picked by Claude)
   - the intro lines for each patient
 - [ ] My Room numbers (`src/constants/room.ts`):
   - room limits: 6 / 4 / 6 / 7 / 8
