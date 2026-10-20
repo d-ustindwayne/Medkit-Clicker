@@ -3,12 +3,25 @@
 // redeem code for a token (an HMAC of the section), and that token opens the section's music and
 // rewards. Run locally with `bun run server`; deploy with server/Dockerfile.
 //
-// Env: DATABASE_URL (Postgres, with sslmode=require on Aiven), SERVER_SECRET (any long random
-// string), NTFY_TOPIC (optional: ntfy.sh topic Dustin subscribes to), PORT (default 8787).
+// Env: DATABASE_URL (Postgres), DATABASE_CA (Aiven's CA certificate text, or a path to it),
+// SERVER_SECRET (any long random string), NTFY_TOPIC (optional: ntfy.sh topic Dustin subscribes
+// to), PORT (default 8787).
 import { SQL } from "bun";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { readFileSync } from "node:fs";
 
-const sql = new SQL(process.env.DATABASE_URL!);
+/**
+ * Connects with TLS. Aiven signs its certificates with a per-project CA: DATABASE_CA is either that
+ * certificate's text (on Render) or a path to it (locally), so the connection is verified.
+ */
+function connect() {
+  const raw = process.env.DATABASE_CA;
+  // Env vars often hold the certificate on one line with literal "\n"; turn those back into newlines.
+  const ca = raw ? (raw.includes("BEGIN CERTIFICATE") ? raw.replace(/\\n/g, "\n") : readFileSync(raw, "utf8")) : undefined;
+  const url = process.env.DATABASE_URL!;
+  return ca ? new SQL({ url: url.replace(/\?.*$/, ""), tls: { ca, rejectUnauthorized: true } }) : new SQL(url);
+}
+const sql = connect();
 const SECRET = process.env.SERVER_SECRET ?? "";
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
 if (!process.env.DATABASE_URL || SECRET.length < 16) throw new Error("Set DATABASE_URL and SERVER_SECRET (16+ chars).");

@@ -1,0 +1,20 @@
+# Render blueprint for the Medkit Clicker API (free web service, built from server/Dockerfile).
+# Render > New > Blueprint > pick this repo. It asks for the four secret values below; copy them
+# from render-env.txt (made locally, gitignored). See docs/DATABASE.md.
+services:
+  - type: web
+    name: medkit-clicker-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_CA
+        sync: false
+      - key: SERVER_SECRET
+        sync: false
+      - key: NTFY_TOPIC
+        sync: false

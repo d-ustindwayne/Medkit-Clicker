@@ -53,3 +53,5 @@ src/fonts/arlrdbd.ttf
 
 # Database credentials pasted from Aiven (never commit)
 database_setup.txt
+aiven-ca.pem
+render-env.txt

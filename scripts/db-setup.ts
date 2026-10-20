@@ -13,7 +13,18 @@ import { PLAYLIST_NAMES } from "../src/constants/playlist-names";
 import { REWARD_SECTIONS } from "../src/constants/rewards";
 
 if (!process.env.DATABASE_URL) throw new Error("Set DATABASE_URL in .env (Aiven: Service > Overview > Service URI).");
-const sql = new SQL(process.env.DATABASE_URL);
+/**
+ * Connects with TLS. Aiven signs its certificates with a per-project CA: DATABASE_CA is either that
+ * certificate's text (on Render) or a path to it (locally), so the connection is verified.
+ */
+function connect() {
+  const raw = process.env.DATABASE_CA;
+  // Env vars often hold the certificate on one line with literal "\n"; turn those back into newlines.
+  const ca = raw ? (raw.includes("BEGIN CERTIFICATE") ? raw.replace(/\\n/g, "\n") : readFileSync(raw, "utf8")) : undefined;
+  const url = process.env.DATABASE_URL!;
+  return ca ? new SQL({ url: url.replace(/\?.*$/, ""), tls: { ca, rejectUnauthorized: true } }) : new SQL(url);
+}
+const sql = connect();
 const ENCODED = "src/audio/encoded";
 
 await sql.unsafe(readFileSync("db/schema.sql", "utf8"));
