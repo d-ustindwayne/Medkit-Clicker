@@ -12,7 +12,7 @@ The core game is done and was tested on the Android emulator and on web. These a
 - music (with a full player) and sound effects
 - light and dark themes, and 7 backgrounds
 - export/import of saves
-- the redeem code and Care Package
+- a private, code-locked reward section
 - rebirth
 - swipe pages for the medkit/Hospital area and the shop
 
@@ -37,7 +37,6 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [x] Stickers (2026-10-20): 18 die-cut pixel stickers in the Gem Shop, 1 gem each (Florence Nightingale 2). Once bought, "Save" puts the PNG in your photos. New art: Happy Medkit, Happy Pill, Bandaid Buddy, Love Stethoscope, Stayin' Alive, Grumpy Germ, Fever!, Coffee IV, Sleepy Cap, Zoom Zoom, Heal Yeah!, Need Coffee; from the game: Nightingale, Nurse, Doctor, Winged Heart, Natal Gem, Golden Medkit
 - [ ] Alternate app icons: needs `expo-alternate-app-icons`, one adaptive icon per option and a native rebuild (waiting for your go-ahead)
 - [x] What each rebirth unlocks: the Gem Shop cosmetics above (`REBIRTH_UNLOCKS` is built from them)
-- [x] Rewards section title is now "Care Package" (app and database, 2026-10-20); the gift icon and the "Tell Dustin" wording are kept
 - [x] Background names and colours (Rose Grid, Mint Crosses, Lavender Dots, Peach Stripes, Sky Checker, Candy Hearts, Plain), kept 2026-10-20
 - [ ] Hospital page numbers (`src/constants/hospital.ts`), picked by Claude:
   - an emergency ambulance every 2-4 minutes (decided 2026-10-20: rarer, bigger); it parks at the entrance with "Patient: <condition>!" and waits 20 s
@@ -114,7 +113,7 @@ Still unused:
 - [ ] **The last achievements are still out of reach.** 13 items get to about a billion per second after weeks, so the 10^15 healed milestones are reachable but the tail (10^18 and up) needs upgrades or rebirth spending. That's intentional for a long game, but worth a look when rebirth points get a use.
 - [ ] **Reward notifications:** built into the server (ntfy.sh alert on every redemption), live once the API is deployed. Until then, redeeming opens the share sheet. Local reminders are still a plan ([NOTIFICATIONS.md](NOTIFICATIONS.md)).
 - [ ] **Everything is on-device, so it isn't tamper-proof.** Someone could edit an exported save and import it to give themselves patients. The redeem code is stored only as a hash, so it can't be read from the code, but a determined person could still bypass the check. That's fine for a gift; it would need a server to be secure.
-- [ ] **Rewards survive Delete progress and imports on purpose,** so the 3-chocolate limit can't be reset. Reinstalling the app or clearing its data does reset it, because there's no server.
+- [ ] **Rewards survive Delete progress and imports on purpose,** so reward limits can't be reset. Reinstalling the app or clearing its data does reset it, because there's no server.
 - [ ] **Saving to Download:** Android 11+ won't let apps pick the root of Download. Export asks for a folder once (Documents by default, or a subfolder of Download) and then remembers it.
 - [ ] **iOS is untested.** It needs a Mac or a cloud build (`eas build`) to check.
 - [x] **Music is copyrighted:** retired. The app plays only its own BeepBox soundtrack; the code no longer unlocks music (2026-10-20).
@@ -152,7 +151,6 @@ Still unused:
 
 ### Phase 2b: Features added (done)
 - [x] Redeem code screen; codes stored as hashes in `.env.local` (`bun run add-code <section> <code>`)
-- [x] Care Package: Box of chocolates, 1 million patients, maximum 3, with the share message to Dustin
 - [x] Rebirth: new run for rebirth points (a currency) plus a small permanent healing boost
 
 ### Phase 3: Pre-release content (your design)
@@ -161,10 +159,7 @@ Still unused:
 - [x] More shop items: 13 in total, with order and prices decided by Claude
 - [ ] What rebirth points buy, and the per-rebirth unlocks
 - [ ] More achievements and easter eggs
-- [x] Care Package rewards (2026-10-20; prices and the extra sentimental ones picked by Claude, all deliberately expensive):
-  - A kiss 10M (no limit), A long hug 15M (no limit), Bar of chocolate 25M (5), Tub of ice cream 40M (5)
-  - Late-night call 150M (no limit), Movie night on Discord 500M (no limit, asks which title), A song, just for you 1B (no limit, asks which song)
-  - Handwritten letter 5B (5), I cook for you 20B (no limit, asks which dish), Surprise gift 100B (3), A day at Albert Park 1T (no limit, date and time picker)
+- [x] Private reward section: rewards, prices, limits and cooldowns live in the code only (not documented)
 - [x] The redeem code is hidden: five taps on the hospital icon in About. It no longer unlocks music
 - [ ] PHL export (when the PHL project is ready)
 

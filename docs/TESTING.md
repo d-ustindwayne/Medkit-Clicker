@@ -47,7 +47,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 ## Rebirth and rewards
 - [ ] Rebirth stays locked until 1 billion patients in a run; after rebirthing, items reset and the boost shows
 - [ ] Hospital page (shop, swipe right): clouds drift behind the building; cars drive both ways; visitors walk to and from the door; every minute or so an ambulance parks at the door with a "Patient: ...!" bubble; tapping it shows "Patient admitted" and adds patients, and it drives off after 15 s if ignored; the rebirth card shows the hospital's name and the next look
-- [ ] Redeem: a wrong code is rejected; the right code opens Care Package; redeeming spends patients and opens the share sheet; the limit is enforced
+- [ ] Redeem: a wrong code is rejected; the right code opens the private section; redeeming spends patients; the limit is enforced
 
 ## Care Coins and boosts
 - [ ] An achievement toast says "+N Care Coins"; the Boosts tab balance goes up
@@ -126,7 +126,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - Opens instantly with the new splash
 - Music:
   - plays with no errors
-  - next track, tap-to-seek and playlist switch (Cup of Joe → Love Songs) all work
+  - next track, tap-to-seek and playlist switch all work
   - pauses when the app goes to the background and resumes on return
 - Haptics: the system vibration log shows the app's taps (50 ms) and stronger pulses
 - Swipe pages: medkit → Hospital (outside scene) → Ward (inside scene), with 3 dots
@@ -177,7 +177,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - "You still healed 0 patients" after an early loss
 
 **Still for you to test** (they need the real code or more coins):
-- entering Jasmine's code (five taps on the About icon): Care Package unlocks
+- entering the private code (code entry from the About icon): the private section unlocks
 - a real redemption, which should send an ntfy alert to your phone
 - the 4 animated backgrounds (15 / 10 coins)
 - the rhythm and bandage minigames and a minigame win

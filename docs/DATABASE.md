@@ -1,8 +1,8 @@
 # Database: Aiven PostgreSQL + a small API
 
 **Status (2026-10-20):**
-- The Aiven database is set up: tables created, Jasmine's code and the 11 Care Package rewards uploaded.
-- Jasmine's 53 songs (123 MB) are in `playlists` and `tracks`; her code downloads them (the playlist switcher is in Settings). Everyone else hears only the game's soundtrack.
+- The Aiven database is set up: tables created, the private section's code hash and its rewards uploaded.
+- A private music library (123 MB) is in `playlists` and `tracks`; only the private code downloads it. Everyone else hears only the game's soundtrack.
 - Promo codes: `bun run add-promo <code> <medkits|coins|gems> <amount> [max-claims] [message]`. Anyone can enter one (code entry unlocks from the About icon); one claim per phone.
 - Players who reach rebirth 50 can leave their name, email and feedback (`hall_of_fame`).
 - The API was tested end to end against it from this laptop.
@@ -18,7 +18,7 @@ The database holds only what shouldn't ship inside the app:
 | **Redeem codes** (hash only) and **reward sections** | The code check moves to the server. |
 | **Rewards and redemptions** | The server enforces limits, so a reinstall can't reset them. Each redemption alerts you, with the answer if the reward asks one (a movie title, a date). |
 
-The game itself (progress, items, achievements, rooms) stays on the phone, so the game works offline and for anyone. Everyone gets the same game and soundtrack. Code entry is hidden (tap the About icon until it unlocks); Jasmine's code opens her Care Package and downloads her playlists.
+The game itself (progress, items, achievements, rooms) stays on the phone, so the game works offline and for anyone. Everyone gets the same game and soundtrack. A private code unlocks a private section.
 
 **No user accounts:** the redeem code is the only key. `POST /unlock` trades the code for a token (an HMAC signature of the section name), and that token opens the section's rewards. Each phone also sends a random device id with redemptions, so you can tell phones apart. It's not a login.
 
@@ -38,7 +38,7 @@ From your screenshot:
 
 | Table | Holds |
 | --- | --- |
-| `access_codes` | section, SHA-256 of the code, title ("Care Package"), who to notify |
+| `access_codes` | section, SHA-256 of the code, title, who to notify |
 | `rewards` | id, section, name, cost in patients, max uses |
 | `redemptions` | reward, device id, when, when the alert was sent |
 
@@ -87,7 +87,7 @@ The free plan sleeps after 15 minutes without requests. The first request after 
 4. **Host the API:** build `server/Dockerfile`, or run `bun run server`, using the same `.env` values.
 5. In `.env.local`, add `EXPO_PUBLIC_API_URL=https://your-api-host` and rebuild the app.
 
-With the server running, Jasmine taps the hospital icon in **About** five times and enters the code. Care Package appears in the menu, and every redemption buzzes your phone.
+With the server running, code entry opens from the About icon; a section code adds that section to the menu, and every redemption buzzes your phone.
 
 **Offline and server-less builds still work:**
 - the code is checked against the local hash

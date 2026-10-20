@@ -19,7 +19,7 @@ Today, redeeming a reward opens the share sheet, and Jasmine has to send the mes
 **Recommended flow (ntfy):**
 1. Dustin picks a long random topic name, for example `mc-7f3k...`, and subscribes to it in the ntfy app.
 2. Store it like the redeem code: `bun run add-code` gets a sibling that writes `EXPO_PUBLIC_NTFY_TOPIC` to `.env.local` (gitignored).
-3. On redeem, `rewards-page.tsx` sends `fetch("https://ntfy.sh/<topic>", { method: "POST", body: "Jasmine redeemed Box of chocolates (2/3)" })` alongside the existing share sheet.
+3. On redeem, `rewards-page.tsx` sends `fetch("https://ntfy.sh/<topic>", { method: "POST", body: "<reward> was redeemed" })` alongside the existing share sheet.
 4. Offline-safe: if the POST fails, queue the message in AsyncStorage and retry on the next app start. The share-sheet button stays as a backup.
 5. Settings gets a "Notify Dustin automatically" toggle, on by default.
 

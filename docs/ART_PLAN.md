@@ -38,8 +38,8 @@ Sprites are grouped by what they're used for. Sources live in `src/media/photos/
 | `characters/` | People (256 × 256) | 01–16, see the table below; staff 11–16 also have `_walk1` / `_walk2` frames |
 | `scenes/` | Backgrounds (1280 × 720) | hospital_0 to hospital_9 (the outside, one look per rebirth tier, transparent sky) and hospital_sky (shop page 2); hospital_inside, room_empty, room_lab, room_pharmacy, room_kids (My Room) |
 | `hospital/` | Hospital page extras | cars at 32 × 32 (car_red, car_blue, taxi, van_green, ambulance; facing right); visitors at 16 × 16 with 2 walk frames (visitor_woman, visitor_man, visitor_kid, visitor_elder); clouds (cloud_big, cloud_mid, cloud_small), all exported ×4 |
-| `rewards/` | Care Package reward icons (32 × 32, exported ×4) | kiss, hug, chocolate_bar, ice_cream, late_call, movie_night, song, love_letter, cook, surprise, albert_park |
-| `skins/` | Gem Shop medkit skins | skin_gold, skin_candy, skin_night, skin_crystal (recolours of medkit.png, 1024); dustin_pixel (64 × 64 pixel art of the photo, ×8) and dustin_photo (512); the original photo is `dustin_source.png` |
+| `rewards/` | Icons for a private, code-locked reward section (32 × 32, exported ×4) | not listed |
+| `skins/` | Gem Shop medkit skins | skin_gold, skin_candy, skin_night, skin_crystal (recolours of medkit.png, 1024) |
 | `gems/` | Gem Shop particles and icons | p_heart, p_sparkle, p_bubble (tap effects); p_petal, p_petal2, p_firefly, p_snow (backgrounds); bulk_orders (32 × 32) |
 | `stickers/` | Gem Shop stickers (die-cut: white pixel border and soft shadow, about 512 px; made by `sticker.lua` from the sprite) | kawaii_medkit, happy_pill, bandaid_buddy, love_stetho, stayin_alive, grumpy_germ, fever_thermo, coffee_iv, sleepy_cap, ambulance_zoom (32 × 32); heal_yeah, need_coffee (48 × 24 text); nightingale, nurse_pink, doctor, winged_heart, natal_gem, golden_medkit (from game art) |
 | `room/` | Placeable My Room items (128 × 128, drawn at 32 × 32) | hospital_bed, wheelchair, iv_stand, crash_cart, vending_machine, waiting_bench, potted_plant, privacy_screen, security_camera, aed, xray_viewer, first_aid_cabinet, sanitizer, notice_board |
