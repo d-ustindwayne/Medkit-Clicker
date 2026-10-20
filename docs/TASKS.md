@@ -47,24 +47,24 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [x] "Visit website" links to https://d-ustindwayne.github.io/MedkitClicker (empty until the site is built after the game; plan and starter prompt in [WEBSITE.md](WEBSITE.md))
 - [x] The website code lives in its own repo, `d-ustindwayne/MedkitClicker` (decided 2026-10-20)
 - [x] Care Coins: each achievement pays half its listed amount, rounded up (1–3 coins; decided 2026-10-20). Boost and background prices may need lowering to match
-- [ ] The 13 boosts in `src/constants/boosts.ts`: names, effects, durations and coin prices
-- [ ] Ward patients (`src/constants/patients.ts`):
-  - a patient arrives every 2–5 minutes and waits 3 minutes
+- [ ] The 13 boosts in `src/constants/boosts.ts`: names, effects and durations (prices kept 2026-10-20)
+- [x] Ward patients (`src/constants/patients.ts`; frequency decided 2026-10-20):
+  - a patient arrives every 1–3 minutes and waits 3 minutes
   - a win pays 2 minutes of production plus 1 Care Coin
   - a loss pays 10 seconds of production
-- [ ] Minigames (`src/components/ward/treat-modal.tsx`):
-  - Injection: 2 of 3 shots in the vein
-  - Rhythm: 7 of 10 beats at 110 bpm
-  - Bandage: 25 wraps in 5 seconds
+- [x] Minigames get slightly harder over time (decided 2026-10-20; `minigameTuning` in `src/constants/patients.ts`), reaching the hardest at 100 patients treated:
+  - Injection: 2 of 3 shots in the vein; the needle speeds up to 1.2x and the vein narrows from 18% to 15%
+  - Rhythm: 7 of 10 beats, 110 bpm rising to 120 bpm, with a tighter timing window
+  - Bandage: 25 wraps rising to 30, in 5 seconds
   - the intro lines for each patient
 - [ ] My Room numbers (`src/constants/room.ts`):
   - room limits: 6 / 4 / 6 / 7 / 8
   - room unlocks: 15 achievements, 1 rebirth, 10 patients treated, 40 achievements
   - each item's unlock and bonus
-  - the +50% bonus cap
+  - the bonus cap, now +75% (decided 2026-10-20)
 - [x] Create the Aiven PostgreSQL service, host the API and run `bun run db:setup` (see [DATABASE.md](DATABASE.md))
 - [ ] Natal Gem name and icon ("Natal" means "of birth"; alternatives: Cradle Gem, Bloom Gem)
-- [ ] Paid background prices: Purple Rain 15, Heart Monitor 15, Night Shift Sky 10, Blood Stream 10 Care Coins
+- [x] Paid background prices: Purple Rain 15, Heart Monitor 15, Night Shift Sky 10, Blood Stream 10 Care Coins (kept 2026-10-20)
 
 ## Shop items (decided by Claude, 2026-10-20)
 
@@ -112,7 +112,7 @@ Still unused:
 - [ ] **iOS is untested.** It needs a Mac or a cloud build (`eas build`) to check.
 - [x] **Music is copyrighted:** it's no longer in the app or in git. It lives in the database and downloads after the code ([DATABASE.md](DATABASE.md)).
 - [ ] **Old native build on the emulator:** `com.dust.dev.mc` is from before the audio and save libraries. Use Expo Go, or run `bunx expo prebuild --clean` then `bun run android` to replace it.
-- [x] **Unit tests:** `bun test` runs 30 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
+- [x] **Unit tests:** `bun test` runs 31 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
 - [x] **Nothing is committed to git.** Done: pushed to https://github.com/d-ustindwayne/Medkit-Clicker (`main`).
 - [ ] **Achievement and welcome-back toasts briefly cover the counter.** Consider moving them or making them smaller.
 

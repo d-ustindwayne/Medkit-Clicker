@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { BOOSTS, boostMultiplier } from "@/constants/boosts";
 import { SHOP_ITEMS, itemCost } from "@/constants/items";
-import { SICK_PATIENTS } from "@/constants/patients";
+import { SICK_PATIENTS, minigameTuning } from "@/constants/patients";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
 import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, roomBonus } from "@/constants/room";
@@ -215,6 +215,15 @@ describe("server sync", () => {
     const s = run(newGame(), { type: "syncRedemptions", history: { chocolate_box: [1, 2] } });
     expect(s.redemptions.chocolate_box).toEqual([1, 2]);
     expect(run(s, { type: "syncRedemptions", history: { chocolate_box: [1] } }).redemptions.chocolate_box).toEqual([1, 2]);
+  });
+});
+
+describe("minigame difficulty", () => {
+  test("starts at the original settings and is slightly harder after 100 patients", () => {
+    expect(minigameTuning(0)).toEqual({ needleSpeed: 1, veinWidth: 0.18, beatMs: 545, beatWindowMs: 160, wraps: 25 });
+    expect(minigameTuning(100)).toEqual(minigameTuning(500));
+    expect(minigameTuning(100).wraps).toBe(30);
+    expect(minigameTuning(50).beatMs).toBeLessThan(545);
   });
 });
 

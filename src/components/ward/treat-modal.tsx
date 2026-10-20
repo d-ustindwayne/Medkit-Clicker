@@ -6,7 +6,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSeq
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { COIN } from "@/constants/boosts";
-import { WIN_COINS, nextPatientDelay, type SickPatient } from "@/constants/patients";
+import { WIN_COINS, minigameTuning, nextPatientDelay, type MinigameTuning, type SickPatient } from "@/constants/patients";
 import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
@@ -14,7 +14,7 @@ import { useHaptics } from "@/hooks/use-haptics";
 import { formatCount } from "@/lib/format";
 import { treatReward } from "@/lib/game";
 
-type GameProps = { onDone: (won: boolean) => void };
+type GameProps = { onDone: (won: boolean) => void; tuning: MinigameTuning };
 
 /** Keeps the latest onDone without re-running timers when the parent re-renders. */
 function useDone(onDone: (won: boolean) => void) {
@@ -32,8 +32,8 @@ function useDone(onDone: (won: boolean) => void) {
 
 // ---------- Injection: stop the sliding needle inside the vein, 2 of 3 ----------
 const ZONES = [0.55, 0.22, 0.64];
-const ZONE_W = 0.18;
-function InjectionGame({ onDone }: GameProps) {
+function InjectionGame({ onDone, tuning }: GameProps) {
+  const ZONE_W = tuning.veinWidth;
   const done = useDone(onDone);
   const { playSfx } = useAudio();
   const haptic = useHaptics();
@@ -43,8 +43,8 @@ function InjectionGame({ onDone }: GameProps) {
   const x = useSharedValue(0);
   useEffect(() => {
     x.set(0);
-    x.set(withRepeat(withTiming(1, { duration: 1100 - round * 220, easing: Easing.linear }), -1, true));
-  }, [round, x]);
+    x.set(withRepeat(withTiming(1, { duration: (1100 - round * 220) / tuning.needleSpeed, easing: Easing.linear }), -1, true));
+  }, [round, x, tuning.needleSpeed]);
   const marker = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() * Math.max(0, trackW - 10) }] }));
   const zone = ZONES[round];
 
@@ -76,10 +76,11 @@ function InjectionGame({ onDone }: GameProps) {
 
 // ---------- Rhythm: tap with the heartbeat, 7 of 10 on time ----------
 const BEATS = 10;
-const BEAT_MS = 545; // ~110 bpm, the CPR rate
-const WINDOW_MS = 160;
 const NEED_BEATS = 7;
-function RhythmGame({ onDone }: GameProps) {
+function RhythmGame({ onDone, tuning }: GameProps) {
+  // ~110 bpm (the CPR rate) at first, up to 120 bpm.
+  const BEAT_MS = tuning.beatMs;
+  const WINDOW_MS = tuning.beatWindowMs;
   const done = useDone(onDone);
   const { playSfx } = useAudio();
   const haptic = useHaptics();
@@ -136,10 +137,10 @@ function RhythmGame({ onDone }: GameProps) {
   );
 }
 
-// ---------- Bandage: tap fast, 25 wraps in 5 seconds ----------
-const WRAPS = 25;
+// ---------- Bandage: tap fast, 25-30 wraps in 5 seconds ----------
 const WRAP_MS = 5000;
-function BandageGame({ onDone }: GameProps) {
+function BandageGame({ onDone, tuning }: GameProps) {
+  const WRAPS = tuning.wraps;
   const done = useDone(onDone);
   const { playSfx } = useAudio();
   const haptic = useHaptics();
@@ -193,6 +194,8 @@ export function TreatModal({ patient, onClose }: { patient: SickPatient; onClose
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
   const [result, setResult] = useState<{ won: boolean; amount: number } | null>(null);
   const Game = GAMES[patient.game];
+  // Fixed for the whole game, so treating this patient doesn't change the rules mid-play.
+  const [tuning] = useState(() => minigameTuning(state.treated));
 
   const finish = (won: boolean) => {
     const amount = treatReward(state, won);
@@ -226,7 +229,7 @@ export function TreatModal({ patient, onClose }: { patient: SickPatient; onClose
                 </View>
               </>
             )}
-            {phase === "play" && <Game onDone={finish} />}
+            {phase === "play" && <Game onDone={finish} tuning={tuning} />}
             {phase === "result" && result && (
               <>
                 <Text className="font-display text-lg text-ink">{result.won ? "Patient stabilized!" : "Transferred to another ward"}</Text>

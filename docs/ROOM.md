@@ -36,7 +36,7 @@ Your idea: the second page next to the medkit becomes **your own room**. It star
 | Fairy lights | wall | +1% everything | — |
 | Cat bed (with a cat) | floor | patients arrive 10% more often | — |
 
-Bonuses stack additively and are capped (for example, +50% total) so the economy stays sane.
+Bonuses stack additively and are capped at +75% in total so the economy stays sane.
 
 ## How it fits with the rest
 

@@ -55,7 +55,7 @@ export const ROOM_ITEMS: RoomItem[] = [
 ];
 
 /** Total room bonuses are capped so decorating stays a nice extra, not the whole economy. */
-export const ROOM_BONUS_CAP = 0.5;
+export const ROOM_BONUS_CAP = 0.75;
 /** Items are drawn at their native 32px in the room's 320px-wide pixel scale. */
 export const ITEM_PX = 32;
 export const CHARACTER_PX = 64;

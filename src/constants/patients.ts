@@ -22,8 +22,26 @@ export const SICK_PATIENTS: SickPatient[] = [
   { id: "breathless", image: require("@/imgs/characters/10_young_man_sick.png"), condition: "Short of breath", intro: "Coach his breathing. Tap in time with the heartbeat!", game: "rhythm" },
 ];
 
-/** A new patient arrives 2-5 minutes after the last one leaves. */
-export const nextPatientDelay = () => (120 + Math.random() * 180) * 1000;
+/** A new patient arrives 1-3 minutes after the last one leaves. */
+export const nextPatientDelay = () => (60 + Math.random() * 120) * 1000;
+
+/**
+ * Minigames get slightly harder as you treat more patients, reaching the hardest setting at 100.
+ * Injection: the needle speeds up to 1.2x and the vein narrows; Rhythm: 110 to 120 bpm with a
+ * tighter window; Bandage: 25 to 30 wraps in the same 5 seconds.
+ */
+export const minigameTuning = (treated: number) => {
+  const d = Math.min(1, Math.max(0, treated) / 100);
+  const mix = (a: number, b: number) => a + (b - a) * d;
+  return {
+    needleSpeed: mix(1, 1.2),
+    veinWidth: mix(0.18, 0.15),
+    beatMs: Math.round(mix(545, 500)),
+    beatWindowMs: Math.round(mix(160, 130)),
+    wraps: Math.round(mix(25, 30)),
+  };
+};
+export type MinigameTuning = ReturnType<typeof minigameTuning>;
 /** How long a patient waits before being transferred elsewhere (no penalty). */
 export const PATIENT_WAIT_MS = 3 * 60 * 1000;
 /** Rewards: a win pays this many seconds of production (at least 50 taps) and Care Coins. */
