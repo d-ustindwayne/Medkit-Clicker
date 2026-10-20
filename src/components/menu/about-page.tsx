@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import Constants from "expo-constants";
 import { Pressable, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";

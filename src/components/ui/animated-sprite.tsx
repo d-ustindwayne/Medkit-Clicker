@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import type { ImageSourcePropType } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming, type SharedValue } from "react-native-reanimated";
 

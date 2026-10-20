@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import { useKeepAwake } from "expo-keep-awake";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -107,11 +107,6 @@ function Counter({ compact }: { compact: boolean }) {
             {formatRate(rate)} {rate === 1 ? "Medkit" : "Medkits"} per second
           </Text>
         </View>
-        {rebirths > 0 && (
-          <View className="rounded-full border-[1.5px] border-outline bg-primary px-3 py-1" accessibilityLabel={`Rebirth ${rebirths}`}>
-            <Text className={`font-pixel text-ink ${compact ? "text-xs" : "text-sm"}`}>R{rebirths}</Text>
-          </View>
-        )}
       </View>
       <ActiveBoosts />
     </View>

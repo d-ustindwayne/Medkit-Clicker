@@ -7,6 +7,7 @@ import { SICK_PATIENTS, minigameTuning } from "@/constants/patients";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, dayPhase, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
 import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, roomBonus } from "@/constants/room";
+import { formatCount, formatShort } from "@/lib/format";
 import { bulkCost, coinBalance, coinsEarned, emergencyReward, maxAwaySeconds, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
 
 const run = (s: GameState, ...actions: GameAction[]) => actions.reduce(gameReducer, s);
@@ -215,6 +216,17 @@ describe("server sync", () => {
     const s = run(newGame(), { type: "syncRedemptions", history: { chocolate_bar: [1, 2] } });
     expect(s.redemptions.chocolate_bar).toEqual([1, 2]);
     expect(run(s, { type: "syncRedemptions", history: { chocolate_bar: [1] } }).redemptions.chocolate_bar).toEqual([1, 2]);
+  });
+});
+
+describe("huge numbers", () => {
+  test("names run to the largest number and earnings never overflow", () => {
+    expect(formatCount(1e66)).toBe("1 unvigintillion");
+    expect(formatCount(1e303)).toBe("1 centillion");
+    expect(formatCount(Number.MAX_VALUE)).toContain("uncentillion");
+    expect(formatShort(1e303)).toBe("1Ce");
+    const s = run({ ...newGame(), healed: Number.MAX_VALUE }, { type: "earn", amount: Number.MAX_VALUE });
+    expect(Number.isFinite(s.healed)).toBe(true);
   });
 });
 

@@ -1,4 +1,4 @@
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import { Text, View } from "react-native";
 
 import { COIN } from "@/constants/boosts";

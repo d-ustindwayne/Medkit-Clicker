@@ -16,7 +16,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] Swiping the medkit area goes to the Hospital page and back; the dots follow
 
 ## Shop
-- [ ] All 13 items appear in order: Bandage, Gloves, Facemask, Thermometer, Stethoscope, BP Cuff, Syringe, Medicine, IV Bag, Blood Test, Rapid Test, Microscope, DNA Lab
+- [ ] All 13 items appear in order: Bandage, Gloves, Facemask, Thermometer, Stethoscope, BP Cuff, Syringe, Medicine, IV Bag, Blood Sample, COVID Test, Microscope, DNA Strand
 - [ ] Unaffordable items you've never bought show as "???" silhouettes until you've earned half their price
 - [ ] Buying: the price goes up 15%, the count goes up, there's a bounce, a buy sound and a 📱 medium vibration
 - [ ] Can't afford: the card shakes, plays the invalid sound and gives a 📱 warning vibration

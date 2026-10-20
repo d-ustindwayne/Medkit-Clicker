@@ -129,7 +129,8 @@ const TROPHY = {
 const MEDAL = require("@/imgs/achievements/medal.png");
 const WINGED_HEART = require("@/imgs/achievements/winged_heart.png");
 const CLOCK_MOON = require("@/imgs/achievements/clock_moon.png");
-const tierTrophy = (i: number, count: number) => [TROPHY.bronze, TROPHY.gold, TROPHY.platinum, TROPHY.diamond][Math.min(3, Math.floor((i / count) * 4))];
+// Bronze, then platinum, then gold, then diamond (the order chosen for this game).
+const tierTrophy = (i: number, count: number) => [TROPHY.bronze, TROPHY.platinum, TROPHY.gold, TROPHY.diamond][Math.min(3, Math.floor((i / count) * 4))];
 
 const totalOwned = (s: GameState) => Object.values(s.owned).reduce((a, b) => a + b, 0);
 
@@ -238,6 +239,15 @@ const LIST: Achievement[] = [
     check: (s) => s.exports >= 1,
   },
   {
+    id: "best_nurse",
+    name: "Best Nurse in the World",
+    description: "Unlock the Care Package.",
+    image: TROPHY.nurse,
+    secret: true,
+    coins: 5,
+    check: (s) => s.unlockedSections.includes("jasmine"),
+  },
+  {
     id: "hidden_medkit",
     name: "Hidden Medkit",
     description: "Find the medkit hiding on the About page.",
@@ -250,7 +260,7 @@ const LIST: Achievement[] = [
     id: "game_injection",
     name: "Steady Needle",
     description: "Win the injection minigame.",
-    image: require("@/imgs/shop/syringe.png"),
+    image: require("@/imgs/achievements/games/medal_injection.png"),
     coins: 2,
     check: (s) => (s.minigameWins["injection"] ?? 0) >= 1,
   },
@@ -258,7 +268,7 @@ const LIST: Achievement[] = [
     id: "game_rhythm",
     name: "Stayin' Alive",
     description: "Win the CPR rhythm minigame.",
-    image: require("@/imgs/misc/heart.png"),
+    image: require("@/imgs/achievements/games/medal_rhythm.png"),
     coins: 2,
     check: (s) => (s.minigameWins["rhythm"] ?? 0) >= 1,
   },
@@ -266,7 +276,7 @@ const LIST: Achievement[] = [
     id: "game_bandage",
     name: "Wrap Star",
     description: "Win the bandage minigame.",
-    image: require("@/imgs/shop/bandage_roll.png"),
+    image: require("@/imgs/achievements/games/medal_bandage.png"),
     coins: 2,
     check: (s) => (s.minigameWins["bandage"] ?? 0) >= 1,
   },
@@ -274,7 +284,7 @@ const LIST: Achievement[] = [
     id: "game_pulse",
     name: "Pulse Reader",
     description: "Win the pulse check minigame.",
-    image: require("@/imgs/shop/stethoscope.png"),
+    image: require("@/imgs/achievements/games/medal_pulse.png"),
     coins: 2,
     check: (s) => (s.minigameWins["pulse"] ?? 0) >= 1,
   },
@@ -282,7 +292,7 @@ const LIST: Achievement[] = [
     id: "game_pills",
     name: "Pill Sorter",
     description: "Win the sort-the-meds minigame.",
-    image: require("@/imgs/shop/medicines.png"),
+    image: require("@/imgs/achievements/games/medal_pills.png"),
     coins: 2,
     check: (s) => (s.minigameWins["pills"] ?? 0) >= 1,
   },
@@ -290,7 +300,7 @@ const LIST: Achievement[] = [
     id: "game_xray",
     name: "Bone Detective",
     description: "Win the X-ray minigame.",
-    image: require("@/imgs/room/xray_viewer.png"),
+    image: require("@/imgs/achievements/games/medal_xray.png"),
     coins: 2,
     check: (s) => (s.minigameWins["xray"] ?? 0) >= 1,
   },
@@ -298,7 +308,7 @@ const LIST: Achievement[] = [
     id: "game_germs",
     name: "Germ Buster",
     description: "Win the germ minigame.",
-    image: require("@/imgs/stickers/grumpy_germ.png"),
+    image: require("@/imgs/achievements/games/medal_germs.png"),
     coins: 2,
     check: (s) => (s.minigameWins["germs"] ?? 0) >= 1,
   },
@@ -306,7 +316,7 @@ const LIST: Achievement[] = [
     id: "game_breath",
     name: "Deep Breaths",
     description: "Win the breathing minigame.",
-    image: require("@/imgs/shop/facemask.png"),
+    image: require("@/imgs/achievements/games/medal_breath.png"),
     coins: 2,
     check: (s) => (s.minigameWins["breath"] ?? 0) >= 1,
   },
@@ -314,7 +324,7 @@ const LIST: Achievement[] = [
     id: "game_memory",
     name: "Sharp Memory",
     description: "Win the memory minigame.",
-    image: require("@/imgs/shop/dna.png"),
+    image: require("@/imgs/achievements/games/medal_memory.png"),
     coins: 2,
     check: (s) => (s.minigameWins["memory"] ?? 0) >= 1,
   },

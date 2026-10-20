@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import { Pressable, Text, View } from "react-native";
 import Animated, { Easing, FadeOutLeft, SlideInLeft } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

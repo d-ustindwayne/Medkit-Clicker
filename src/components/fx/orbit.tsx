@@ -1,5 +1,5 @@
 import { memo, useEffect } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 
 import { SHOP_ITEMS, type ItemId } from "@/constants/items";

@@ -1,6 +1,7 @@
 import { createContext, use, useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { AppState, type ImageSourcePropType } from "react-native";
 
+import { clearOldImageCache } from "@/components/ui/image";
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { PATIENT_WAIT_MS, SICK_PATIENTS, nextPatientDelay } from "@/constants/patients";
 import { healingRate } from "@/constants/rebirth";
@@ -78,6 +79,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
   // Load the save, then credit the time the app was closed.
   useEffect(() => {
     let cancelled = false;
+    clearOldImageCache();
     Promise.all([loadGame(), loadSettings()]).then(([saved, loadedSettings]) => {
       if (cancelled) return;
       setSettings(loadedSettings);

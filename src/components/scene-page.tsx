@@ -1,5 +1,5 @@
 import type { ReactNode, RefObject } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import { View } from "react-native";
 
 import type { Scene } from "@/constants/scenes";

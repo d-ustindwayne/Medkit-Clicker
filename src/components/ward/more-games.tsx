@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import { Pressable, Text, View, type ImageSourcePropType } from "react-native";
 import Animated, {
   Easing,
@@ -215,7 +215,7 @@ function XrayGame({ onDone, tuning }: GameProps) {
   // A scan line sweeps down the film, like a light box.
   const scan = useSharedValue(0);
   useEffect(() => {
-    scan.set(withRepeat(withTiming(1, { duration: 1400, easing: Easing.linear }), -1, false));
+    scan.set(withRepeat(withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.sin) }), -1, true)); // sweeps down and back up
   }, [scan]);
   const [filmH, setFilmH] = useState(0);
   const scanStyle = useAnimatedStyle(() => ({ transform: [{ translateY: scan.get() * filmH }] }));

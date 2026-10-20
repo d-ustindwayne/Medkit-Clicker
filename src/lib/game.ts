@@ -212,11 +212,13 @@ export const bulkCost = (s: Pick<GameState, "owned" | "boosts"> & { gemUpgrades?
 export const totalOwned = (owned: Record<ItemId, number>) =>
   Object.values(owned).reduce((a, b) => a + b, 0);
 
+/** Adds without ever overflowing to Infinity: an endless grind tops out at the largest number. */
+const capped = (a: number, b: number) => Math.min(Number.MAX_VALUE, a + (Number.isFinite(b) ? b : Number.MAX_VALUE));
 const earn = (state: GameState, amount: number): GameState => ({
   ...state,
-  healed: state.healed + amount,
-  totalHealed: state.totalHealed + amount,
-  runHealed: state.runHealed + amount,
+  healed: capped(state.healed, amount),
+  totalHealed: capped(state.totalHealed, amount),
+  runHealed: capped(state.runHealed, amount),
 });
 
 const withAchievements = (state: GameState): GameState => {

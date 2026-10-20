@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import { Pressable, Text, View, type ImageSourcePropType } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 

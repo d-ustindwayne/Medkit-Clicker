@@ -1,27 +1,21 @@
-// Short-scale names; index 0 is 10^6. Past the last name we fall back to scientific notation.
-const LARGE_UNITS = [
-  "million",
-  "billion",
-  "trillion",
-  "quadrillion",
-  "quintillion",
-  "sextillion",
-  "septillion",
-  "octillion",
-  "nonillion",
-  "decillion",
-  "undecillion",
-  "duodecillion",
-  "tredecillion",
-  "quattuordecillion",
-  "quindecillion",
-  "sexdecillion",
-  "septendecillion",
-  "octodecillion",
-  "novemdecillion",
-  "vigintillion",
+// Short-scale names; index 0 is 10^6. They run all the way to the largest number JavaScript can
+// hold (about 1.8 x 10^308, "uncentillion"), so even an endless grind always reads as words.
+const ONES = ["", "un", "duo", "tre", "quattuor", "quin", "sex", "septen", "octo", "novem"];
+const TENS = ["", "dec", "vigint", "trigint", "quadragint", "quinquagint", "sexagint", "septuagint", "octogint", "nonagint"];
+const SMALL = ["million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion"];
+const ONES_SHORT = ["", "U", "D", "T", "Qa", "Qi", "Sx", "Sp", "O", "N"];
+const TENS_SHORT = ["", "Dc", "Vg", "Tg", "Qag", "Qig", "Sxg", "Spg", "Og", "Ng"];
+/** Name of 10^(3n+3): n = 1 is million, 10 decillion, 21 unvigintillion, 100 centillion. */
+const illion = (n: number) =>
+  n <= 9 ? SMALL[n - 1] : n === 100 ? "centillion" : n === 101 ? "uncentillion" : `${ONES[n % 10]}${TENS[Math.floor(n / 10)]}illion`;
+const LARGE_UNITS = Array.from({ length: 101 }, (_, i) => illion(i + 1));
+const SHORT_UNITS = [
+  "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No",
+  ...Array.from({ length: 92 }, (_, i) => {
+    const n = i + 10; // decillion onwards
+    return n === 100 ? "Ce" : n === 101 ? "UCe" : `${ONES_SHORT[n % 10]}${TENS_SHORT[Math.floor(n / 10)]}`;
+  }),
 ];
-const SHORT_UNITS = ["K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc", "UDc", "DDc", "TDc", "QaDc", "QiDc", "SxDc", "SpDc", "OcDc", "NoDc", "Vg"];
 
 const withCommas = (n: number) => Math.floor(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const trim = (s: string) => s.replace(/\.?0+$/, "");
@@ -33,7 +27,7 @@ const tierOf = (n: number) => {
   return { tier, scaled: n / 10 ** (tier * 3) };
 };
 
-/** 123,456 below a million, then "1.234 million", "56.78 billion"... up to vigintillion. */
+/** 123,456 below a million, then "1.234 million", "56.78 billion"... up to uncentillion. */
 export const formatCount = (n: number) => {
   if (!Number.isFinite(n)) return "∞";
   if (n < 1e6) return withCommas(n);

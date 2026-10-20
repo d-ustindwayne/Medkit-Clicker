@@ -43,10 +43,10 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "syringe", name: "Syringe", image: require("@/imgs/shop/syringe.png"), baseCost: 2e7, rate: 7_800 },
   { id: "medicine", name: "Medicine", image: require("@/imgs/shop/medicines.png"), baseCost: 3.3e8, rate: 44_000 },
   { id: "iv_bag", name: "IV Bag", image: require("@/imgs/shop/iv_bag.png"), baseCost: 5.1e9, rate: 260_000 },
-  { id: "blood_vial", name: "Blood Test", image: require("@/imgs/shop/blood_vial.png"), baseCost: 7.5e10, rate: 1.6e6 },
-  { id: "covid_test", name: "Rapid Test", image: require("@/imgs/shop/covid_test.png"), baseCost: 1e12, rate: 1e7 },
+  { id: "blood_vial", name: "Blood Sample", image: require("@/imgs/shop/blood_vial.png"), baseCost: 7.5e10, rate: 1.6e6 },
+  { id: "covid_test", name: "COVID Test", image: require("@/imgs/shop/covid_test.png"), baseCost: 1e12, rate: 1e7 },
   { id: "microscope", name: "Microscope", image: require("@/imgs/shop/microscope.png"), baseCost: 1.4e13, rate: 6.5e7 },
-  { id: "dna", name: "DNA Lab", image: require("@/imgs/shop/dna.png"), baseCost: 1.7e14, rate: 4.3e8 },
+  { id: "dna", name: "DNA Strand", image: require("@/imgs/shop/dna.png"), baseCost: 1.7e14, rate: 4.3e8 },
 ];
 
 export const MEDKIT_IMAGE: ImageSourcePropType = require("@/imgs/medkit.png");

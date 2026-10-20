@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import { Modal, ScrollView, Text, TextInput, View } from "react-native";
 
 import { HardShadow } from "@/components/ui/hard-shadow";

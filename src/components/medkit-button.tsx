@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import { Pressable, View } from "react-native";
 import Animated, {
   useAnimatedStyle,

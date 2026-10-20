@@ -48,6 +48,7 @@ export const REWARD_SECTIONS: RewardSection[] = [
     rewards: [
       { id: "fun_fact", name: "Random fun fact", description: "A fact you didn't know you needed.", cost: 100_000, limit: null, fact: true, image: require("@/imgs/rewards/fun_fact.png") },
       { id: "kiss", name: "A kiss", description: "As many as you can heal for.", cost: 10_000_000, limit: null, image: require("@/imgs/rewards/kiss.png") },
+      { id: "hug", name: "A long hug", description: "At least a whole minute.", cost: 15_000_000, limit: null, minRebirths: 3, image: require("@/imgs/rewards/hug.png") },
       { id: "chocolate_bar", name: "Bar of chocolate", description: "Your pick of flavour.", cost: 25_000_000, limit: 5, image: require("@/imgs/rewards/chocolate_bar.png") },
       { id: "ice_cream", name: "Tub of ice cream", description: "A whole tub, all yours.", cost: 40_000_000, limit: 5, minRebirths: 3, image: require("@/imgs/rewards/ice_cream.png") },
       { id: "soft_drink", name: "Soft drink permission", description: "One soft drink, allowed. Only 7 a year!", cost: 300_000_000, limit: null, perYear: 7, minRebirths: 3, image: require("@/imgs/rewards/soft_drink.png") },
@@ -63,7 +64,6 @@ export const REWARD_SECTIONS: RewardSection[] = [
         id: "cook", name: "I cook for you", description: "Your favourite meal, made by me.", cost: 20_000_000_000, limit: null, minRebirths: 3, image: require("@/imgs/rewards/cook.png"),
         input: { kind: "text", label: "Which dish?", placeholder: "Dish" },
       },
-      { id: "surprise", name: "Surprise gift", description: "You won't know until it arrives.", cost: 100_000_000_000, limit: 3, minRebirths: 3, image: require("@/imgs/rewards/surprise.png") },
       {
         id: "albert_park", name: "A day at Albert Park", description: "A whole day out together.", cost: 1_000_000_000_000, limit: null, minRebirths: 3, image: require("@/imgs/rewards/albert_park.png"),
         input: { kind: "datetime", label: "When should we go?" },

@@ -88,15 +88,15 @@ You handed this over, so it's built. The order follows medical practice: everyda
 | 7 | Syringe | 20M | 7,800 |
 | 8 | Medicine | 330M | 44,000 |
 | 9 | IV Bag | 5.1B | 260,000 |
-| 10 | Blood Test | 75B | 1.6M |
-| 11 | Rapid Test | 1T | 10M |
+| 10 | Blood Sample | 75B | 1.6M |
+| 11 | COVID Test | 1T | 10M |
 | 12 | Microscope | 14T | 65M |
-| 13 | DNA Lab | 170T | 430M |
+| 13 | DNA Strand | 170T | 430M |
 
 A simulated player tapping once a second unlocks:
 - the first 6 items within the first hour
 - Medicine at about 5 hours, which is also when the first rebirth (1 billion patients) opens up
-- the DNA Lab after about 16 days of nonstop play, sooner with offline earnings
+- the DNA Strand after about 16 days of nonstop play, sooner with offline earnings
 
 **Achievement art:**
 - lifetime-healed milestones climb bronze, gold, platinum and diamond trophies

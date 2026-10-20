@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import { Text, View } from "react-native";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";

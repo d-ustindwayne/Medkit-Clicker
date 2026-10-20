@@ -1,5 +1,5 @@
 import { memo, useEffect } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import { StyleSheet, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 import Svg, { Circle, Defs, G, Path, Pattern, Rect } from "react-native-svg";

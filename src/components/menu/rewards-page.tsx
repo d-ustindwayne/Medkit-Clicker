@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Image } from "expo-image";
+import { Image } from "@/components/ui/image";
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Platform, Share, Text, TextInput, View } from "react-native";
 
@@ -124,7 +124,7 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
         const res = await redeemOnline(token, reward.id, extra);
         dispatch({ type: "redeem", rewardId: reward.id });
         pushToast({ kind: "info", title: "Redeemed", body: res.notified ? `${reward.name}. ${section.notify} has been told!` : `${reward.name}. Let ${section.notify} know!` });
-        if (!res.notified) shareRedemption(section, reward, history.length, res.at, extra);
+        if (!res.notified && !reward.fact) shareRedemption(section, reward, history.length, res.at, extra);
         return;
       } catch (e) {
         if ((e as { status?: number }).status === 409) {
@@ -137,7 +137,7 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
     const at = Date.now();
     dispatch({ type: "redeem", rewardId: reward.id });
     pushToast({ kind: "info", title: "Redeemed", body: `${reward.name}. Let ${section.notify} know!` });
-    shareRedemption(section, reward, history.length, at, extra);
+    if (!reward.fact) shareRedemption(section, reward, history.length, at, extra);
   };
 
   return (
