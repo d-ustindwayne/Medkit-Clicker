@@ -1,11 +1,30 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { Image } from "expo-image";
 import { Pressable, Text, View, type ImageSourcePropType } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
 import { RebirthCard } from "@/components/hospital/rebirth-card";
 import { ScenePage } from "@/components/scene-page";
-import { AMBULANCE, AMBULANCE_CROSS, AMBULANCE_GAP, CARS, CAR_CROSS, CAR_GAP, LANES } from "@/constants/hospital";
+import {
+  AMBULANCE,
+  AMBULANCE_GAP,
+  AMBULANCE_WAIT,
+  CARS,
+  CAR_CROSS,
+  CAR_GAP,
+  CLOUDS,
+  CLOUD_H,
+  DOOR_X,
+  LANES,
+  MAX_VISITORS,
+  VISITORS,
+  VISITOR_FEET_Y,
+  VISITOR_SPEED,
+  hospitalTier,
+  visitorGap,
+} from "@/constants/hospital";
+import { SICK_PATIENTS } from "@/constants/patients";
+import { healingRate } from "@/constants/rebirth";
 import { HOSPITAL_SCENE } from "@/constants/scenes";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameState } from "@/hooks/use-game";
@@ -14,111 +33,257 @@ import { formatCount } from "@/lib/format";
 import { emergencyReward } from "@/lib/game";
 
 const ART_W = 320;
+const ART_H = 180;
 const CAR_PX = 32;
 /** The lowest row of the wheels in the 32px car art. */
 const WHEEL_BOTTOM = 29;
+const VISITOR_PX = 16;
 
-type Vehicle = { id: number; image: ImageSourcePropType; lane: 0 | 1; seconds: number; ambulance: boolean };
 const between = ([a, b]: [number, number]) => a + Math.random() * (b - a);
 
-/** One vehicle driving across the road, then reporting back so it can be removed. */
-const Car = memo(function Car({ v, width, onGone, onTap }: { v: Vehicle; width: number; onGone: (id: number) => void; onTap?: (id: number) => void }) {
+// ---------- clouds ----------
+
+/** A cloud drifting left to right forever, starting part-way across. */
+function Cloud({ cloud, width }: { cloud: (typeof CLOUDS)[number]; width: number }) {
+  const px = width / ART_W;
+  const w = cloud.w * px;
+  const span = width + w;
+  const x = useSharedValue(cloud.start * span - w);
+  const reduceMotion = useReducedMotion();
+  useEffect(() => {
+    if (reduceMotion) return;
+    const full = cloud.seconds * 1000;
+    x.set(
+      withSequence(
+        withTiming(width, { duration: (1 - cloud.start) * full, easing: Easing.linear }),
+        withRepeat(withSequence(withTiming(-w, { duration: 0 }), withTiming(width, { duration: full, easing: Easing.linear })), -1, false),
+      ),
+    );
+  }, [x, width, w, cloud, reduceMotion]);
+  const move = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
+  return (
+    <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0, top: cloud.y * px, width: w, height: CLOUD_H * px }, move]}>
+      <Image source={cloud.image} style={{ width: w, height: CLOUD_H * px }} contentFit="fill" />
+    </Animated.View>
+  );
+}
+
+// ---------- traffic ----------
+
+type Car = { id: number; image: ImageSourcePropType; lane: 0 | 1; seconds: number };
+
+/** One car driving across the road, then reporting back so it can be removed. */
+const PassingCar = memo(function PassingCar({ car, width, onGone }: { car: Car; width: number; onGone: (id: number) => void }) {
   const px = width / ART_W;
   const size = CAR_PX * px;
-  const { y, dir } = LANES[v.lane];
+  const { y, dir } = LANES[car.lane];
   const x = useSharedValue(dir > 0 ? -size : width);
-  const flash = useSharedValue(1);
   useEffect(() => {
-    x.set(withTiming(dir > 0 ? width : -size, { duration: v.seconds * 1000, easing: Easing.linear }));
-    if (v.ambulance) flash.set(withRepeat(withSequence(withTiming(0.2, { duration: 220 }), withTiming(1, { duration: 220 })), -1, false));
-    const timer = setTimeout(() => onGone(v.id), v.seconds * 1000 + 100);
+    x.set(withTiming(dir > 0 ? width : -size, { duration: car.seconds * 1000, easing: Easing.linear }));
+    const timer = setTimeout(() => onGone(car.id), car.seconds * 1000 + 100);
     return () => clearTimeout(timer);
-  }, [x, flash, dir, width, size, v, onGone]);
+  }, [x, dir, width, size, car, onGone]);
   const move = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }, { scaleX: dir }] }));
-  const glow = useAnimatedStyle(() => ({ opacity: flash.get() }));
-
-  const body = (
-    <>
-      <Image source={v.image} style={{ width: size, height: size }} contentFit="contain" />
-      {v.ambulance && (
-        // Siren glow over the light bar (art pixels 10-13 on row 7).
-        <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 9 * px, top: 5.5 * px, width: 6 * px, height: 3 * px, borderRadius: 3 * px, backgroundColor: "rgba(255,90,90,0.75)" }, glow]} />
-      )}
-    </>
-  );
   return (
-    <Animated.View style={[{ position: "absolute", left: 0, top: (y - WHEEL_BOTTOM) * px, width: size, height: size, zIndex: v.ambulance ? 3 : 1 + v.lane }, move]}>
-      {onTap ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Emergency ambulance. Tap to admit the patient." hitSlop={12} onPress={() => onTap(v.id)}>
-          {body}
-        </Pressable>
-      ) : (
-        body
-      )}
+    <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0, top: (y - WHEEL_BOTTOM) * px, width: size, height: size, zIndex: 1 + car.lane }, move]}>
+      <Image source={car.image} style={{ width: size, height: size }} contentFit="contain" />
     </Animated.View>
   );
 });
 
-/** Cars passing the hospital, and now and then an ambulance to tap for an emergency admission. */
-function Traffic({ width, active }: { width: number; active: boolean }) {
-  const state = useGameState();
-  const { dispatch, pushToast } = useGameActions();
-  const { playSfx } = useAudio();
-  const haptic = useHaptics();
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const nextId = useRef(0);
+type Call = { id: number; condition: string };
 
-  // Ordinary traffic and ambulances only spawn while the page is on screen.
+/**
+ * The emergency: an ambulance drives in, parks at the entrance and waits with a call-out.
+ * Tapping it admits the patient; otherwise it leaves after AMBULANCE_WAIT seconds.
+ */
+function Ambulance({ call, width, onAdmit, onGone }: { call: Call; width: number; onAdmit: () => void; onGone: () => void }) {
+  const px = width / ART_W;
+  const size = CAR_PX * px;
+  const parkX = (DOOR_X - CAR_PX / 2) * px;
+  const [phase, setPhase] = useState<"arriving" | "parked" | "leaving">("arriving");
+  const x = useSharedValue(-size);
+  const flash = useSharedValue(1);
+  const bob = useSharedValue(0);
+
   useEffect(() => {
-    if (!active) return;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const add = (v: Omit<Vehicle, "id">) => setVehicles((list) => [...list, { ...v, id: nextId.current++ }]);
-    const car = () => {
-      add({ image: CARS[Math.floor(Math.random() * CARS.length)], lane: Math.random() < 0.5 ? 0 : 1, seconds: between(CAR_CROSS), ambulance: false });
-      timers[0] = setTimeout(car, between(CAR_GAP) * 1000);
+    x.set(withTiming(parkX, { duration: 3000, easing: Easing.out(Easing.cubic) }));
+    flash.set(withRepeat(withSequence(withTiming(0.2, { duration: 220 }), withTiming(1, { duration: 220 })), -1, false));
+    bob.set(withRepeat(withSequence(withTiming(-3, { duration: 450 }), withTiming(0, { duration: 450 })), -1, false));
+    const parked = setTimeout(() => setPhase("parked"), 3000);
+    const timeout = setTimeout(() => setPhase((p) => (p === "parked" ? "leaving" : p)), 3000 + AMBULANCE_WAIT * 1000);
+    return () => {
+      clearTimeout(parked);
+      clearTimeout(timeout);
     };
-    const ambulance = () => {
-      add({ image: AMBULANCE, lane: 1, seconds: AMBULANCE_CROSS, ambulance: true });
-      timers[1] = setTimeout(ambulance, between(AMBULANCE_GAP) * 1000);
-    };
-    timers[0] = setTimeout(car, 600);
-    timers[1] = setTimeout(ambulance, between([8, 20]) * 1000);
-    return () => timers.forEach(clearTimeout);
-  }, [active]);
+  }, [x, flash, bob, parkX]);
 
-  const [onGone] = useState(() => (id: number) => setVehicles((list) => list.filter((v) => v.id !== id)));
-  const admit = (id: number) => {
-    const amount = emergencyReward(state);
-    setVehicles((list) => list.filter((v) => v.id !== id));
-    dispatch({ type: "earn", amount });
-    haptic.success();
-    playSfx("buy");
-    pushToast({ kind: "info", title: "Emergency admitted", body: `+${formatCount(amount)} patients healed`, image: AMBULANCE });
+  useEffect(() => {
+    if (phase !== "leaving") return;
+    x.set(withTiming(width, { duration: 2500, easing: Easing.in(Easing.cubic) }));
+    const timer = setTimeout(onGone, 2600);
+    return () => clearTimeout(timer);
+  }, [phase, x, width, onGone]);
+
+  const move = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
+  const glow = useAnimatedStyle(() => ({ opacity: flash.get() }));
+  const float = useAnimatedStyle(() => ({ transform: [{ translateY: bob.get() }] }));
+  const top = (LANES[1].y - WHEEL_BOTTOM) * px;
+
+  const admit = () => {
+    if (phase !== "parked") return;
+    setPhase("leaving");
+    onAdmit();
   };
 
-  const siren = vehicles.some((v) => v.ambulance);
   return (
     <>
-      {vehicles.map((v) => (
-        <Car key={v.id} v={v} width={width} onGone={onGone} onTap={v.ambulance ? admit : undefined} />
-      ))}
-      {siren && (
-        <View pointerEvents="none" className="absolute bottom-1 left-0 right-0 items-center">
-          <View className="rounded-full border-[1.5px] border-outline bg-danger px-3 py-0.5">
-            <Text className="font-body text-xs text-surface">Emergency! Tap the ambulance</Text>
-          </View>
-        </View>
+      <Animated.View style={[{ position: "absolute", left: 0, top, width: size, height: size, zIndex: 3 }, move]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Ambulance: ${call.condition}. Tap to admit the patient.`} hitSlop={14} onPress={admit}>
+          <Image source={AMBULANCE} style={{ width: size, height: size }} contentFit="contain" />
+          {/* Siren glow over the light bar (art pixels 10-13 on row 7). */}
+          <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 9 * px, top: 5.5 * px, width: 6 * px, height: 3 * px, borderRadius: 3 * px, backgroundColor: "rgba(255,90,90,0.75)" }, glow]} />
+        </Pressable>
+      </Animated.View>
+      {phase === "parked" && (
+        <Animated.View style={[{ position: "absolute", left: 0, right: 0, top: top - 34, alignItems: "center", zIndex: 4 }, float]}>
+          <Pressable accessibilityRole="button" onPress={admit} className="items-center rounded-lg border-2 border-outline bg-surface px-3 py-1">
+            <Text className="font-display text-sm text-danger">Patient: {call.condition}!</Text>
+            <Text className="font-body text-xs text-ink">Tap to admit</Text>
+          </Pressable>
+        </Animated.View>
       )}
     </>
   );
 }
 
-/** Second page of the shop area: the hospital from outside, with traffic and rebirth. */
+// ---------- visitors ----------
+
+type Visitor = { id: number; frames: [ImageSourcePropType, ImageSourcePropType]; from: number; to: number; seconds: number };
+
+/** A visitor walking along the plaza, to the door (and fading in) or out of it. */
+const Walker = memo(function Walker({ v, width, onGone }: { v: Visitor; width: number; onGone: (id: number) => void }) {
+  const px = width / ART_W;
+  const size = VISITOR_PX * px;
+  const dir = v.to > v.from ? 1 : -1;
+  const x = useSharedValue((v.from - VISITOR_PX / 2) * px);
+  const step = useSharedValue(0);
+  // Fade in when leaving the door, fade out when entering it.
+  const enters = v.to === DOOR_X;
+  const fade = useSharedValue(enters ? 1 : 0);
+  useEffect(() => {
+    const ms = v.seconds * 1000;
+    x.set(withTiming((v.to - VISITOR_PX / 2) * px, { duration: ms, easing: Easing.linear }));
+    step.set(withRepeat(withTiming(1, { duration: 500, easing: Easing.linear }), -1, false));
+    fade.set(enters ? withSequence(withTiming(1, { duration: ms - 300 }), withTiming(0, { duration: 300 })) : withTiming(1, { duration: 300 }));
+    const timer = setTimeout(() => onGone(v.id), ms + 100);
+    return () => clearTimeout(timer);
+  }, [x, step, fade, v, px, enters, onGone]);
+  const move = useAnimatedStyle(() => ({ opacity: fade.get(), transform: [{ translateX: x.get() }, { scaleX: dir }] }));
+  const frameA = useAnimatedStyle(() => ({ opacity: step.get() < 0.5 ? 1 : 0 }));
+  const frameB = useAnimatedStyle(() => ({ opacity: step.get() < 0.5 ? 0 : 1 }));
+  return (
+    <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0, top: (VISITOR_FEET_Y - VISITOR_PX) * px, width: size, height: size }, move]}>
+      <Animated.View style={[{ position: "absolute" }, frameA]}>
+        <Image source={v.frames[0]} style={{ width: size, height: size }} contentFit="contain" />
+      </Animated.View>
+      <Animated.View style={[{ position: "absolute" }, frameB]}>
+        <Image source={v.frames[1]} style={{ width: size, height: size }} contentFit="contain" />
+      </Animated.View>
+    </Animated.View>
+  );
+});
+
+// ---------- the page ----------
+
+/** Cars, visitors and emergencies. Only spawns while the page is on screen. */
+function Street({ width, active }: { width: number; active: boolean }) {
+  const state = useGameState();
+  const { dispatch, pushToast } = useGameActions();
+  const { playSfx } = useAudio();
+  const haptic = useHaptics();
+  const [cars, setCars] = useState<Car[]>([]);
+  const [visitors, setVisitors] = useState<Visitor[]>([]);
+  const [call, setCall] = useState<Call | null>(null);
+  const nextId = useRef(0);
+  // Read by the timers, so a busy hospital gets more visitors without restarting them.
+  const gap = useRef(9);
+  const emergency = useRef(false);
+  const rate = healingRate(state);
+  useEffect(() => {
+    gap.current = visitorGap(rate);
+  }, [rate]);
+  useEffect(() => {
+    emergency.current = call !== null;
+  }, [call]);
+
+  useEffect(() => {
+    if (!active) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const car = () => {
+      // The near lane stays clear while the ambulance is at the door.
+      const lane = emergency.current || Math.random() < 0.5 ? 0 : 1;
+      setCars((list) => [...list, { id: nextId.current++, image: CARS[Math.floor(Math.random() * CARS.length)], lane, seconds: between(CAR_CROSS) }]);
+      timers[0] = setTimeout(car, between(CAR_GAP) * 1000);
+    };
+    const visitor = () => {
+      setVisitors((list) => {
+        if (list.length >= MAX_VISITORS) return list;
+        const side = Math.random() < 0.5 ? -8 : ART_W + 8;
+        const out = Math.random() < 0.3; // some leave the hospital instead
+        const from = out ? DOOR_X : side, to = out ? side : DOOR_X;
+        const frames = VISITORS[Math.floor(Math.random() * VISITORS.length)];
+        return [...list, { id: nextId.current++, frames, from, to, seconds: Math.abs(to - from) / VISITOR_SPEED }];
+      });
+      timers[1] = setTimeout(visitor, gap.current * 1000 * between([0.7, 1.3]));
+    };
+    const ambulance = () => {
+      if (!emergency.current) setCall({ id: nextId.current++, condition: SICK_PATIENTS[Math.floor(Math.random() * SICK_PATIENTS.length)].condition });
+      timers[2] = setTimeout(ambulance, between(AMBULANCE_GAP) * 1000);
+    };
+    timers[0] = setTimeout(car, 600);
+    timers[1] = setTimeout(visitor, 1200);
+    timers[2] = setTimeout(ambulance, between([8, 20]) * 1000);
+    return () => timers.forEach(clearTimeout);
+  }, [active]);
+
+  const [carGone] = useState(() => (id: number) => setCars((list) => list.filter((c) => c.id !== id)));
+  const [visitorGone] = useState(() => (id: number) => setVisitors((list) => list.filter((v) => v.id !== id)));
+  const [ambulanceGone] = useState(() => () => setCall(null));
+  const admit = () => {
+    const amount = emergencyReward(state);
+    dispatch({ type: "earn", amount });
+    haptic.success();
+    playSfx("buy");
+    pushToast({ kind: "info", title: "Patient admitted", body: `Emergency handled: +${formatCount(amount)} patients healed`, image: AMBULANCE });
+  };
+
+  return (
+    <>
+      {visitors.map((v) => (
+        <Walker key={v.id} v={v} width={width} onGone={visitorGone} />
+      ))}
+      {cars.map((c) => (
+        <PassingCar key={c.id} car={c} width={width} onGone={carGone} />
+      ))}
+      {call && <Ambulance key={call.id} call={call} width={width} onAdmit={admit} onGone={ambulanceGone} />}
+    </>
+  );
+}
+
+/** Second page of the shop area: the hospital from outside. It grows with rebirths. */
 export function HospitalPage({ width, active }: { width: number; active: boolean }) {
+  const { rebirths } = useGameState();
+  const { tier } = hospitalTier(rebirths);
+  const height = width * (ART_H / ART_W);
   return (
     <View className="flex-1">
       <ScenePage scene={{ ...HOSPITAL_SCENE, anchor: 1 }} width={width}>
-        <Traffic width={width} active={active} />
+        {CLOUDS.map((c) => (
+          <Cloud key={c.y} cloud={c} width={width} />
+        ))}
+        <Image source={tier.image} style={{ position: "absolute", width, height }} contentFit="cover" accessibilityLabel={tier.name} />
+        <Street width={width} active={active} />
       </ScenePage>
       <View className="absolute left-3 right-3 top-7">
         <RebirthCard />

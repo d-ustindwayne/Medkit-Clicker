@@ -17,7 +17,8 @@ export type Scene = {
 export const HOSPITAL_SCENE: Scene = {
   id: "hospital",
   title: "Hospital",
-  image: require("@/imgs/scenes/hospital_outside.png"),
+  // The sky only: the building on top depends on rebirths (HOSPITAL_TIERS in hospital.ts).
+  image: require("@/imgs/scenes/hospital_sky.png"),
   aspect: 16 / 9,
   fillTop: "#8fcff5",
   fillBottom: "#45963a",

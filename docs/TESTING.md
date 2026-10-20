@@ -46,7 +46,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 
 ## Rebirth and rewards
 - [ ] Rebirth stays locked until 1 billion patients in a run; after rebirthing, items reset and the boost shows
-- [ ] Hospital page (shop, swipe right): cars drive both ways; an ambulance with flashing lights comes by every minute or so; tapping it shows "Emergency admitted" and adds patients; the rebirth card sits at the top
+- [ ] Hospital page (shop, swipe right): clouds drift behind the building; cars drive both ways; visitors walk to and from the door; every minute or so an ambulance parks at the door with a "Patient: ...!" bubble; tapping it shows "Patient admitted" and adds patients, and it drives off after 15 s if ignored; the rebirth card shows the hospital's name and the next look
 - [ ] Redeem: a wrong code is rejected; the right code opens Jasmine's Rewards; redeeming spends patients and opens the share sheet; the limit is enforced
 
 ## Care Coins and boosts

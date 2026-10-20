@@ -12,7 +12,7 @@ Everything below is art the game is ready for but doesn't have yet. Until a file
 
 ## Hospital (swipe pages next to the medkit)
 
-Done: `src/imgs/scenes/hospital_outside.png` and `hospital_inside.png` (1280 × 720, drawn at 320 × 180). They're wired in `src/constants/scenes.ts`.
+Done: `src/imgs/scenes/hospital_inside.png` and the outside in 10 looks, `hospital_0.png` to `hospital_9.png` plus `hospital_sky.png` (1280 × 720, drawn at 320 × 180). The outside looks are listed in `src/constants/hospital.ts`.
 
 To add more swipe pages (a pharmacy, a lab and so on), add an entry to `SCENES` with a PNG and its `aspect`. Each entry becomes one more page and one more dot.
 

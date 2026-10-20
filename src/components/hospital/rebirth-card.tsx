@@ -5,6 +5,7 @@ import { Text, View } from "react-native";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
+import { hospitalTier } from "@/constants/hospital";
 import { GEM, REBIRTH_MIN_HEALED, REBIRTH_UNLOCKS, gemsForRebirth, rebirthMultiplier } from "@/constants/rebirth";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { formatCount } from "@/lib/format";
@@ -17,6 +18,7 @@ export function RebirthCard() {
   const gain = gemsForRebirth(runHealed);
   const progress = Math.min(1, runHealed / REBIRTH_MIN_HEALED);
   const next = REBIRTH_UNLOCKS.find((u) => u.rebirths > rebirths);
+  const look = hospitalTier(rebirths);
 
   const rebirth = () => {
     setConfirming(false);
@@ -30,7 +32,7 @@ export function RebirthCard() {
         <View className="flex-row items-center gap-2">
           <Image source={GEM.image} style={{ width: 28, height: 28 }} contentFit="contain" />
           <View className="flex-1">
-            <Text className="font-display text-base text-ink">Rebirth</Text>
+            <Text className="font-display text-base text-ink">{look.tier.name}</Text>
             <Text className="font-body text-xs text-ink opacity-70">
               {formatCount(rebirths)} done · {formatCount(rebirthPoints)} {GEM.name} · healing ×{rebirthMultiplier(rebirths).toFixed(2)}
             </Text>
@@ -48,6 +50,9 @@ export function RebirthCard() {
             </Text>
           </View>
         )}
+        <Text className="font-body text-xs text-ink">
+          {look.next ? `Rebirth ${look.next.rebirths}: the hospital grows into a ${look.next.name}` : "Your hospital is fully grown."}
+        </Text>
         {next && (
           <Text className="font-body text-xs text-ink">
             Rebirth {next.rebirths}: {next.title}

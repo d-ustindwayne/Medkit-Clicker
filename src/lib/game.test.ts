@@ -4,7 +4,7 @@ import { ACHIEVEMENTS } from "@/constants/achievements";
 import { BOOSTS, boostMultiplier } from "@/constants/boosts";
 import { SHOP_ITEMS, itemCost } from "@/constants/items";
 import { SICK_PATIENTS } from "@/constants/patients";
-import { EMERGENCY_SECONDS, EMERGENCY_TAPS } from "@/constants/hospital";
+import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate } from "@/constants/rebirth";
 import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, roomBonus } from "@/constants/room";
 import { coinBalance, coinsEarned, emergencyReward, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
@@ -219,6 +219,20 @@ describe("server sync", () => {
 });
 
 describe("hospital", () => {
+  test("the hospital grows at rebirths 1, 3, 6, 10, 15, 21, 28, 36 and 45, then stays", () => {
+    expect(HOSPITAL_TIERS.map((t) => t.rebirths)).toEqual([0, 1, 3, 6, 10, 15, 21, 28, 36, 45]);
+    expect(hospitalTier(0).tier.name).toBe("Small Clinic");
+    expect(hospitalTier(2).tier.rebirths).toBe(1);
+    expect(hospitalTier(2).next?.rebirths).toBe(3);
+    expect(hospitalTier(50).tier.rebirths).toBe(45);
+    expect(hospitalTier(50).next).toBeUndefined();
+  });
+  test("busier healing brings visitors more often, within 2-9 s", () => {
+    expect(visitorGap(0)).toBe(9);
+    expect(visitorGap(1e6)).toBeLessThan(visitorGap(10));
+    expect(visitorGap(1e30)).toBe(2);
+  });
+
   test("an emergency admission pays a minute of healing, with a tap floor early on", () => {
     const fresh = newGame();
     expect(emergencyReward(fresh)).toBe(tapValue(fresh) * EMERGENCY_TAPS);

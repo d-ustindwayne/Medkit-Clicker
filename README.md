@@ -10,8 +10,8 @@ It runs on Android, iOS and the web, built with Expo 57, React Native, React 19,
 - **Offline progress:** your team keeps working for up to 8 hours while the app is closed.
 - **111 achievements**, from "First Aid" to healing a vigintillion patients, with progress bars and a few secret ones.
 - **Three currencies**, shown top-right: patients (medkits), Care Coins (from achievements) and Natal Gems (one per rebirth).
-- **Rebirth:** on the Hospital page, start a new run for a Natal Gem and a small permanent healing boost.
-- **Emergencies:** cars pass the hospital, and when an ambulance races by, tap it to admit the patient for a burst of healing.
+- **Rebirth:** on the Hospital page, start a new run for a Natal Gem and a small permanent healing boost. Your hospital grows with it, from a small clinic to a grand medical center (10 looks).
+- **Emergencies:** cars pass and visitors walk in; when an ambulance pulls up at the door, tap it to admit the patient for a burst of healing.
 - **Care Coins and boosts:** achievements pay Care Coins. Spend them in the shop's Boosts tab on 13 power-ups, like 2x per tap for 3 minutes or an instant hour of healing.
 - **My Room:** decorate hospital rooms (Empty Room, Reception, Lab, Pharmacy, Children's Ward) with 14 pixel-art hospital items you unlock by playing. Each placed item gives a small permanent bonus, and nurses and the doctor walk around.
 - **Sick patients** turn up in your room at random. Treat them in a quick minigame (injection timing, CPR rhythm or a bandage-wrap tap race) for patients and coins.

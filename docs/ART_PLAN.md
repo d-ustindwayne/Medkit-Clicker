@@ -36,8 +36,8 @@ Sprites are grouped by what they're used for. Sources live in `src/media/photos/
 | `misc/` | Purpose not decided yet | apple (source `Apple.aseprite`), coin, bandage (the plaster), heart |
 | `art/` | Large art | nightingale (512 × 512 painting) |
 | `characters/` | People (256 × 256) | 01–16, see the table below; staff 11–16 also have `_walk1` / `_walk2` frames |
-| `scenes/` | Backgrounds (1280 × 720) | hospital_outside (shop page 2); hospital_inside, room_empty, room_lab, room_pharmacy, room_kids (My Room) |
-| `hospital/` | Traffic on the Hospital page (128 × 128, drawn at 32 × 32, facing right) | car_red, car_blue, taxi, van_green, ambulance |
+| `scenes/` | Backgrounds (1280 × 720) | hospital_0 to hospital_9 (the outside, one look per rebirth tier, transparent sky) and hospital_sky (shop page 2); hospital_inside, room_empty, room_lab, room_pharmacy, room_kids (My Room) |
+| `hospital/` | Hospital page extras | cars at 32 × 32 (car_red, car_blue, taxi, van_green, ambulance; facing right); visitors at 16 × 16 with 2 walk frames (visitor_woman, visitor_man, visitor_kid, visitor_elder); clouds (cloud_big, cloud_mid, cloud_small), all exported ×4 |
 | `room/` | Placeable My Room items (128 × 128, drawn at 32 × 32) | hospital_bed, wheelchair, iv_stand, crash_cart, vending_machine, waiting_bench, potted_plant, privacy_screen, security_camera, aed, xray_viewer, first_aid_cabinet, sanitizer, notice_board |
 
 `Tree.aseprite` and `rock1.aseprite` stay in the sprites root, unused and untouched.
