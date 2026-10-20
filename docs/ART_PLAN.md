@@ -37,6 +37,7 @@ Sprites are grouped by what they're used for. Sources live in `src/media/photos/
 | `art/` | Large art | nightingale (512 × 512 painting) |
 | `characters/` | People (256 × 256) | 01–16, see the table below; staff 11–16 also have `_walk1` / `_walk2` frames |
 | `scenes/` | Backgrounds (1280 × 720) | hospital_outside (shop page 2); hospital_inside, room_empty, room_lab, room_pharmacy, room_kids (My Room) |
+| `hospital/` | Traffic on the Hospital page (128 × 128, drawn at 32 × 32, facing right) | car_red, car_blue, taxi, van_green, ambulance |
 | `room/` | Placeable My Room items (128 × 128, drawn at 32 × 32) | hospital_bed, wheelchair, iv_stand, crash_cart, vending_machine, waiting_bench, potted_plant, privacy_screen, security_camera, aed, xray_viewer, first_aid_cabinet, sanitizer, notice_board |
 
 `Tree.aseprite` and `rock1.aseprite` stay in the sprites root, unused and untouched.

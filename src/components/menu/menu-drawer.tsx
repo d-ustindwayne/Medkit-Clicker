@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AboutPage } from "@/components/menu/about-page";
 import { AchievementsPage } from "@/components/menu/achievements-page";
-import { RebirthPage } from "@/components/menu/rebirth-page";
 import { RedeemPage } from "@/components/menu/redeem-page";
 import { RewardsPage } from "@/components/menu/rewards-page";
 import { SettingsPage } from "@/components/menu/settings-page";
@@ -20,7 +19,7 @@ import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameState, useSettings } from "@/hooks/use-game";
 
-type Page = "menu" | "achievements" | "settings" | "about" | "redeem" | "rebirth" | `rewards:${string}`;
+type Page = "menu" | "achievements" | "settings" | "about" | "redeem" | `rewards:${string}`;
 
 const TITLES: Record<string, string> = {
   menu: "MENU",
@@ -28,7 +27,6 @@ const TITLES: Record<string, string> = {
   settings: "SETTINGS",
   about: "ABOUT",
   redeem: "CODE",
-  rebirth: "REBIRTH",
 };
 const titleFor = (page: Page) => (page.startsWith("rewards:") ? "REWARDS" : TITLES[page]);
 
@@ -55,7 +53,7 @@ function MenuLink({ label, detail, onPress }: { label: string; detail?: string; 
 export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const [page, setPage] = useState<Page>("menu");
   const { theme } = useSettings();
-  const { achievements, unlockedSections, rebirths } = useGameState();
+  const { achievements, unlockedSections } = useGameState();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const close = () => {
@@ -91,7 +89,6 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
                 {REWARD_SECTIONS.filter((s) => unlockedSections.includes(s.id)).map((s) => (
                   <MenuLink key={s.id} label={s.title} onPress={() => setPage(`rewards:${s.id}`)} />
                 ))}
-                <MenuLink label="Rebirth" detail={rebirths > 0 ? `×${rebirths}` : undefined} onPress={() => setPage("rebirth")} />
                 <MenuLink label="Achievements" detail={`${Object.keys(achievements).length}/${ACHIEVEMENTS.length}`} onPress={() => setPage("achievements")} />
                 <MenuLink label="Settings" onPress={() => setPage("settings")} />
                 <MenuLink label="Redeem code" onPress={() => setPage("redeem")} />
@@ -102,7 +99,6 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
             {page === "achievements" && <AchievementsPage />}
             {page === "settings" && <SettingsPage onDone={close} />}
             {page === "about" && <AboutPage />}
-            {page === "rebirth" && <RebirthPage onDone={close} />}
             {page === "redeem" && <RedeemPage onUnlocked={(id) => setPage(`rewards:${id}`)} />}
             {page.startsWith("rewards:") && <RewardsPage sectionId={page.slice("rewards:".length)} />}
           </ScrollView>

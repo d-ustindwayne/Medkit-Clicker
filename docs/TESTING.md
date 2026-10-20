@@ -30,7 +30,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] Secret achievements stay hidden until unlocked
 
 ## Menu and navigation
-- [ ] The menu opens and closes; every page opens (Achievements, Rebirth, Redeem, Settings, About) and back works
+- [ ] The menu opens and closes; every page opens (Achievements, Redeem, Settings, About) and back works
 - [ ] The Android system back button closes the menu or page before leaving the app
 
 ## Settings
@@ -46,6 +46,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 
 ## Rebirth and rewards
 - [ ] Rebirth stays locked until 1 billion patients in a run; after rebirthing, items reset and the boost shows
+- [ ] Hospital page (shop, swipe right): cars drive both ways; an ambulance with flashing lights comes by every minute or so; tapping it shows "Emergency admitted" and adds patients; the rebirth card sits at the top
 - [ ] Redeem: a wrong code is rejected; the right code opens Jasmine's Rewards; redeeming spends patients and opens the share sheet; the limit is enforced
 
 ## Care Coins and boosts

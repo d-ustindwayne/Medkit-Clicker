@@ -3,6 +3,7 @@ import { gemsForRebirth, healingRate, rebirthMultiplier } from "@/constants/rebi
 import { BACKGROUNDS } from "@/constants/backgrounds";
 import { BOOSTS, LUCKY_MULT, boostMultiplier } from "@/constants/boosts";
 import { LOSE_SECONDS, WIN_COINS, WIN_SECONDS } from "@/constants/patients";
+import { EMERGENCY_SECONDS, EMERGENCY_TAPS } from "@/constants/hospital";
 import { REWARD_SECTIONS } from "@/constants/rewards";
 import { ROOMS, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, type RoomState } from "@/constants/room";
 import { SHOP_ITEMS, TAP_RATE_BONUS, itemCost, perSecond, type ItemId } from "@/constants/items";
@@ -129,6 +130,12 @@ export const coinBalance = (s: Pick<GameState, "achievements" | "coinsSpent" | "
 export const treatReward = (s: { owned: Record<ItemId, number>; rebirths: number }, won: boolean) => {
   const base = { owned: s.owned, rebirths: s.rebirths };
   return won ? Math.max(healingRate(base) * WIN_SECONDS, tapValue(base) * 50) : Math.max(healingRate(base) * LOSE_SECONDS, tapValue(base) * 5);
+};
+
+/** Patients admitted by tapping the emergency ambulance on the Hospital page. */
+export const emergencyReward = (s: { owned: Record<ItemId, number>; rebirths: number }) => {
+  const base = { owned: s.owned, rebirths: s.rebirths };
+  return Math.max(healingRate(base) * EMERGENCY_SECONDS, tapValue(base) * EMERGENCY_TAPS);
 };
 
 /** What the next unit of an item costs right now, including a running sale. */

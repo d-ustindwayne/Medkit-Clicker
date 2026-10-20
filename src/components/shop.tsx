@@ -7,7 +7,7 @@ import { BOOSTS, COIN, type Boost } from "@/constants/boosts";
 import { MEDKIT_IMAGE, SHOP_ITEMS, itemCost, type ShopItem } from "@/constants/items";
 import { HOSPITAL_SCENE } from "@/constants/scenes";
 import { Shine } from "@/components/fx/shine";
-import { ScenePage } from "@/components/scene-page";
+import { HospitalPage } from "@/components/hospital/hospital-page";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { Pager } from "@/components/ui/pager";
 import { useAudio } from "@/hooks/use-audio";
@@ -253,7 +253,7 @@ export function Shop({ compact, width }: { compact: boolean; width: number }) {
         pages={SHOP_PAGES.map((p) => ({
           key: p.id,
           label: p.id === "supplies" ? "Supplies" : HOSPITAL_SCENE.title,
-          content: p.id === "supplies" ? <ShopPage /> : <ScenePage scene={HOSPITAL_SCENE} width={width} />,
+          content: p.id === "supplies" ? <ShopPage /> : <HospitalPage width={width} active={page === 1} />,
         }))}
       />
     </View>

@@ -4,9 +4,10 @@ import { ACHIEVEMENTS } from "@/constants/achievements";
 import { BOOSTS, boostMultiplier } from "@/constants/boosts";
 import { SHOP_ITEMS, itemCost } from "@/constants/items";
 import { SICK_PATIENTS } from "@/constants/patients";
+import { EMERGENCY_SECONDS, EMERGENCY_TAPS } from "@/constants/hospital";
 import { healingRate } from "@/constants/rebirth";
 import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, roomBonus } from "@/constants/room";
-import { coinBalance, coinsEarned, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
+import { coinBalance, coinsEarned, emergencyReward, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
 
 const run = (s: GameState, ...actions: GameAction[]) => actions.reduce(gameReducer, s);
 const rich = () => run(newGame(), { type: "earn", amount: 1e15 });
@@ -214,5 +215,14 @@ describe("server sync", () => {
     const s = run(newGame(), { type: "syncRedemptions", history: { chocolate_box: [1, 2] } });
     expect(s.redemptions.chocolate_box).toEqual([1, 2]);
     expect(run(s, { type: "syncRedemptions", history: { chocolate_box: [1] } }).redemptions.chocolate_box).toEqual([1, 2]);
+  });
+});
+
+describe("hospital", () => {
+  test("an emergency admission pays a minute of healing, with a tap floor early on", () => {
+    const fresh = newGame();
+    expect(emergencyReward(fresh)).toBe(tapValue(fresh) * EMERGENCY_TAPS);
+    const later = { ...fresh, owned: { ...fresh.owned, stethoscope: 50 } };
+    expect(emergencyReward(later)).toBe(healingRate(later) * EMERGENCY_SECONDS);
   });
 });

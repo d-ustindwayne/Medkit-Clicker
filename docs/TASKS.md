@@ -35,9 +35,14 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [ ] Rewards section title "Jasmine's Rewards", the gift icon, and the wording of the "Tell Dustin" message
 - [ ] Background names and colours (Rose Grid, Mint Crosses, Lavender Dots, Peach Stripes, Sky Checker, Candy Hearts, Plain)
 - [ ] Playlist display names: "normal" is labelled "Everyday", "favourites" is "My Favs", "filipino_rap" is "Pinoy Rap"
+- [ ] Hospital page numbers (`src/constants/hospital.ts`), picked by Claude:
+  - an emergency ambulance every 45-90 s, on screen for 7 s
+  - tapping it pays 60 s of healing, or 25 taps early on, whichever is more
+  - cars every 2.5-6 s; four car designs (red sedan, blue hatchback, taxi, green van) plus the ambulance, all 32x32
+- [x] Rebirth moved from the menu to the Hospital page; the menu keeps only non-game things (achievements, settings, redeem, website, about, rewards)
 - [x] The shop's second page is now the outside of the hospital; the page next to the medkit is My Room (see [ROOM.md](ROOM.md))
 - [ ] How to Play text on the About page
-- [ ] Real website URL for "Visit website" (`src/constants/app.ts`)
+- [ ] Real website URL for "Visit website" (`src/constants/app.ts`). Plan: your own site (Vue, Bulma/SCSS, three.js) on GitHub Pages, built another day
 - [ ] Care Coins (`src/constants/achievements.ts` → `coins` on each achievement): the currency name, and the payout per achievement (1–5, harder pays more)
 - [ ] The 13 boosts in `src/constants/boosts.ts`: names, effects, durations and coin prices
 - [ ] Ward patients (`src/constants/patients.ts`):
@@ -104,7 +109,7 @@ Still unused:
 - [ ] **iOS is untested.** It needs a Mac or a cloud build (`eas build`) to check.
 - [x] **Music is copyrighted:** it's no longer in the app or in git. It lives in the database and downloads after the code ([DATABASE.md](DATABASE.md)).
 - [ ] **Old native build on the emulator:** `com.dust.dev.mc` is from before the audio and save libraries. Use Expo Go, or run `bunx expo prebuild --clean` then `bun run android` to replace it.
-- [x] **Unit tests:** `bun test` runs 23 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
+- [x] **Unit tests:** `bun test` runs 27 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
 - [x] **Nothing is committed to git.** Done: pushed to https://github.com/d-ustindwayne/Medkit-Clicker (`main`).
 - [ ] **Achievement and welcome-back toasts briefly cover the counter.** Consider moving them or making them smaller.
 
