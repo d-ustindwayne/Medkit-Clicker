@@ -1,6 +1,9 @@
 # Database: Aiven PostgreSQL + a small API
 
-**Status:** built and compile-checked, waiting for your Aiven service. Nothing has run against a real database yet.
+**Status (2026-10-20):**
+- The Aiven database is set up: tables created, Jasmine's code, the rewards and all 53 songs uploaded (123 MB of 1 GB).
+- The API was tested end to end against it from this laptop.
+- Next: deploy the API on Render, then build the app with its address.
 
 ## What goes in the database (and what doesn't)
 
@@ -58,6 +61,21 @@ Moving the game's own art into the database was considered and rejected: all of 
 `bun run apk:phone` builds for real phones only (arm64) with Android's code shrinker on. Expect roughly 40 MB instead of about 230 MB.
 
 **Future idea:** a "live content" table, so new items, achievements or backgrounds can be added from the database without shipping an app update.
+
+## Deploying the API on Render (free)
+
+1. Go to **render.com** and sign up with **GitHub**. Allow it to see the `Medkit-Clicker` repo.
+2. Choose **New + → Blueprint**, then pick `Medkit-Clicker`. Render reads `render.yaml` and proposes one free web service, `medkit-clicker-api`.
+3. Render asks for 4 values. Open `render-env.txt` in the project folder (made locally, gitignored) and paste each value into the field of the same name:
+   - `DATABASE_URL`
+   - `DATABASE_CA` (one long line)
+   - `SERVER_SECRET`
+   - `NTFY_TOPIC`
+4. Click **Apply**. The first build takes a few minutes.
+5. When it shows **Live**, copy the address (like `https://medkit-clicker-api.onrender.com`). Opening `/health` on it should show `{"ok":true}`.
+6. Give the address to Claude, or put `EXPO_PUBLIC_API_URL=<address>` in `.env.local` and run `bun run apk:phone`.
+
+The free plan sleeps after 15 minutes without requests. The first request after that takes about 30–60 seconds, which only matters the first time Jasmine opens the music or rewards after a break.
 
 ## Setting it up
 
