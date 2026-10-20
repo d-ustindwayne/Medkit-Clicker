@@ -14,7 +14,7 @@ It runs on Android, iOS and the web, built with Expo 57, React Native, React 19,
 - **Emergencies:** cars pass and visitors walk in; when an ambulance pulls up at the door, tap it to admit the patient for a burst of healing.
 - **Care Coins and boosts:** achievements pay Care Coins. Spend them in the shop's Boosts tab on 13 power-ups, like 2x per tap for 3 minutes or an instant hour of healing.
 - **My Room:** decorate hospital rooms (Empty Room, Reception, Lab, Pharmacy, Children's Ward) with 26 pixel-art items (some animated) you unlock by playing. Each placed item gives a small permanent bonus, and nurses and the doctor walk around.
-- **Sick patients** turn up in your room at random. Treat them in a quick minigame (injection timing, CPR rhythm or a bandage-wrap tap race) for patients and coins.
+- **Sick patients** turn up in your room at random. Treat them in one of nine quick minigames (injection timing, CPR rhythm, bandage race, pulse count, pill sorting, X-ray, germ busting, breathing, memory pairs) for patients and coins.
 - **Redeem codes** unlock hidden sections, like a rewards shop where patients buy real-life treats (with a limit on each).
 - **Original soundtrack:** five chill lo-fi loops made in BeepBox (*Waiting Room*, *Morning Rounds*, *Night Shift*, *Visiting Hours* (a waltz), *Recovery Room*), included for every player.
 - **Music player** for the soundtrack: play/pause, track skipping and seeking; sound effects with their own volume; vibration feedback (with an off switch) on phones.
