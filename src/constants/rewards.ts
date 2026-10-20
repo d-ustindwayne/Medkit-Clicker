@@ -25,8 +25,7 @@ export type RewardSection = {
 export const REWARD_SECTIONS: RewardSection[] = [
   {
     id: "jasmine",
-    // Placeholder title; rename freely.
-    title: "Jasmine's Rewards",
+    title: "Care Package",
     // Expo inlines EXPO_PUBLIC_* at build time, so this must be written out literally.
     codeHash: process.env.EXPO_PUBLIC_CODE_JASMINE,
     notify: "Dustin",

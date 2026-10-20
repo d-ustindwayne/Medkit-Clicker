@@ -5,16 +5,16 @@ import type { ImageSourcePropType } from "react-native";
 /** The hospital grows with rebirths. Each look is a 320x180 scene with a transparent sky. */
 export type HospitalTier = { rebirths: number; name: string; image: ImageSourcePropType };
 export const HOSPITAL_TIERS: HospitalTier[] = [
-  { rebirths: 0, name: "Small Clinic", image: require("@/imgs/scenes/hospital_0.png") },
-  { rebirths: 1, name: "Community Clinic", image: require("@/imgs/scenes/hospital_1.png") },
-  { rebirths: 3, name: "Health Center", image: require("@/imgs/scenes/hospital_2.png") },
-  { rebirths: 6, name: "District Hospital", image: require("@/imgs/scenes/hospital_3.png") },
-  { rebirths: 10, name: "General Hospital", image: require("@/imgs/scenes/hospital_4.png") },
-  { rebirths: 15, name: "Regional Medical Center", image: require("@/imgs/scenes/hospital_5.png") },
-  { rebirths: 21, name: "Teaching Hospital", image: require("@/imgs/scenes/hospital_6.png") },
-  { rebirths: 28, name: "Specialist Hospital", image: require("@/imgs/scenes/hospital_7.png") },
-  { rebirths: 36, name: "Medical Campus", image: require("@/imgs/scenes/hospital_8.png") },
-  { rebirths: 45, name: "Grand Medical Center", image: require("@/imgs/scenes/hospital_9.png") },
+  { rebirths: 0, name: "Little Clinic", image: require("@/imgs/scenes/hospital_0.png") },
+  { rebirths: 1, name: "Neighbourhood Clinic", image: require("@/imgs/scenes/hospital_1.png") },
+  { rebirths: 3, name: "Sunny Health Center", image: require("@/imgs/scenes/hospital_2.png") },
+  { rebirths: 6, name: "Community Hospital", image: require("@/imgs/scenes/hospital_3.png") },
+  { rebirths: 10, name: "Heartwood Hospital", image: require("@/imgs/scenes/hospital_4.png") },
+  { rebirths: 15, name: "Wellspring Medical Center", image: require("@/imgs/scenes/hospital_5.png") },
+  { rebirths: 21, name: "Sunrise Medical Center", image: require("@/imgs/scenes/hospital_6.png") },
+  { rebirths: 28, name: "Skyline Medical Center", image: require("@/imgs/scenes/hospital_7.png") },
+  { rebirths: 36, name: "Meadow Medical Campus", image: require("@/imgs/scenes/hospital_8.png") },
+  { rebirths: 45, name: "Grand Haven Medical Center", image: require("@/imgs/scenes/hospital_9.png") },
 ];
 export const HOSPITAL_SKY: ImageSourcePropType = require("@/imgs/scenes/hospital_sky.png");
 

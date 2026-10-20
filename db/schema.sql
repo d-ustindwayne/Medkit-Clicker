@@ -9,7 +9,7 @@
 CREATE TABLE IF NOT EXISTS access_codes (
   section      TEXT PRIMARY KEY,
   code_sha256  TEXT NOT NULL UNIQUE,
-  title        TEXT NOT NULL,          -- shown in the menu, e.g. "Jasmine's Rewards"
+  title        TEXT NOT NULL,          -- shown in the menu, e.g. "Care Package"
   notify_name  TEXT NOT NULL,          -- who gets the alert, e.g. "Dustin"
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );

@@ -36,7 +36,7 @@ From your screenshot:
 
 | Table | Holds |
 | --- | --- |
-| `access_codes` | section, SHA-256 of the code, title ("Jasmine's Rewards"), who to notify |
+| `access_codes` | section, SHA-256 of the code, title ("Care Package"), who to notify |
 | `rewards` | id, section, name, cost in patients, max uses |
 | `redemptions` | reward, device id, when, when the alert was sent |
 | `playlists` | id, section, display name, order |

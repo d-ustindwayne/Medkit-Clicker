@@ -12,7 +12,7 @@ The core game is done and was tested on the Android emulator and on web. These a
 - music (with a full player) and sound effects
 - light and dark themes, and 7 backgrounds
 - export/import of saves
-- the redeem code and Jasmine's Rewards
+- the redeem code and Care Package
 - rebirth
 - swipe pages for the medkit/Hospital area and the shop
 
@@ -31,19 +31,19 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
   - permanent upgrades, 5 levels each costing 1, 2, 3, 5, 8 gems: +10% per tap; +1 h offline time (4 h becomes up to 9 h)
   - cosmetics: medkit skins, gem-only animated backgrounds, rare My Room items, alternate app icons, and sticker PNGs to download
 - [ ] What each rebirth unlocks (`REBIRTH_UNLOCKS`, currently empty)
-- [ ] Rewards section title "Jasmine's Rewards", the gift icon, and the wording of the "Tell Dustin" message
-- [ ] Background names and colours (Rose Grid, Mint Crosses, Lavender Dots, Peach Stripes, Sky Checker, Candy Hearts, Plain)
-- [ ] Playlist display names: "normal" is labelled "Everyday", "favourites" is "My Favs", "filipino_rap" is "Pinoy Rap"
+- [x] Rewards section title is now "Care Package" (app and database, 2026-10-20); the gift icon and the "Tell Dustin" wording are kept
+- [x] Background names and colours (Rose Grid, Mint Crosses, Lavender Dots, Peach Stripes, Sky Checker, Candy Hearts, Plain), kept 2026-10-20
+- [x] Playlist display names: "normal" is labelled "Everyday", "favourites" is "My Favs", "filipino_rap" is "Pinoy Rap" (kept)
 - [ ] Hospital page numbers (`src/constants/hospital.ts`), picked by Claude:
   - an emergency ambulance every 2-4 minutes (decided 2026-10-20: rarer, bigger); it parks at the entrance with "Patient: <condition>!" and waits 20 s
   - tapping it pays 3 minutes of healing, or 25 taps early on, whichever is more
   - cars every 2.5-6 s; four car designs (red sedan, blue hatchback, taxi, green van) plus the ambulance, all 32x32
   - visitors (16x16: woman, man, kid, elder with a cane) walk to and from the door; every 9 s with no healing, down to every 2 s when healing is fast
   - three clouds drift behind the buildings
-- [ ] Hospital looks by rebirth (names and art by Claude; rebirth itself has no cap): 0 Small Clinic, 1 Community Clinic, 3 Health Center, 6 District Hospital, 10 General Hospital, 15 Regional Medical Center, 21 Teaching Hospital, 28 Specialist Hospital (helipad), 36 Medical Campus, 45 Grand Medical Center (skyline, lit sign, helicopter)
+- [x] Hospital looks by rebirth (art by Claude, cosy names chosen 2026-10-20; rebirth itself has no cap): 0 Little Clinic, 1 Neighbourhood Clinic, 3 Sunny Health Center, 6 Community Hospital, 10 Heartwood Hospital, 15 Wellspring Medical Center, 21 Sunrise Medical Center (second tower), 28 Skyline Medical Center (helipad), 36 Meadow Medical Campus, 45 Grand Haven Medical Center (skyline, lit sign, helicopter)
 - [x] Rebirth moved from the menu to the Hospital page; the menu keeps only non-game things (achievements, settings, redeem, website, about, rewards)
 - [x] The shop's second page is now the outside of the hospital; the page next to the medkit is My Room (see [ROOM.md](ROOM.md))
-- [ ] How to Play text on the About page
+- [x] How to Play text on the About page (kept)
 - [x] "Visit website" links to https://d-ustindwayne.github.io/MedkitClicker (empty until the site is built after the game; plan and starter prompt in [WEBSITE.md](WEBSITE.md))
 - [x] The website code lives in its own repo, `d-ustindwayne/MedkitClicker` (decided 2026-10-20)
 - [x] Care Coins: each achievement pays half its listed amount, rounded up (1–3 coins; decided 2026-10-20). Boost and background prices may need lowering to match
@@ -145,7 +145,7 @@ Still unused:
 
 ### Phase 2b: Features added (done)
 - [x] Redeem code screen; codes stored as hashes in `.env.local` (`bun run add-code <section> <code>`)
-- [x] Jasmine's Rewards: Box of chocolates, 1 million patients, maximum 3, with the share message to Dustin
+- [x] Care Package: Box of chocolates, 1 million patients, maximum 3, with the share message to Dustin
 - [x] Rebirth: new run for rebirth points (a currency) plus a small permanent healing boost
 
 ### Phase 3: Pre-release content (your design)
@@ -154,7 +154,7 @@ Still unused:
 - [x] More shop items: 13 in total, with order and prices decided by Claude
 - [ ] What rebirth points buy, and the per-rebirth unlocks
 - [ ] More achievements and easter eggs
-- [ ] More rewards in Jasmine's Rewards (each: name, cost, limit)
+- [ ] More rewards in Care Package (each: name, cost, limit)
 - [ ] PHL export (when the PHL project is ready)
 
 ### Phase 4: Release

@@ -240,7 +240,7 @@ describe("rebirth target", () => {
 describe("hospital", () => {
   test("the hospital grows at rebirths 1, 3, 6, 10, 15, 21, 28, 36 and 45, then stays", () => {
     expect(HOSPITAL_TIERS.map((t) => t.rebirths)).toEqual([0, 1, 3, 6, 10, 15, 21, 28, 36, 45]);
-    expect(hospitalTier(0).tier.name).toBe("Small Clinic");
+    expect(hospitalTier(0).tier.name).toBe("Little Clinic");
     expect(hospitalTier(2).tier.rebirths).toBe(1);
     expect(hospitalTier(2).next?.rebirths).toBe(3);
     expect(hospitalTier(50).tier.rebirths).toBe(45);
