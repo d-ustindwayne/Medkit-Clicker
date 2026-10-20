@@ -92,4 +92,4 @@ export const MEDKIT_SKINS: Record<string, ImageSourcePropType> = Object.fromEntr
 export const ROUND_SKINS = new Set(["skin_dustin_pixel", "skin_dustin_photo"]);
 
 /** Gems available to spend. */
-export const gemBalance = (s: { rebirthPoints: number; gemsSpent?: number }) => s.rebirthPoints - (s.gemsSpent ?? 0);
+export const gemBalance = (s: { rebirthPoints: number; gemsSpent?: number; bonusGems?: number }) => s.rebirthPoints + (s.bonusGems ?? 0) - (s.gemsSpent ?? 0);

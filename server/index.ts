@@ -65,6 +65,38 @@ Bun.serve({
       return json({ token: tokenFor(row.section), section: row.section, title: row.title, notify: row.notify_name });
     }
 
+    // Promo codes: anyone can claim one, once per phone. Rewards are set with scripts/add-promo.ts.
+    if (path === "/promo" && req.method === "POST") {
+      const { code, deviceId } = (await req.json().catch(() => ({}))) as { code?: string; deviceId?: string };
+      if (!code || !deviceId || deviceId.length > 100) return json({ error: "Missing code" }, 400);
+      const hash = sha256(normalize(code));
+      const result = await sql.begin(async (tx) => {
+        const [promo] = await tx`SELECT code_sha256, kind, amount, max_claims, message, expires_at FROM promo_codes WHERE code_sha256 = ${hash} FOR UPDATE`;
+        if (!promo || (promo.expires_at && new Date(promo.expires_at) < new Date())) return { status: 404 } as const;
+        const [{ used }] = await tx`SELECT count(*)::int AS used FROM promo_claims WHERE code_sha256 = ${hash}`;
+        if (promo.max_claims !== null && used >= promo.max_claims) return { status: 409 } as const;
+        const rows = await tx`INSERT INTO promo_claims (code_sha256, device_id) VALUES (${hash}, ${deviceId}) ON CONFLICT DO NOTHING RETURNING code_sha256`;
+        if (rows.length === 0) return { status: 409 } as const;
+        return { status: 200, body: { kind: promo.kind, amount: Number(promo.amount), message: promo.message } } as const;
+      });
+      if (result.status !== 200) return json({ error: result.status === 404 ? "That code didn't match anything." : "That code was already used." }, result.status);
+      return json(result.body);
+    }
+
+    // Rebirth 50: players can leave their name, email and feedback (once per phone).
+    if (path === "/fame" && req.method === "POST") {
+      const body = (await req.json().catch(() => ({}))) as { name?: string; email?: string; feedback?: string; deviceId?: string; rebirths?: number };
+      const clip = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+      const name = clip(body.name, 60), email = clip(body.email, 120), feedback = clip(body.feedback, 2000), device = clip(body.deviceId, 100);
+      if (!name || !device || (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))) return json({ error: "Please add your name (and a valid email, if you give one)." }, 400);
+      const rebirths = Math.max(0, Math.floor(Number(body.rebirths) || 0));
+      const rows = await sql`INSERT INTO hall_of_fame (device_id, name, email, feedback, rebirths) VALUES (${device}, ${name}, ${email || null}, ${feedback || null}, ${rebirths})
+        ON CONFLICT (device_id) DO NOTHING RETURNING id`;
+      if (rows.length === 0) return json({ error: "Already saved for this phone." }, 409);
+      await notify(`Hall of fame: ${name} reached rebirth ${rebirths}!${feedback ? ` Feedback: ${feedback.slice(0, 300)}` : ""}`);
+      return json({ ok: true });
+    }
+
     const section = sectionOf(req);
     if (!section) return json({ error: "Enter your code first." }, 401);
 

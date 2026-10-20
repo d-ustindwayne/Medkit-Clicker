@@ -2,11 +2,14 @@ import { useState } from "react";
 import { Image } from "expo-image";
 import Constants from "expo-constants";
 import { Pressable, Text, View } from "react-native";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { APP_INFO, CREDIT } from "@/constants/app";
-import { HOSPITAL_IMAGE } from "@/constants/items";
-import { useGameState } from "@/hooks/use-game";
+import { HOSPITAL_IMAGE, MEDKIT_IMAGE } from "@/constants/items";
+import { useAudio } from "@/hooks/use-audio";
+import { useGameActions, useGameState } from "@/hooks/use-game";
+import { useHaptics } from "@/hooks/use-haptics";
 import { formatCount, formatDuration } from "@/lib/format";
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -18,21 +21,55 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** `onSecret` runs after five taps on the hospital icon: the hidden way in to the redeem code. */
+const CODE_TAPS = 5;
+
+/**
+ * The About icon hides a few things. The first tap: the hospital spins away and the medkit pops out
+ * (an achievement). Keep tapping and code entry unlocks at five taps; after that, one tap opens it.
+ */
 export function AboutPage({ onSecret }: { onSecret?: () => void }) {
   const s = useGameState();
-  const [taps, setTaps] = useState(0);
+  const { dispatch, pushToast } = useGameActions();
+  const { playSfx } = useAudio();
+  const haptic = useHaptics();
+  // The transform counts as the first tap.
+  const [taps, setTaps] = useState(s.aboutMedkit ? 1 : 0);
+  const spin = useSharedValue(0);
+  const pop = useSharedValue(1);
+  const iconStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.get()}deg` }, { scale: pop.get() }] }));
+
   const tapIcon = () => {
-    if (taps + 1 >= 5) {
-      setTaps(0);
+    if (s.codeEntry) return onSecret?.();
+    const n = taps + 1;
+    setTaps(n);
+    haptic.tap();
+    if (!s.aboutMedkit) {
+      // Poof: spin and shrink away, swap to the medkit, then bounce back in.
+      playSfx("buy");
+      spin.set(withTiming(360, { duration: 380, easing: Easing.in(Easing.cubic) }));
+      pop.set(withSequence(withTiming(0, { duration: 380, easing: Easing.in(Easing.back(2)) }), withSpring(1, { damping: 6, stiffness: 220 })));
+      setTimeout(() => dispatch({ type: "revealAboutMedkit" }), 380);
+      return;
+    }
+    pop.set(withSequence(withTiming(1.15, { duration: 80 }), withSpring(1, { damping: 7, stiffness: 300 })));
+    if (n >= CODE_TAPS) {
+      dispatch({ type: "unlockCodeEntry" });
+      playSfx("buy");
+      pushToast({ kind: "info", title: "Code entry unlocked", body: "Tap the medkit here any time to enter a code." });
       onSecret?.();
-    } else setTaps(taps + 1);
+    } else if (n >= 2) {
+      playSfx("click");
+      const left = CODE_TAPS - n;
+      pushToast({ kind: "info", title: "Keep going...", body: `${left} more ${left === 1 ? "tap" : "taps"} to unlock code entry.` });
+    }
   };
   return (
     <View className="gap-5">
       <View className="items-center gap-2">
-        <Pressable onPress={tapIcon} accessible={false}>
-          <Image source={HOSPITAL_IMAGE} style={{ width: 72, height: 72 }} contentFit="contain" />
+        <Pressable onPress={tapIcon} accessibilityRole={s.codeEntry ? "button" : undefined} accessibilityLabel={s.codeEntry ? "Enter a code" : undefined} accessible={s.codeEntry}>
+          <Animated.View style={iconStyle}>
+            <Image source={s.aboutMedkit ? MEDKIT_IMAGE : HOSPITAL_IMAGE} style={{ width: 72, height: 72 }} contentFit="contain" />
+          </Animated.View>
         </Pressable>
         <Text className="font-display text-xl text-ink">{APP_INFO.name}</Text>
         <Text className="font-body text-xs text-ink opacity-70">Version {Constants.expoConfig?.version ?? "1.0.0"}</Text>

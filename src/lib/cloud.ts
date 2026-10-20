@@ -83,3 +83,24 @@ export function clearDownloadedMusic() {
     // nothing to clean up
   }
 }
+
+export type PromoReward = { kind: "medkits" | "coins" | "gems"; amount: number; message: string | null };
+
+/**
+ * Claims a promo code (released later by Dustin; see scripts/add-promo.ts). The server allows one
+ * claim per phone. Returns the reward, or null if the code doesn't exist, has run out or was used here.
+ */
+export async function claimPromoOnline(code: string): Promise<PromoReward | null> {
+  try {
+    return await call<PromoReward>("/promo", { method: "POST", body: JSON.stringify({ code, deviceId: await deviceId() }) });
+  } catch (e) {
+    const status = (e as { status?: number }).status;
+    if (status === 404 || status === 409) return null;
+    throw e;
+  }
+}
+
+/** Rebirth 50: send the player's details and feedback (once per phone). */
+export async function sendHallOfFame(entry: { name: string; email: string; feedback: string; rebirths: number }) {
+  return call<{ ok: true }>("/fame", { method: "POST", body: JSON.stringify({ ...entry, deviceId: await deviceId() }) });
+}

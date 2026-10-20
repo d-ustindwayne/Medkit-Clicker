@@ -41,3 +41,32 @@ ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS note TEXT;   -- the answer give
 
 -- The old code-unlocked music (playlists, tracks) is retired. If those tables are still there,
 -- they can be removed with: DROP TABLE tracks, playlists;
+
+-- Promo codes released later (bun run add-promo): what one pays, how many phones can claim it.
+CREATE TABLE IF NOT EXISTS promo_codes (
+  code_sha256  TEXT PRIMARY KEY,
+  kind         TEXT NOT NULL CHECK (kind IN ('medkits', 'coins', 'gems')),
+  amount       NUMERIC NOT NULL CHECK (amount > 0),
+  max_claims   INT CHECK (max_claims > 0),   -- NULL = no limit
+  message      TEXT,                          -- shown to the player, e.g. "Happy holidays!"
+  expires_at   TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- One claim per phone per code.
+CREATE TABLE IF NOT EXISTS promo_claims (
+  code_sha256  TEXT NOT NULL REFERENCES promo_codes(code_sha256) ON DELETE CASCADE,
+  device_id    TEXT NOT NULL,
+  claimed_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (code_sha256, device_id)
+);
+
+-- Players who reached rebirth 50 and left their details (one entry per phone).
+CREATE TABLE IF NOT EXISTS hall_of_fame (
+  id         BIGSERIAL PRIMARY KEY,
+  device_id  TEXT NOT NULL UNIQUE,
+  name       TEXT NOT NULL,
+  email      TEXT,
+  feedback   TEXT,
+  rebirths   INT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

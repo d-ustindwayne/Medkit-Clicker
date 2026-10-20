@@ -4,13 +4,14 @@ import { ActivityIndicator, Text, TextInput, View } from "react-native";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
-import { cloudEnabled, unlockOnline, wakeServer } from "@/lib/cloud";
-import { sectionForCode } from "@/lib/codes";
+import { claimPromoOnline, cloudEnabled, unlockOnline, wakeServer } from "@/lib/cloud";
+import { formatCount } from "@/lib/format";
+import { codeHash, isDevCode, sectionForCode } from "@/lib/codes";
 import { REWARD_SECTIONS } from "@/constants/rewards";
 
 /** Enter a code to unlock a hidden section. Codes are checked by hash; see src/constants/rewards.ts. */
 export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => void }) {
-  const { unlockedSections } = useGameState();
+  const { unlockedSections, promoClaims } = useGameState();
   const { dispatch, pushToast } = useGameActions();
   const palette = usePalette();
   const [code, setCode] = useState("");
@@ -34,7 +35,15 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
     setChecking(true);
     setError(null);
     try {
-      // The server is the source of truth; the local hash check covers offline and server-less builds.
+      // 1. The developer code turns on Dev Tools (in Settings).
+      if (await isDevCode(code)) {
+        dispatch({ type: "unlockDevTools" });
+        pushToast({ kind: "info", title: "Developer tools on", body: "Find them at the bottom of Settings." });
+        setCode("");
+        return;
+      }
+      // 2. A reward section's code. The server is the source of truth; the local hash check covers
+      // offline and server-less builds.
       let section = null;
       if (cloudEnabled) {
         try {
@@ -46,7 +55,18 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
       }
       section ??= await sectionForCode(code);
       if (!section) {
-        setError("That code didn't match anything. Check the spelling and try again.");
+        // 3. A promo code released later: medkits, Care Coins or gems, once per phone.
+        const hash = await codeHash(code);
+        if (promoClaims.includes(hash)) return setError("You've already used that code on this phone.");
+        const reward = cloudEnabled ? await claimPromoOnline(code).catch(() => null) : null;
+        if (!reward) {
+          setError("That code didn't match anything. Check the spelling and try again.");
+          return;
+        }
+        dispatch({ type: "claimPromo", hash, kind: reward.kind, amount: reward.amount });
+        const what = reward.kind === "medkits" ? "patients" : reward.kind === "coins" ? "Care Coins" : "Natal Gems";
+        pushToast({ kind: "info", title: "Code redeemed", body: reward.message ?? `+${formatCount(reward.amount)} ${what}` });
+        setCode("");
         return;
       }
       if (!unlockedSections.includes(section.id)) {
@@ -62,7 +82,7 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
 
   return (
     <View className="gap-4">
-      <Text className="font-body text-base leading-6 text-ink">Got a secret code? Enter it here to unlock something special.</Text>
+      <Text className="font-body text-base leading-6 text-ink">Got a code? Enter it here to unlock something special.</Text>
       <TextInput
         accessibilityLabel="Code"
         value={code}

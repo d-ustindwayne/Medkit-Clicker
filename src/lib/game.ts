@@ -59,6 +59,16 @@ export type GameState = {
   /** Equipped medkit skin and tap effect (gem item ids), or null for the originals. */
   medkitSkin: string | null;
   tapEffect: string | null;
+  /** Developer tools turned on with the dev code. */
+  devTools: boolean;
+  /** Code entry unlocked from the About page (tap the icon 5 times); then one tap opens it. */
+  codeEntry: boolean;
+  /** The About icon has been tapped and turned into the medkit. */
+  aboutMedkit: boolean;
+  /** Natal Gems from promo codes (on top of one per rebirth). */
+  bonusGems: number;
+  /** Promo codes already claimed on this phone (SHA-256 hashes). */
+  promoClaims: string[];
 };
 
 export type GameAction =
@@ -84,6 +94,11 @@ export type GameAction =
   | { type: "buyGemUpgrade"; id: string }
   | { type: "buyGemItem"; id: string }
   | { type: "equip"; slot: "skin" | "tap"; id: string | null }
+  | { type: "unlockDevTools" }
+  | { type: "unlockCodeEntry" }
+  | { type: "revealAboutMedkit" }
+  | { type: "claimPromo"; hash: string; kind: "medkits" | "coins" | "gems"; amount: number }
+  | { type: "devRebirth" }
   /** Place an item (or move it, including from another room) at x, y: fractions of the room art. */
   | { type: "placeItem"; room: string; item: string; x: number; y: number }
   | { type: "removeItem"; room: string; item: string }
@@ -129,6 +144,11 @@ export const newGame = (): GameState => ({
   gemItems: [],
   medkitSkin: null,
   tapEffect: null,
+  devTools: false,
+  codeEntry: false,
+  aboutMedkit: false,
+  bonusGems: 0,
+  promoClaims: [],
 });
 
 /** Multiplier from a gem upgrade: 1 + per-level step x level. */
@@ -322,6 +342,22 @@ const apply = (state: GameState, action: GameAction): GameState => {
       if (action.id !== null && !state.gemItems.includes(action.id)) return state;
       return action.slot === "skin" ? { ...state, medkitSkin: action.id } : { ...state, tapEffect: action.id };
     }
+    case "unlockDevTools":
+      return state.devTools ? state : { ...state, devTools: true };
+    case "unlockCodeEntry":
+      return state.codeEntry ? state : { ...state, codeEntry: true };
+    case "revealAboutMedkit":
+      return state.aboutMedkit ? state : { ...state, aboutMedkit: true };
+    case "claimPromo": {
+      if (state.promoClaims.includes(action.hash) || !(action.amount > 0)) return state;
+      const claimed = { ...state, promoClaims: [...state.promoClaims, action.hash] };
+      if (action.kind === "coins") return { ...claimed, bonusCoins: state.bonusCoins + action.amount };
+      if (action.kind === "gems") return { ...claimed, bonusGems: state.bonusGems + action.amount };
+      return earn(claimed, action.amount);
+    }
+    case "devRebirth":
+      // Dev tools: a rebirth without the patient requirement.
+      return { ...state, healed: 0, runHealed: 0, owned: emptyOwned(), rebirths: state.rebirths + 1, rebirthPoints: state.rebirthPoints + 1 };
     case "setRoom": {
       const room = ROOMS.find((r) => r.id === action.room);
       if (!room || !isUnlocked(room.unlock, state)) return state;
@@ -408,6 +444,11 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     gemItems: Array.isArray(s.gemItems) ? s.gemItems : [],
     medkitSkin: typeof s.medkitSkin === "string" ? s.medkitSkin : null,
     tapEffect: typeof s.tapEffect === "string" ? s.tapEffect : null,
+    devTools: s.devTools === true,
+    codeEntry: s.codeEntry === true,
+    aboutMedkit: s.aboutMedkit === true,
+    bonusGems: typeof s.bonusGems === "number" ? s.bonusGems : 0,
+    promoClaims: Array.isArray(s.promoClaims) ? s.promoClaims : [],
     room: s.room && typeof s.room.current === "string" ? { current: s.room.current, placed: { ...(s.room.placed ?? {}) } } : base.room,
   };
 };

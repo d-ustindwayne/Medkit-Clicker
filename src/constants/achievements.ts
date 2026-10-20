@@ -112,6 +112,7 @@ const ICONS = {
   lightOff: require("@/imgs/achievements/light_off.png"),
   clipboard: require("@/imgs/achievements/clipboard.png"),
   supplyShelf: require("@/imgs/achievements/supply_shelf.png"),
+  medkit: require("@/imgs/medkit.png"),
 };
 
 const TROPHY = {
@@ -233,6 +234,15 @@ const LIST: Achievement[] = [
     secret: true,
     coins: 3,
     check: (s) => s.exports >= 1,
+  },
+  {
+    id: "hidden_medkit",
+    name: "Hidden Medkit",
+    description: "Find the medkit hiding on the About page.",
+    image: ICONS.medkit,
+    secret: true,
+    coins: 3,
+    check: (s) => s.aboutMedkit,
   },
 ];
 

@@ -17,7 +17,7 @@ import { saveSticker } from "@/lib/stickers";
 const MAX_LEVEL = GEM_LEVEL_COSTS.length;
 const pickGems = (s: GameState) => ({
   gemUpgrades: s.gemUpgrades, gemItems: s.gemItems, medkitSkin: s.medkitSkin, tapEffect: s.tapEffect,
-  rebirths: s.rebirths, rebirthPoints: s.rebirthPoints, gemsSpent: s.gemsSpent, unlockedSections: s.unlockedSections,
+  rebirths: s.rebirths, rebirthPoints: s.rebirthPoints, gemsSpent: s.gemsSpent, bonusGems: s.bonusGems, unlockedSections: s.unlockedSections,
 });
 
 function GemCost({ cost }: { cost: number }) {

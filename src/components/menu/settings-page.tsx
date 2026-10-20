@@ -112,7 +112,7 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
         <PixelButton label="Delete progress" tone="danger" onPress={() => setConfirmReset(true)} />
       </SettingsGroup>
 
-      {__DEV__ && <DevTools />}
+      {(__DEV__ || state.devTools) && <DevTools />}
 
       <ConfirmDialog
         visible={confirmReset}

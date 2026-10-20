@@ -12,3 +12,15 @@ export async function sectionForCode(code: string): Promise<RewardSection | null
   const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, normalized);
   return REWARD_SECTIONS.find((s) => s.codeHash && s.codeHash.toLowerCase() === hash) ?? null;
 }
+
+const sha = (normalized: string) => Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, normalized);
+
+/** The developer code turns on Dev Tools. Only its hash is in the build (EXPO_PUBLIC_CODE_DEV, see add-code). */
+export async function isDevCode(code: string) {
+  const hash = process.env.EXPO_PUBLIC_CODE_DEV;
+  const normalized = normalizeCode(code);
+  return !!hash && !!normalized && (await sha(normalized)) === hash.toLowerCase();
+}
+
+/** The SHA-256 of a normalised code, as the server stores promo codes. */
+export const codeHash = (code: string) => sha(normalizeCode(code));
