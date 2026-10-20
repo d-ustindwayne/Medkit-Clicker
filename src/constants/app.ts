@@ -3,7 +3,7 @@ export const APP_INFO = {
   author: "Dustin Dwayne Diaz",
   year: 2026,
   // The game's website (Vue, Bulma/SCSS, three.js on GitHub Pages; see docs/WEBSITE.md). Empty until it's built.
-  website: "https://d-ustindwayne.github.io/MedkitClicker",
+  website: "https://d-ustindwayne.github.io/Medkit-Clicker-Website",
   license: "Apache License 2.0",
 };
 

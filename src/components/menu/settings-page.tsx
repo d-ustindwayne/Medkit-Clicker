@@ -107,7 +107,7 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
         <PixelButton label="Import save" onPress={onImport} />
       </SettingsGroup>
 
-      <SettingsGroup title="DANGER ZONE" icon="close">
+      <SettingsGroup title="DANGER ZONE" icon="warning">
         <Text className="font-body text-xs text-ink opacity-70">Wipes the progress on this device. Export a save first if you might want it back.</Text>
         <PixelButton label="Delete progress" tone="danger" onPress={() => setConfirmReset(true)} />
       </SettingsGroup>

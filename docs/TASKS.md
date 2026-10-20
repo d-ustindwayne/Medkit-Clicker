@@ -49,8 +49,8 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [x] Rebirth moved from the menu to the Hospital page; the menu keeps only non-game things (achievements, settings, redeem, website, about, rewards)
 - [x] The shop's second page is now the outside of the hospital; the page next to the medkit is My Room (see [ROOM.md](ROOM.md))
 - [x] How to Play text on the About page (kept)
-- [x] "Visit website" links to https://d-ustindwayne.github.io/MedkitClicker (empty until the site is built after the game; plan and starter prompt in [WEBSITE.md](WEBSITE.md))
-- [x] The website code lives in its own repo, `d-ustindwayne/MedkitClicker` (decided 2026-10-20)
+- [x] "Visit website" links to https://d-ustindwayne.github.io/Medkit-Clicker-Website (empty until the site is built after the game; plan and starter prompt in [WEBSITE.md](WEBSITE.md))
+- [x] The website code lives in its own repo, `d-ustindwayne/Medkit-Clicker-Website` (decided 2026-10-20)
 - [x] Care Coins: each achievement pays half its listed amount, rounded up (1–3 coins; decided 2026-10-20). Boost and background prices may need lowering to match
 - [ ] The 13 boosts in `src/constants/boosts.ts`: names, effects and durations (prices kept 2026-10-20)
 - [x] Ward patients (`src/constants/patients.ts`; frequency decided 2026-10-20):

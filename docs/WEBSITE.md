@@ -2,7 +2,7 @@
 
 The game's own website, opened from **Menu → Visit website** in the app. It will be built after the game is finished.
 
-- **Address:** https://d-ustindwayne.github.io/MedkitClicker (set in `src/constants/app.ts`)
+- **Address:** https://d-ustindwayne.github.io/Medkit-Clicker-Website (set in `src/constants/app.ts`)
 - **Stack:** Vue 3 + Vite, Bulma with SCSS, three.js
 - **Hosting:** GitHub Pages
 - **Status:** not started; the address shows nothing yet
@@ -13,10 +13,10 @@ GitHub Pages serves a project site at `https://<user>.github.io/<repo-name>/`, s
 
 | Option | Address it gives | Good | Not so good |
 | --- | --- | --- | --- |
-| **A. Its own repo named `MedkitClicker`** (chosen) | `/MedkitClicker` (matches the link in the app) | Website and game stay separate: their own tools, issues, history and deploys. A website agent never touches the game's code. | Two repos; assets the site borrows from the game are copied over. |
+| **A. Its own repo named `Medkit-Clicker-Website`** (chosen) | `/Medkit-Clicker-Website` (matches the link in the app) | Website and game stay separate: their own tools, issues, history and deploys. A website agent never touches the game's code. | Two repos; assets the site borrows from the game are copied over. |
 | B. A `website/` folder in this repo (`Medkit-Clicker`) | `/Medkit-Clicker` (the app link would change) | One repo; the site can use the game's art directly. | Mixes a Vite/Vue project into the Expo project; separate dependencies and builds in one place. |
 
-With option A, Vite needs `base: "/MedkitClicker/"`, and a GitHub Actions workflow builds and publishes to Pages.
+With option A, Vite needs `base: "/Medkit-Clicker-Website/"`, and a GitHub Actions workflow builds and publishes to Pages.
 
 ## What the site is for (from our plan so far)
 
@@ -45,7 +45,7 @@ Build the website for Medkit Clicker, a pixel-art medical idle clicker game for 
 
 Stack: Vue 3 + Vite, Bulma with SCSS (customise Bulma's variables; don't use plain Bulma defaults),
 and three.js for one interactive 3D element. Deploy to GitHub Pages at
-https://d-ustindwayne.github.io/MedkitClicker (Vite base "/MedkitClicker/") with a GitHub Actions workflow.
+https://d-ustindwayne.github.io/Medkit-Clicker-Website (Vite base "/Medkit-Clicker-Website/") with a GitHub Actions workflow.
 
 About the game:
 - You tap a medkit to heal patients, buy supplies (bandages, gloves, stethoscope, up to a DNA lab)

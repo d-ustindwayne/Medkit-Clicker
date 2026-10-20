@@ -32,8 +32,9 @@ const Walker = memo(function Walker({ id, width, height, lane, frame }: { id: st
   const frames = STAFF_FRAMES[id];
   const shown = reduceMotion ? 0 : WALK_SEQUENCE[frame % WALK_SEQUENCE.length];
   return (
-    // zIndex keeps people in front of furniture (items use up to ~40; a dragged item 50).
-    <Animated.View pointerEvents="none" style={[{ position: "absolute", left: size * 0.1, top: height * (0.97 - lane * 0.035) - size, width: size, height: size, zIndex: 45 }, style]}>
+    // People stand in front of furniture (items use up to ~40; a dragged item 50), and whoever is lower
+    // on screen (nearer the viewer, lane 0) stands in front of the others.
+    <Animated.View pointerEvents="none" style={[{ position: "absolute", left: size * 0.1, top: height * (0.97 - lane * 0.035) - size, width: size, height: size, zIndex: 60 - lane }, style]}>
       {frames.map((src, i) => (
         <Image key={i} source={src} style={{ position: "absolute", width: size, height: size, opacity: i === shown ? 1 : 0 }} contentFit="contain" />
       ))}
@@ -182,11 +183,14 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
       touch.current = null;
       const b = boxes.current?.scene;
       const { pageX, pageY } = e.nativeEvent;
-      if (!b || pageX < b.x || pageX > b.x + b.w || pageY < b.y || pageY > b.y + b.h) return;
+      // Dropped back on the tray: cancel. Anywhere else (even partly outside the room) snaps into the room.
+      if (!b || pageY > b.y + b.h) return;
       if (!isUnlocked(item.unlock, state)) return tapItem(item); // shows the unlock hint
       if (!placed.some((p) => p.item === item.id) && placed.length >= room.limit) return tapItem(item); // "room is full"
       // Items stand on their feet, so the drop point is the bottom of the item.
-      dispatch({ type: "placeItem", room: room.id, item: item.id, x: (pageX - b.x) / b.w, y: (pageY - b.y) / b.h + 0.06 });
+      const fx = Math.min(0.95, Math.max(0.05, (pageX - b.x) / b.w));
+      const fy = Math.min(1, Math.max(0, (pageY - b.y) / b.h + 0.06));
+      dispatch({ type: "placeItem", room: room.id, item: item.id, x: fx, y: fy });
       haptic.buy();
       playSfx("buy");
     },
@@ -221,9 +225,8 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
         {!editing && <WardPatient width={width} height={height} />}
       </ScenePage>
 
-      {/* Edit toggle. My Room hides the counter, so the room reaches the top of the screen: keep
-          clear of the menu button and the currency chips. */}
-      <View className="absolute right-3 top-36">
+      {/* Edit toggle */}
+      <View className="absolute right-3 top-2">
         <HardShadow offset={3}>
           <Pressable
             accessibilityRole="button"
@@ -243,7 +246,7 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
       {editing && (
         <>
           {/* Room switcher */}
-          <View className="absolute left-3 top-36 flex-row items-center border-2 border-outline bg-surface">
+          <View className="absolute left-3 top-2 flex-row items-center border-2 border-outline bg-surface">
             <Pressable accessibilityRole="button" accessibilityLabel="Previous room" onPress={() => cycleRoom(-1)} className="h-9 w-8 items-center justify-center">
               <PixelIcon name="left" size={12} />
             </Pressable>
