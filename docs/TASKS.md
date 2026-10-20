@@ -26,18 +26,17 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [ ] Offline earnings: up to 8 hours at the full rate (`MAX_AWAY_S` in `src/hooks/use-game.tsx`).
 - [ ] Locked shop items show as a "???" silhouette until you've earned half their price.
 - [ ] Achievement names, descriptions and thresholds (`src/constants/achievements.ts`), 111 in total, including names for the 8 new items' achievements.
-- [ ] Rebirth numbers (`src/constants/rebirth.ts`):
-  - you need 1 billion patients in a run to rebirth
-  - each rebirth pays 1 Natal Gem (the prestige currency, renamed from rebirth points)
-  - +2% healing per rebirth
-  - nothing to spend Natal Gems on yet (they count towards room and item unlocks)
+- [x] Rebirth numbers (decided 2026-10-20): the first rebirth needs 1 billion patients in a run, each one after needs 2.5x more; 1 Natal Gem per rebirth (name kept); +2% healing per rebirth
+- [ ] **To build: the Natal Gem shop** (decided 2026-10-20). Prices still to pick.
+  - permanent upgrades, bought in levels: +10% per tap; +1 h offline time (up to 24 h)
+  - cosmetics: medkit skins, gem-only animated backgrounds, rare My Room items, alternate app icons, and sticker PNGs to download
 - [ ] What each rebirth unlocks (`REBIRTH_UNLOCKS`, currently empty)
 - [ ] Rewards section title "Jasmine's Rewards", the gift icon, and the wording of the "Tell Dustin" message
 - [ ] Background names and colours (Rose Grid, Mint Crosses, Lavender Dots, Peach Stripes, Sky Checker, Candy Hearts, Plain)
 - [ ] Playlist display names: "normal" is labelled "Everyday", "favourites" is "My Favs", "filipino_rap" is "Pinoy Rap"
 - [ ] Hospital page numbers (`src/constants/hospital.ts`), picked by Claude:
-  - an emergency ambulance every 45-90 s; it parks at the entrance with "Patient: <condition>!" and waits 15 s
-  - tapping it pays 60 s of healing, or 25 taps early on, whichever is more
+  - an emergency ambulance every 2-4 minutes (decided 2026-10-20: rarer, bigger); it parks at the entrance with "Patient: <condition>!" and waits 20 s
+  - tapping it pays 3 minutes of healing, or 25 taps early on, whichever is more
   - cars every 2.5-6 s; four car designs (red sedan, blue hatchback, taxi, green van) plus the ambulance, all 32x32
   - visitors (16x16: woman, man, kid, elder with a cane) walk to and from the door; every 9 s with no healing, down to every 2 s when healing is fast
   - three clouds drift behind the buildings
@@ -46,7 +45,7 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [x] The shop's second page is now the outside of the hospital; the page next to the medkit is My Room (see [ROOM.md](ROOM.md))
 - [ ] How to Play text on the About page
 - [x] "Visit website" links to https://d-ustindwayne.github.io/MedkitClicker (empty until the site is built after the game; plan and starter prompt in [WEBSITE.md](WEBSITE.md))
-- [ ] Where the website code lives: its own `MedkitClicker` repo (recommended) or a `website/` folder here
+- [x] The website code lives in its own repo, `d-ustindwayne/MedkitClicker` (decided 2026-10-20)
 - [ ] Care Coins (`src/constants/achievements.ts` → `coins` on each achievement): the currency name, and the payout per achievement (1–5, harder pays more)
 - [ ] The 13 boosts in `src/constants/boosts.ts`: names, effects, durations and coin prices
 - [ ] Ward patients (`src/constants/patients.ts`):
@@ -113,7 +112,7 @@ Still unused:
 - [ ] **iOS is untested.** It needs a Mac or a cloud build (`eas build`) to check.
 - [x] **Music is copyrighted:** it's no longer in the app or in git. It lives in the database and downloads after the code ([DATABASE.md](DATABASE.md)).
 - [ ] **Old native build on the emulator:** `com.dust.dev.mc` is from before the audio and save libraries. Use Expo Go, or run `bunx expo prebuild --clean` then `bun run android` to replace it.
-- [x] **Unit tests:** `bun test` runs 29 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
+- [x] **Unit tests:** `bun test` runs 30 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
 - [x] **Nothing is committed to git.** Done: pushed to https://github.com/d-ustindwayne/Medkit-Clicker (`main`).
 - [ ] **Achievement and welcome-back toasts briefly cover the counter.** Consider moving them or making them smaller.
 

@@ -6,7 +6,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { hospitalTier } from "@/constants/hospital";
-import { GEM, REBIRTH_MIN_HEALED, REBIRTH_UNLOCKS, gemsForRebirth, rebirthMultiplier } from "@/constants/rebirth";
+import { GEM, REBIRTH_UNLOCKS, gemsForRebirth, rebirthMultiplier, rebirthTarget } from "@/constants/rebirth";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { formatCount } from "@/lib/format";
 
@@ -15,8 +15,9 @@ export function RebirthCard() {
   const { rebirths, rebirthPoints, runHealed } = useGameState();
   const { dispatch, pushToast } = useGameActions();
   const [confirming, setConfirming] = useState(false);
-  const gain = gemsForRebirth(runHealed);
-  const progress = Math.min(1, runHealed / REBIRTH_MIN_HEALED);
+  const gain = gemsForRebirth(runHealed, rebirths);
+  const target = rebirthTarget(rebirths);
+  const progress = Math.min(1, runHealed / target);
   const next = REBIRTH_UNLOCKS.find((u) => u.rebirths > rebirths);
   const look = hospitalTier(rebirths);
 
@@ -46,7 +47,7 @@ export function RebirthCard() {
               <View className="h-full bg-primary" style={{ width: `${progress * 100}%` }} />
             </View>
             <Text className="font-body text-xs text-ink opacity-70">
-              {formatCount(runHealed)} / {formatCount(REBIRTH_MIN_HEALED)} healed this run
+              {formatCount(runHealed)} / {formatCount(target)} healed this run
             </Text>
           </View>
         )}

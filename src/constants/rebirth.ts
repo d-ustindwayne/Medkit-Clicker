@@ -19,8 +19,10 @@ export const rebirthMultiplier = (rebirths: number) => 1 + REBIRTH_BONUS_PER * r
 export const healingRate = (s: { owned: Record<ItemId, number>; rebirths: number; boosts?: Record<string, number>; room?: RoomState }) =>
   perSecond(s.owned) * rebirthMultiplier(s.rebirths) * boostMultiplier(s.boosts, "rate") * (1 + roomBonus(s.room, "rate"));
 
-/** Patients that must be healed in the current run before rebirthing is allowed. */
+/** Patients the first run must heal before rebirthing; each rebirth after that needs 2.5x more. */
 export const REBIRTH_MIN_HEALED = 1e9;
+export const REBIRTH_GROWTH = 2.5;
+export const rebirthTarget = (rebirths: number) => REBIRTH_MIN_HEALED * REBIRTH_GROWTH ** rebirths;
 
 /** Natal Gems: one per rebirth, for every new beginning. A hospital is where life begins. */
 export const GEM = {
@@ -30,7 +32,7 @@ export const GEM = {
 };
 
 /** Gems earned by rebirthing now: 1 once the run has healed enough, otherwise 0. */
-export const gemsForRebirth = (runHealed: number) => (runHealed < REBIRTH_MIN_HEALED ? 0 : 1);
+export const gemsForRebirth = (runHealed: number, rebirths: number) => (runHealed < rebirthTarget(rebirths) ? 0 : 1);
 
 /**
  * Content that opens up at each rebirth count. Empty until designed; the Rebirth page lists these

@@ -53,10 +53,10 @@ export const CAR_GAP: [number, number] = [2.5, 6];
 export const CAR_CROSS: [number, number] = [5, 8];
 
 /** Emergencies: an ambulance pulls up at the entrance; tap it while it waits to admit the patient. */
-export const AMBULANCE_GAP: [number, number] = [45, 90];
-export const AMBULANCE_WAIT = 15;
+export const AMBULANCE_GAP: [number, number] = [120, 240];
+export const AMBULANCE_WAIT = 20;
 /** Reward: this many seconds of healing, or this many taps early in the game, whichever is more. */
-export const EMERGENCY_SECONDS = 60;
+export const EMERGENCY_SECONDS = 180;
 export const EMERGENCY_TAPS = 25;
 
 /** Visitors (16x16, 2 walk frames) stroll along the plaza to the door. Busier healing, more visitors. */

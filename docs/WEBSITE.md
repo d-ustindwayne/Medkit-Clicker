@@ -13,7 +13,7 @@ GitHub Pages serves a project site at `https://<user>.github.io/<repo-name>/`, s
 
 | Option | Address it gives | Good | Not so good |
 | --- | --- | --- | --- |
-| **A. Its own repo named `MedkitClicker`** (recommended) | `/MedkitClicker` (matches the link in the app) | Website and game stay separate: their own tools, issues, history and deploys. A website agent never touches the game's code. | Two repos; assets the site borrows from the game are copied over. |
+| **A. Its own repo named `MedkitClicker`** (chosen) | `/MedkitClicker` (matches the link in the app) | Website and game stay separate: their own tools, issues, history and deploys. A website agent never touches the game's code. | Two repos; assets the site borrows from the game are copied over. |
 | B. A `website/` folder in this repo (`Medkit-Clicker`) | `/Medkit-Clicker` (the app link would change) | One repo; the site can use the game's art directly. | Mixes a Vite/Vue project into the Expo project; separate dependencies and builds in one place. |
 
 With option A, Vite needs `base: "/MedkitClicker/"`, and a GitHub Actions workflow builds and publishes to Pages.

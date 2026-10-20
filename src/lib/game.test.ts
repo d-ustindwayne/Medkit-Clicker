@@ -5,7 +5,7 @@ import { BOOSTS, boostMultiplier } from "@/constants/boosts";
 import { SHOP_ITEMS, itemCost } from "@/constants/items";
 import { SICK_PATIENTS } from "@/constants/patients";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, hospitalTier, visitorGap } from "@/constants/hospital";
-import { healingRate } from "@/constants/rebirth";
+import { healingRate, rebirthTarget } from "@/constants/rebirth";
 import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, roomBonus } from "@/constants/room";
 import { coinBalance, coinsEarned, emergencyReward, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
 
@@ -215,6 +215,16 @@ describe("server sync", () => {
     const s = run(newGame(), { type: "syncRedemptions", history: { chocolate_box: [1, 2] } });
     expect(s.redemptions.chocolate_box).toEqual([1, 2]);
     expect(run(s, { type: "syncRedemptions", history: { chocolate_box: [1] } }).redemptions.chocolate_box).toEqual([1, 2]);
+  });
+});
+
+describe("rebirth target", () => {
+  test("starts at a billion and grows 2.5x per rebirth", () => {
+    expect(rebirthTarget(0)).toBe(1e9);
+    expect(rebirthTarget(2)).toBe(6.25e9);
+    const s = { ...newGame(), runHealed: 2e9, rebirths: 1 };
+    expect(gameReducer(s, { type: "rebirth" }).rebirths).toBe(1); // needs 2.5 billion now
+    expect(gameReducer({ ...s, runHealed: 2.5e9 }, { type: "rebirth" }).rebirths).toBe(2);
   });
 });
 

@@ -192,7 +192,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
     case "exported":
       return { ...state, exports: state.exports + 1 };
     case "rebirth": {
-      const gems = gemsForRebirth(state.runHealed);
+      const gems = gemsForRebirth(state.runHealed, state.rebirths);
       if (gems <= 0) return state;
       // A new run: patients and supplies reset; achievements, lifetime stats, rewards and settings stay.
       return {
