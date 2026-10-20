@@ -8,7 +8,7 @@ It runs on Android, iOS and the web, built with Expo 57, React Native, React 19,
 
 - **Tap and grow:** every tap heals patients. 13 supplies, from bandages and gloves to IV bags, microscopes and a DNA lab, keep healing while you rest. Each purchase raises the next price by 15%.
 - **Offline progress:** your team keeps working for up to 4 hours while the app is closed.
-- **111 achievements**, from "First Aid" to healing a vigintillion patients, with progress bars and a few secret ones.
+- **115 achievements**, from "First Aid" to healing a vigintillion patients, with progress bars and a few secret ones.
 - **Three currencies**, shown top-right: patients (medkits), Care Coins (from achievements) and Natal Gems (one per rebirth).
 - **Rebirth:** on the Hospital page, start a new run for a Natal Gem and a small permanent healing boost. Your hospital grows with it, from a little clinic to the Grand Haven Medical Center (10 looks).
 - **Emergencies:** cars pass and visitors walk in; when an ambulance pulls up at the door, tap it to admit the patient for a burst of healing.

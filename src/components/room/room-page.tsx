@@ -221,8 +221,9 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
         {!editing && <WardPatient width={width} height={height} />}
       </ScenePage>
 
-      {/* Edit toggle */}
-      <View className="absolute right-3 top-2">
+      {/* Edit toggle. My Room hides the counter, so the room reaches the top of the screen: keep
+          clear of the menu button and the currency chips. */}
+      <View className="absolute right-3 top-36">
         <HardShadow offset={3}>
           <Pressable
             accessibilityRole="button"
@@ -242,7 +243,7 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
       {editing && (
         <>
           {/* Room switcher */}
-          <View className="absolute left-3 top-2 flex-row items-center border-2 border-outline bg-surface">
+          <View className="absolute left-3 top-36 flex-row items-center border-2 border-outline bg-surface">
             <Pressable accessibilityRole="button" accessibilityLabel="Previous room" onPress={() => cycleRoom(-1)} className="h-9 w-8 items-center justify-center">
               <PixelIcon name="left" size={12} />
             </Pressable>

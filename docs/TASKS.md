@@ -8,7 +8,7 @@ Art that's still needed is listed in [ASSETS.md](ASSETS.md). The sprite polish b
 The core game is done and was tested on the Android emulator and on web. These all work:
 - tapping and buying
 - autosave, plus earnings while the app is closed
-- 13 shop items and 111 achievements
+- 13 shop items and 115 achievements
 - music (with a full player) and sound effects
 - light and dark themes, and 7 backgrounds
 - export/import of saves
