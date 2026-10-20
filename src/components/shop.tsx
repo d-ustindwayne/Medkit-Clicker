@@ -4,7 +4,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import { BOOSTS, COIN, type Boost } from "@/constants/boosts";
-import { MEDKIT_IMAGE, SHOP_ITEMS, itemCost, type ShopItem } from "@/constants/items";
+import { MEDKIT_IMAGE, MILESTONE_EVERY, SHOP_ITEMS, itemCost, itemMultiplier, type ShopItem } from "@/constants/items";
 import { HOSPITAL_SCENE } from "@/constants/scenes";
 import { Shine } from "@/components/fx/shine";
 import { GemShop } from "@/components/hospital/gem-shop";
@@ -77,7 +77,12 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
               <Image source={MEDKIT_IMAGE} style={{ width: 16, height: 16 }} contentFit="contain" />
               <Text className="font-number text-base leading-5 text-ink">{formatCount(cost)}{qty > 1 ? ` for ${qty}` : ""}</Text>
             </View>
-            {!hidden && <Text className="font-body text-xs text-ink opacity-70">+{formatRate(item.rate)} per second each</Text>}
+            {!hidden && (
+              <Text className="font-body text-xs text-ink opacity-70">
+                +{formatRate(item.rate * itemMultiplier(owned))} per second each
+                {` · x${itemMultiplier(owned + MILESTONE_EVERY - (owned % MILESTONE_EVERY))} at ${owned + MILESTONE_EVERY - (owned % MILESTONE_EVERY)}`}
+              </Text>
+            )}
           </View>
           <Text className="self-end font-number text-2xl leading-7 text-ink" accessibilityLabel={`${owned} owned`}>
             {owned}

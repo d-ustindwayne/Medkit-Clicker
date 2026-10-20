@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { BOOSTS, boostMultiplier } from "@/constants/boosts";
-import { SHOP_ITEMS, itemCost } from "@/constants/items";
+import { SHOP_ITEMS, itemCost, perSecond } from "@/constants/items";
 import { SICK_PATIENTS, minigameTuning } from "@/constants/patients";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, dayPhase, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
@@ -227,6 +227,15 @@ describe("server sync", () => {
     const s = run(newGame(), { type: "syncRedemptions", history: { chocolate_bar: [1, 2] } });
     expect(s.redemptions.chocolate_bar).toEqual([1, 2]);
     expect(run(s, { type: "syncRedemptions", history: { chocolate_bar: [1] } }).redemptions.chocolate_bar).toEqual([1, 2]);
+  });
+});
+
+describe("item milestones", () => {
+  test("every 25 of an item makes it heal 25% more", () => {
+    const owned = (n: number) => ({ ...newGame().owned, gloves: n });
+    expect(perSecond(owned(24))).toBeCloseTo(24 * SHOP_ITEMS[1].rate);
+    expect(perSecond(owned(25))).toBeCloseTo(25 * SHOP_ITEMS[1].rate * 1.25);
+    expect(perSecond(owned(100))).toBeCloseTo(100 * SHOP_ITEMS[1].rate * 2);
   });
 });
 

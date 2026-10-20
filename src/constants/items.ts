@@ -55,5 +55,13 @@ export const HOSPITAL_IMAGE: ImageSourcePropType = require("@/imgs/hospital.png"
 export const itemCost = (item: ShopItem, owned: number) =>
   Math.ceil(item.baseCost * COST_GROWTH ** owned);
 
+/** Every 25 of one item makes that item heal 25% more: x1.25 at 25, x1.5 at 50, x2 at 100. */
+export const MILESTONE_EVERY = 25;
+export const MILESTONE_BONUS = 0.25;
+export const itemMultiplier = (count: number) => 1 + MILESTONE_BONUS * Math.floor(count / MILESTONE_EVERY);
+
 export const perSecond = (owned: Record<ItemId, number>) =>
-  SHOP_ITEMS.reduce((sum, item) => sum + item.rate * (owned[item.id] ?? 0), 0);
+  SHOP_ITEMS.reduce((sum, item) => {
+    const n = owned[item.id] ?? 0;
+    return sum + item.rate * n * itemMultiplier(n);
+  }, 0);
