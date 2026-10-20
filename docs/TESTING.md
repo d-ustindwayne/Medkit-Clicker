@@ -144,3 +144,39 @@ Run through this before a release or after big changes. Items marked 📱 need a
   - rebirth keeping rooms and coins
 - Typecheck and lint are clean.
 - **Not done:** the on-screen pass of the new features (Boosts tab, My Room, minigames, top-left toasts) on the emulator. Claude Code shut the emulator down for low memory overnight. Rerun the "Care Coins and boosts" and "My Room and patients" sections above.
+
+### 2026-10-20, 15:00: emulator, minified release APK talking to the live server
+
+**Size:** 162 MB → 40 MB (emulator, x86_64) and **38 MB** (phone, arm64). Both minified.
+
+**Passed:**
+- Startup with no crashes, minified
+- Currency chips top-right: patients, Care Coins and Natal Gems
+- 120 taps earned 3 Care Coins from achievements
+- Adrenaline Shot: spent 2 coins, showed a 3:00 countdown chip and card timer
+- A patient arrived after 1 minute, with a top-left toast showing their picture and a "!" badge on the page dot
+- My Room: 2 nurses walking with step frames, the patient with a bouncing "!"
+- Treatment dialog, then the injection minigame (vein zone, sliding needle, 3 shots)
+- The loss result; the room then shows "No patients waiting"
+- Decorate mode:
+  - room switcher with bonus summary
+  - item tray, with locked items showing a lock
+  - placing the plant gives a +1%/s bonus
+  - dragging the plant moves it and pages don't swipe
+  - a locked room gives "Unlock 15 achievements"
+- Settings:
+  - no music player without the code (sound effects and vibration only)
+  - a locked paid background shows its price, your balance and a disabled Buy
+- Redeem against the live server: a wrong code is rejected. The server was asleep and took about 40 s to wake, so a timeout, a "waking up" note and an early wake-up were added.
+
+**Found and fixed:**
+- the stale `.mp3`/`.m4a` resource clash
+- a missing CPU filter (the APK still held every CPU type)
+- the tray covering the floor in decorate mode
+- "You still healed 0 patients" after an early loss
+
+**Still for you to test** (they need the real code or more coins):
+- entering Jasmine's code: rewards unlock and the music download shows progress in Settings
+- a real redemption, which should send an ntfy alert to your phone
+- the 4 animated backgrounds (15 / 10 coins)
+- the rhythm and bandage minigames and a minigame win
