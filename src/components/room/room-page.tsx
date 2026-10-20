@@ -8,7 +8,7 @@ import { HardShadow } from "@/components/ui/hard-shadow";
 import { AnimatedSprite } from "@/components/ui/animated-sprite";
 import { PixelIcon } from "@/components/ui/pixel-icon";
 import { WardPatient } from "@/components/ward/ward-patient";
-import { CHARACTER_PX, ITEM_PX, ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, unlockHint, type Placement, type RoomItem } from "@/constants/room";
+import { CHARACTER_PX, DRAG_DEPTH, ITEM_PX, ROOMS, depth, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, unlockHint, type Placement, type RoomItem } from "@/constants/room";
 import { STAFF_FRAMES, WALK_FRAME_MS, WALK_SEQUENCE } from "@/constants/staff";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector } from "@/hooks/use-game";
@@ -31,10 +31,11 @@ const Walker = memo(function Walker({ id, width, height, lane, frame }: { id: st
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: (lane % 2 ? 1 - x.get() : x.get()) * span }] }));
   const frames = STAFF_FRAMES[id];
   const shown = reduceMotion ? 0 : WALK_SEQUENCE[frame % WALK_SEQUENCE.length];
+  const footY = 0.97 - lane * 0.035;
   return (
-    // People stand in front of furniture (items use up to ~40; a dragged item 50), and whoever is lower
-    // on screen (nearer the viewer, lane 0) stands in front of the others.
-    <Animated.View pointerEvents="none" style={[{ position: "absolute", left: size * 0.1, top: height * (0.97 - lane * 0.035) - size, width: size, height: size, zIndex: 60 - lane }, style]}>
+    // Sorted with the furniture by where their feet are: a nurse walks behind a bed that stands lower
+    // on screen and in front of one that stands higher.
+    <Animated.View pointerEvents="none" style={[{ position: "absolute", left: size * 0.1, top: height * footY - size, width: size, height: size, zIndex: depth(footY) }, style]}>
       {frames.map((src, i) => (
         <Image key={i} source={src} style={{ position: "absolute", width: size, height: size, opacity: i === shown ? 1 : 0 }} contentFit="contain" />
       ))}
@@ -59,6 +60,14 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
   const size = width * (ITEM_PX / ART_W) * 1.5;
   const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
+  const last = useRef<{ x: number; y: number } | null>(null);
+  const finish = (x: number, y: number) => {
+    const s0 = start.current;
+    start.current = null;
+    last.current = null;
+    setDrag(null);
+    if (s0) onMove(p.x + (x - s0.x) / width, p.y + (y - s0.y) / height);
+  };
   // View touch-responder props: refs are only read inside these event handlers.
   const dragHandlers = {
     onStartShouldSetResponder: () => true,
@@ -68,17 +77,19 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
       start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
     },
     onResponderMove: (e: GestureResponderEvent) => {
-      if (start.current) setDrag({ dx: e.nativeEvent.pageX - start.current.x, dy: e.nativeEvent.pageY - start.current.y });
+      if (!start.current) return;
+      last.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+      setDrag({ dx: e.nativeEvent.pageX - start.current.x, dy: e.nativeEvent.pageY - start.current.y });
     },
-    onResponderRelease: (e: GestureResponderEvent) => {
-      const s0 = start.current;
-      start.current = null;
-      setDrag(null);
-      if (s0) onMove(p.x + (e.nativeEvent.pageX - s0.x) / width, p.y + (e.nativeEvent.pageY - s0.y) / height);
-    },
+    onResponderRelease: (e: GestureResponderEvent) => finish(e.nativeEvent.pageX, e.nativeEvent.pageY),
+    // Taken away mid-drag: still drop it where the finger last was.
     onResponderTerminate: () => {
-      start.current = null;
-      setDrag(null);
+      const l = last.current;
+      if (l) finish(l.x, l.y);
+      else {
+        start.current = null;
+        setDrag(null);
+      }
     },
   };
   const left = p.x * width - size / 2 + (drag?.dx ?? 0);
@@ -87,7 +98,7 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
     <View
       {...(editing ? dragHandlers : {})}
       accessibilityLabel={item.name}
-      style={{ position: "absolute", left, top, width: size, height: size, zIndex: drag ? 50 : Math.round(p.y * 40) }}
+      style={{ position: "absolute", left, top, width: size, height: size, zIndex: drag ? DRAG_DEPTH : depth(p.y) }}
     >
       {item.frames ? <AnimatedSprite frames={item.frames} size={size} /> : <Image source={item.image} style={{ width: size, height: size }} contentFit="contain" />}
       {editing && (
@@ -151,8 +162,11 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
   const sceneRef = useRef<View>(null);
   const boxes = useRef<{ root: Box; scene: Box } | null>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
+  const lastPoint = useRef<{ x: number; y: number } | null>(null);
   /** The dragged tile's image, positioned inside this page. */
   const [ghost, setGhost] = useState<{ item: RoomItem; left: number; top: number } | null>(null);
+  /** A tile is being dragged: the tray stops scrolling so it doesn't slide along with the finger. */
+  const [dragging, setDragging] = useState(false);
   const measure = () => {
     rootRef.current?.measureInWindow((x, y, w, h) => {
       const root = { x, y, w, h };
@@ -171,34 +185,48 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
       const t = touch.current;
       if (!t) return false;
       const dx = e.nativeEvent.pageX - t.x, dy = e.nativeEvent.pageY - t.y;
-      return dy < -12 && Math.abs(dy) > Math.abs(dx);
+      const pick = dy < -10 && Math.abs(dy) > Math.abs(dx) * 0.8;
+      if (pick) setDragging(true);
+      return pick;
     },
+    onResponderGrant: () => setDragging(true),
     onResponderTerminationRequest: () => false,
     onResponderMove: (e: GestureResponderEvent) => {
       const root = boxes.current?.root;
+      lastPoint.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
       if (root) setGhost({ item, left: e.nativeEvent.pageX - root.x - ghostSize / 2, top: e.nativeEvent.pageY - root.y - ghostSize });
     },
-    onResponderRelease: (e: GestureResponderEvent) => {
-      setGhost(null);
-      touch.current = null;
-      const b = boxes.current?.scene;
-      const { pageX, pageY } = e.nativeEvent;
-      // Dropped back on the tray: cancel. Anywhere else (even partly outside the room) snaps into the room.
-      if (!b || pageY > b.y + b.h) return;
-      if (!isUnlocked(item.unlock, state)) return tapItem(item); // shows the unlock hint
-      if (!placed.some((p) => p.item === item.id) && placed.length >= room.limit) return tapItem(item); // "room is full"
-      // Items stand on their feet, so the drop point is the bottom of the item.
-      const fx = Math.min(0.95, Math.max(0.05, (pageX - b.x) / b.w));
-      const fy = Math.min(1, Math.max(0, (pageY - b.y) / b.h + 0.06));
-      dispatch({ type: "placeItem", room: room.id, item: item.id, x: fx, y: fy });
-      haptic.buy();
-      playSfx("buy");
-    },
+    onResponderRelease: (e: GestureResponderEvent) => drop(item, e.nativeEvent.pageX, e.nativeEvent.pageY),
+    // Taken away mid-drag (the tray tried to scroll): still drop it where the finger last was.
     onResponderTerminate: () => {
-      setGhost(null);
-      touch.current = null;
+      const l = lastPoint.current;
+      if (l) drop(item, l.x, l.y);
+      else endDrag();
     },
+    onTouchEnd: () => setDragging(false),
+    onTouchCancel: () => setDragging(false),
   });
+  const endDrag = () => {
+    setGhost(null);
+    setDragging(false);
+    touch.current = null;
+    lastPoint.current = null;
+  };
+  const drop = (item: RoomItem, pageX: number, pageY: number) => {
+    endDrag();
+    const b = boxes.current?.scene;
+    // Dropped back on the tray: cancel. Anywhere else (even on another item, or partly outside the
+    // room) places it in the room.
+    if (!b || pageY > b.y + b.h) return;
+    if (!isUnlocked(item.unlock, state)) return tapItem(item); // shows the unlock hint
+    if (!placed.some((p) => p.item === item.id) && placed.length >= room.limit) return tapItem(item); // "room is full"
+    // Items stand on their feet, so the drop point is the bottom of the item.
+    const fx = Math.min(0.95, Math.max(0.05, (pageX - b.x) / b.w));
+    const fy = Math.min(1, Math.max(0, (pageY - b.y) / b.h + 0.06));
+    dispatch({ type: "placeItem", room: room.id, item: item.id, x: fx, y: fy });
+    haptic.buy();
+    playSfx("buy");
+  };
 
   const placedSorted = [...placed].sort((a, b) => a.y - b.y);
   return (
@@ -263,7 +291,7 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
 
           {/* Item tray */}
           <View className="absolute inset-x-0 bottom-0 border-t-2 border-outline bg-surface/95 py-1.5" accessibilityHint={`Drag placed items to move them. Bonuses are capped at +${Math.round(ROOM_BONUS_CAP * 100)}% each.`}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-3">
+            <ScrollView horizontal scrollEnabled={!dragging} showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-3">
               {ROOM_ITEMS.map((item) => {
                 const open = isUnlocked(item.unlock, state);
                 const here = placed.some((p) => p.item === item.id);
@@ -294,7 +322,7 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
       )}
 
       {ghost && (
-        <View pointerEvents="none" style={{ position: "absolute", left: ghost.left, top: ghost.top, width: ghostSize, height: ghostSize, opacity: 0.85, zIndex: 100 }}>
+        <View pointerEvents="none" style={{ position: "absolute", left: ghost.left, top: ghost.top, width: ghostSize, height: ghostSize, opacity: 0.85, zIndex: DRAG_DEPTH + 1 }}>
           <Image source={ghost.item.image} style={{ width: ghostSize, height: ghostSize }} contentFit="contain" />
         </View>
       )}

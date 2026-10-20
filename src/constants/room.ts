@@ -76,6 +76,14 @@ export const ROOM_BONUS_CAP = 0.75;
 export const ITEM_PX = 32;
 export const CHARACTER_PX = 64;
 /** Where things can go, as fractions of the room art (floor starts at y = 119/180). */
+/**
+ * Draw order in a room from where something touches the floor (0 top, 1 bottom of the room):
+ * whatever stands lower on screen is nearer the viewer, so it's drawn in front.
+ */
+export const depth = (footY: number) => Math.round(footY * 1000);
+/** Above everything in the room, for an item being dragged. */
+export const DRAG_DEPTH = 5000;
+
 export const ZONES = { floor: { minY: 0.72, maxY: 0.98 }, wall: { minY: 0.24, maxY: 0.58 } } as const;
 
 export const unlockHint = (u: Unlock) => {

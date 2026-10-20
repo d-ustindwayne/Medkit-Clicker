@@ -448,10 +448,25 @@ const keepRewards = (from: GameState, into: GameState): GameState => {
   return { ...into, redemptions, unlockedSections };
 };
 
+/**
+ * Puts away room items that are locked again (a rebirth resets supplies, which some items need),
+ * so My Room only shows items the player has.
+ */
+function putAwayLocked(s: GameState): GameState {
+  const ok = (id: string) => {
+    const item = ROOM_ITEMS.find((i) => i.id === id);
+    return !!item && isUnlocked(item.unlock, s);
+  };
+  const lists = Object.entries(s.room.placed);
+  if (lists.every(([, list]) => list.every((p) => ok(p.item)))) return s;
+  return { ...s, room: { ...s.room, placed: Object.fromEntries(lists.map(([k, list]) => [k, list.filter((p) => ok(p.item))])) } };
+}
+
 export const gameReducer = (state: GameState, action: GameAction): GameState => {
   if (action.type === "reset") return keepRewards(state, newGame());
-  if (action.type === "import") return withAchievements(keepRewards(state, action.state));
-  return withAchievements(apply(state, action));
+  if (action.type === "import") return putAwayLocked(withAchievements(keepRewards(state, action.state)));
+  const next = withAchievements(apply(state, action));
+  return action.type === "rebirth" || action.type === "devRebirth" || action.type === "load" ? putAwayLocked(next) : next;
 };
 
 /** Fills in fields missing from older or hand-edited saves. */

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { Pressable, Text, View } from "react-native";
+import { depth } from "@/constants/room";
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
 import { TreatModal } from "@/components/ward/treat-modal";
@@ -62,7 +63,7 @@ export function WardPatient({ width, height }: { width: number; height: number }
               setTreating({ patient: p.info, arrivedAt: p.arrivedAt });
             }}
             // People lower on screen stand in front (and in front of the furniture).
-            style={{ position: "absolute", left: width * spot.x - size / 2, top: height * spot.y - size, width: size, height: size, zIndex: 50 + Math.round(spot.y * 10) }}
+            style={{ position: "absolute", left: width * spot.x - size / 2, top: height * spot.y - size, width: size, height: size, zIndex: depth(spot.y) }}
           >
             <Image source={p.info.image} style={{ width: size, height: size }} contentFit="contain" />
             <Animated.View style={[{ position: "absolute", top: -size * 0.12, alignSelf: "center" }, bubble]}>
