@@ -35,8 +35,8 @@ for (const section of REWARD_SECTIONS) {
   await sql`INSERT INTO access_codes (section, code_sha256, title, notify_name) VALUES (${section.id}, ${hash.toLowerCase()}, ${section.title}, ${section.notify})
     ON CONFLICT (section) DO UPDATE SET code_sha256 = EXCLUDED.code_sha256, title = EXCLUDED.title, notify_name = EXCLUDED.notify_name`;
   for (const [i, r] of section.rewards.entries()) {
-    await sql`INSERT INTO rewards (id, section, name, cost, max_uses, sort) VALUES (${r.id}, ${section.id}, ${r.name}, ${r.cost}, ${r.limit}, ${i})
-      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, cost = EXCLUDED.cost, max_uses = EXCLUDED.max_uses, sort = EXCLUDED.sort`;
+    await sql`INSERT INTO rewards (id, section, name, cost, max_uses, per_year, sort) VALUES (${r.id}, ${section.id}, ${r.name}, ${r.cost}, ${r.limit}, ${r.perYear ?? null}, ${i})
+      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, cost = EXCLUDED.cost, max_uses = EXCLUDED.max_uses, per_year = EXCLUDED.per_year, sort = EXCLUDED.sort`;
   }
   const ids = section.rewards.map((r) => r.id);
   await sql`DELETE FROM rewards WHERE section = ${section.id} AND id NOT IN ${sql(ids)}`;

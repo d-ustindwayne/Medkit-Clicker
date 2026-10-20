@@ -4,7 +4,7 @@ import { Platform } from "react-native";
 
 import { SFX, SOUNDTRACK, type Playlist, type SfxName } from "@/constants/playlists";
 import { useGameActions, useSettings } from "@/hooks/use-game";
-import { clearDownloadedMusic } from "@/lib/cloud";
+import { cloudEnabled, downloadMusic, getToken, loadCachedPlaylists, wakeServer, type CachedPlaylist } from "@/lib/cloud";
 import { VOLUME_STEPS } from "@/lib/storage";
 
 type AudioControls = {
@@ -14,8 +14,15 @@ type AudioControls = {
 };
 
 export type MusicState = {
-  /** Playlists that can play (just the game's soundtrack). */
+  /** Playlists that can play on this phone (downloaded, or bundled for testing). Empty = no music. */
   library: { id: string; name: string }[];
+  /** True when a code token is saved and the server is configured, so songs can download. */
+  canDownload: boolean;
+  /** Songs downloaded so far, while a download runs. */
+  download: { done: number; total: number } | null;
+  downloadError: string | null;
+  /** Downloads (or updates) the code-locked music. Call after a code unlock. */
+  fetchMusic: () => Promise<void>;
   playlistName: string;
   trackIndex: number;
   trackCount: number;
@@ -30,8 +37,6 @@ export type MusicState = {
   previous: () => void;
   seek: (seconds: number) => void;
 };
-
-const LIBRARY: Playlist[] = [SOUNDTRACK];
 
 const AudioContext = createContext<AudioControls>({ playSfx: () => {}, unlock: () => {} });
 // Separate context: it updates a couple of times a second while music plays, and only the
@@ -55,8 +60,23 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const buy = useAudioPlayer(SFX.buy);
   const invalid = useAudioPlayer(SFX.invalid);
 
-  // The music library: the game's own soundtrack.
-  const library: Playlist[] = LIBRARY;
+  // The music library: the game's soundtrack, then the playlists downloaded after Jasmine's code.
+  const [cached, setCached] = useState<CachedPlaylist[]>([]);
+  const [token, setToken] = useState<string | null>(null);
+  const [download, setDownload] = useState<{ done: number; total: number } | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  useEffect(() => {
+    loadCachedPlaylists().then(setCached);
+    getToken().then((saved) => {
+      setToken(saved);
+      // Code holders use the server (rewards, new songs): wake it early.
+      if (saved) wakeServer();
+    });
+  }, []);
+  const library: Playlist[] = useMemo(() => {
+    const downloaded = cached.map((p) => ({ id: p.id, name: p.name, tracks: p.tracks.map((uri) => ({ uri })) }));
+    return [SOUNDTRACK, ...downloaded];
+  }, [cached]);
 
   // Music: one player that walks through the selected playlist. The track index resets when the
   // playlist changes because it is stored alongside the playlist it belongs to.
@@ -67,10 +87,6 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const music = useAudioPlayer(playlist?.tracks[0] ?? null);
   const status = useAudioPlayerStatus(music);
   const musicOn = unlocked && settings.musicVolume > 0 && !paused && !!playlist;
-
-  useEffect(() => {
-    clearDownloadedMusic();
-  }, []);
 
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false }).catch(() => {});
@@ -116,9 +132,27 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const unlock = useCallback(() => setUnlocked(true), []);
   const controls = useMemo(() => ({ playSfx, unlock }), [playSfx, unlock]);
 
+  const fetchMusic = useCallback(async () => {
+    const saved = await getToken();
+    setToken(saved);
+    if (!saved || !cloudEnabled) return;
+    setDownloadError(null);
+    try {
+      setCached(await downloadMusic(saved, (done, total) => setDownload({ done, total })));
+    } catch (e) {
+      setDownloadError(e instanceof Error ? e.message : "Download failed. Check the connection and try again.");
+    } finally {
+      setDownload(null);
+    }
+  }, []);
+
   const musicState = useMemo<MusicState>(
     () => ({
       library: library.map(({ id, name }) => ({ id, name })),
+      canDownload: cloudEnabled && !!token,
+      download,
+      downloadError,
+      fetchMusic,
       playlistName: playlist?.name ?? "",
       trackIndex,
       trackCount,
@@ -140,7 +174,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         music.seekTo(seconds).catch(() => {});
       },
     }),
-    [library, playlist, trackIndex, trackCount, musicOn, paused, status.currentTime, status.duration, music],
+    [library, token, download, downloadError, fetchMusic, playlist, trackIndex, trackCount, musicOn, paused, status.currentTime, status.duration, music],
   );
 
   return (

@@ -8,6 +8,7 @@ import { MusicPlayer } from "@/components/menu/music-player";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, SettingsGroup, Stepper, Toggle, VolumeControl } from "@/components/ui/controls";
 import { PixelButton } from "@/components/ui/pixel-button";
+import { useMusic } from "@/hooks/use-audio";
 import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
 import { COIN } from "@/constants/boosts";
 import { coinBalance } from "@/lib/game";
@@ -19,6 +20,7 @@ const cycle = (i: number, delta: number, length: number) => (i + delta + length)
 export function SettingsPage({ onDone }: { onDone: () => void }) {
   const settings = useSettings();
   const state = useGameState();
+  const music = useMusic();
   const { updateSettings, setTheme, replaceSave, resetProgress, dispatch, pushToast } = useGameActions();
   const [confirmReset, setConfirmReset] = useState(false);
   const background = BACKGROUNDS[settings.background % BACKGROUNDS.length];
@@ -55,10 +57,36 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
   return (
     <View className="gap-5">
       <SettingsGroup title="AUDIO" icon="note">
-        <MusicPlayer />
-        <Field label="Music">
-          <VolumeControl label="Music volume" value={settings.musicVolume} steps={VOLUME_STEPS} onChange={(v) => updateSettings({ musicVolume: v })} />
-        </Field>
+        {music.library.length > 0 && (
+          <>
+            <MusicPlayer />
+            {music.library.length > 1 && (
+            <Field label="Playlist">
+              <Stepper
+                label="playlist"
+                value={music.library[settings.playlist % music.library.length].name}
+                onPrev={() => updateSettings({ playlist: cycle(settings.playlist, -1, music.library.length) })}
+                onNext={() => updateSettings({ playlist: cycle(settings.playlist, 1, music.library.length) })}
+              />
+            </Field>
+            )}
+            <Field label="Music">
+              <VolumeControl label="Music volume" value={settings.musicVolume} steps={VOLUME_STEPS} onChange={(v) => updateSettings({ musicVolume: v })} />
+            </Field>
+          </>
+        )}
+        {music.canDownload && (
+          <View className="gap-2">
+            {music.download ? (
+              <Text className="font-body text-sm text-ink">
+                Downloading music: {music.download.done} of {music.download.total} songs...
+              </Text>
+            ) : (
+              <PixelButton label={music.library.length > 0 ? "Check for new songs" : "Download your music"} onPress={() => music.fetchMusic()} />
+            )}
+            {music.downloadError && <Text className="font-body text-xs text-danger">{music.downloadError}</Text>}
+          </View>
+        )}
         <Field label="Sound effects">
           <VolumeControl label="Sound effects volume" value={settings.sfxVolume} steps={VOLUME_STEPS} onChange={(v) => updateSettings({ sfxVolume: v })} />
         </Field>

@@ -12,6 +12,7 @@ import { useGameActions, useGameState } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
 import { cloudEnabled, fetchRewards, getToken, redeemOnline } from "@/lib/cloud";
 import { formatCount } from "@/lib/format";
+import { redeemedThisYear } from "@/lib/game";
 
 const countLabel = (reward: Reward, index: number) => (reward.limit === null ? `#${index + 1}` : `${index + 1} of ${reward.limit}`);
 
@@ -80,21 +81,42 @@ function RewardInput({ reward, value, onChange }: { reward: Reward; value: strin
   );
 }
 
+/** A random fun fact for the "Random fun fact" reward. */
+async function fetchFunFact() {
+  const res = await fetch("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en");
+  const body = (await res.json()) as { text?: string };
+  if (!res.ok || !body.text) throw new Error("No fact");
+  return body.text.trim();
+}
+
 function RewardCard({ section, reward }: { section: RewardSection; reward: Reward }) {
-  const { healed, redemptions } = useGameState();
+  const { healed, redemptions, rebirths } = useGameState();
   const { dispatch, pushToast } = useGameActions();
   const [confirming, setConfirming] = useState(false);
   const [note, setNote] = useState("");
+  const [fact, setFact] = useState<string | null>(null);
   const history = redemptions[reward.id] ?? [];
   const unlimited = reward.limit === null;
-  const left = unlimited ? Infinity : reward.limit! - history.length;
+  const yearLeft = reward.perYear !== undefined ? reward.perYear - redeemedThisYear(history) : Infinity;
+  const left = Math.min(unlimited ? Infinity : reward.limit! - history.length, yearLeft);
+  const lockedUntil = reward.minRebirths && rebirths < reward.minRebirths ? reward.minRebirths : 0;
   const affordable = healed >= reward.cost;
   const answer = note.trim();
 
   const redeem = async () => {
     setConfirming(false);
     setNote("");
-    const extra = answer || undefined;
+    let extra = answer || undefined;
+    // The fun fact is fetched first, so nothing is spent if there's no connection.
+    if (reward.fact) {
+      try {
+        extra = await fetchFunFact();
+      } catch {
+        pushToast({ kind: "info", title: "No fact right now", body: "Couldn't reach the fun-fact library. Nothing was spent; try again with a connection." });
+        return;
+      }
+      setFact(extra);
+    }
     // Online: the server checks the limit, records it and alerts the giver automatically.
     const token = cloudEnabled ? await getToken() : null;
     if (token) {
@@ -133,7 +155,11 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
           </View>
         </View>
 
-        {unlimited ? (
+        {lockedUntil ? (
+          <Text className="font-body text-sm text-ink">Unlocks at rebirth {lockedUntil} (you have {rebirths}).</Text>
+        ) : reward.perYear !== undefined ? (
+          <Text className="font-body text-sm text-ink">{Math.max(0, yearLeft)} of {reward.perYear} left this year</Text>
+        ) : unlimited ? (
           <Text className="font-body text-sm text-ink">No limit{history.length > 0 ? ` · redeemed ${history.length} time${history.length === 1 ? "" : "s"}` : ""}</Text>
         ) : (
           <View className="flex-row items-center gap-2" accessibilityLabel={`${left} of ${reward.limit} left`}>
@@ -144,8 +170,8 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
           </View>
         )}
 
-        {left > 0 && <PixelButton tone="success" disabled={!affordable} onPress={() => setConfirming(true)} label="Redeem" />}
-        {left > 0 && !affordable && <Text className="font-body text-xs text-ink opacity-70">You need {formatCount(reward.cost - healed)} more patients.</Text>}
+        {left > 0 && !lockedUntil && <PixelButton tone="success" disabled={!affordable} onPress={() => setConfirming(true)} label="Redeem" />}
+        {left > 0 && !lockedUntil && !affordable && <Text className="font-body text-xs text-ink opacity-70">You need {formatCount(reward.cost - healed)} more patients.</Text>}
 
         {history.length > 0 && (
           <View className="gap-2 border-t-[1.5px] border-dashed border-outline pt-3">
@@ -178,6 +204,19 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
       >
         <RewardInput reward={reward} value={note} onChange={setNote} />
       </ConfirmDialog>
+      <ConfirmDialog
+        visible={fact !== null}
+        title="Fun fact!"
+        body={fact ?? ""}
+        cancelLabel="Close"
+        confirmLabel="Share"
+        confirmTone="success"
+        onCancel={() => setFact(null)}
+        onConfirm={() => {
+          Share.share({ message: `Fun fact from Medkit Clicker: ${fact}` }).catch(() => {});
+          setFact(null);
+        }}
+      />
     </HardShadow>
   );
 }

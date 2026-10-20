@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Text, TextInput, View } from "react-native";
 
 import { PixelButton } from "@/components/ui/pixel-button";
+import { useMusic } from "@/hooks/use-audio";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
 import { claimPromoOnline, cloudEnabled, unlockOnline, wakeServer } from "@/lib/cloud";
@@ -14,6 +15,7 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
   const { unlockedSections, promoClaims } = useGameState();
   const { dispatch, pushToast } = useGameActions();
   const palette = usePalette();
+  const music = useMusic();
   const [code, setCode] = useState("");
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,10 +47,12 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
       // 2. A reward section's code. The server is the source of truth; the local hash check covers
       // offline and server-less builds.
       let section = null;
+      let online = false;
       if (cloudEnabled) {
         try {
           const res = await unlockOnline(code);
           section = res ? (REWARD_SECTIONS.find((s) => s.id === res.section) ?? null) : null;
+          online = !!res;
         } catch {
           // offline or server down: fall through to the local check
         }
@@ -74,6 +78,11 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
         pushToast({ kind: "info", title: "Unlocked", body: `${section.title} is now in the menu.` });
       }
       setCode("");
+      if (online) {
+        // Her playlists download in the background and show up in Settings.
+        pushToast({ kind: "info", title: "Downloading your music", body: "Your playlists are on their way. They'll show up in Settings." });
+        music.fetchMusic();
+      }
       onUnlocked(section.id);
     } finally {
       setChecking(false);

@@ -250,8 +250,8 @@ describe("gem shop", () => {
     const s = run(withGems(4), { type: "buyGemItem", id: "skin_night" });
     expect(s.gemItems).toEqual(["skin_night"]);
     expect(s.medkitSkin).toBe("skin_night");
-    expect(run(withGems(4), { type: "buyGemItem", id: "skin_dustin_pixel" }).gemItems).toEqual([]);
-    expect(run(withGems(4, { unlockedSections: ["jasmine"] }), { type: "buyGemItem", id: "skin_dustin_pixel" }).gemItems).toEqual(["skin_dustin_pixel"]);
+    expect(run(withGems(4), { type: "buyGemItem", id: "skin_dustin_photo" }).gemItems).toEqual([]);
+    expect(run(withGems(4, { unlockedSections: ["jasmine"] }), { type: "buyGemItem", id: "skin_dustin_photo" }).gemItems).toEqual(["skin_dustin_photo"]);
   });
   test("Head Start gives free supplies on rebirth", () => {
     const s = run({ ...withGems(0), gemUpgrades: { head_start: 2 }, runHealed: 1e9 }, { type: "rebirth" });

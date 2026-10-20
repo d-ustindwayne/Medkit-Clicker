@@ -172,6 +172,12 @@ export const coinsEarned = (s: Pick<GameState, "achievements">) =>
   ACHIEVEMENTS.reduce((sum, a) => sum + (s.achievements[a.id] !== undefined ? a.coins : 0), 0);
 export const coinBalance = (s: Pick<GameState, "achievements" | "coinsSpent" | "bonusCoins">) => coinsEarned(s) + s.bonusCoins - s.coinsSpent;
 
+/** How many of these redemption times fall in the current calendar year. */
+export const redeemedThisYear = (times: number[], now = Date.now()) => {
+  const year = new Date(now).getFullYear();
+  return times.filter((t) => new Date(t).getFullYear() === year).length;
+};
+
 /** Patients paid for treating a ward patient: minutes of production, with a floor early in the game. */
 export const treatReward = (s: { owned: Record<ItemId, number>; rebirths: number; gemUpgrades?: Record<string, number> }, won: boolean) => {
   const base = { owned: s.owned, rebirths: s.rebirths };
@@ -273,6 +279,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
       if (!section || !reward || !state.unlockedSections.includes(section.id)) return state;
       const history = state.redemptions[reward.id] ?? [];
       if ((reward.limit !== null && history.length >= reward.limit) || state.healed < reward.cost) return state;
+      if (reward.minRebirths && state.rebirths < reward.minRebirths) return state;
+      if (reward.perYear !== undefined && redeemedThisYear(history) >= reward.perYear) return state;
       return {
         ...state,
         healed: state.healed - reward.cost,

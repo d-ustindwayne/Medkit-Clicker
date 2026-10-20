@@ -39,8 +39,7 @@ export const GEM_ITEMS: GemItem[] = [
   { id: "skin_candy", name: "Candy Medkit", kind: "skin", cost: 2, rebirths: 2, image: require("@/imgs/skins/skin_candy.png") },
   { id: "skin_night", name: "Night Shift Medkit", kind: "skin", cost: 3, rebirths: 4, image: require("@/imgs/skins/skin_night.png") },
   { id: "skin_crystal", name: "Crystal Medkit", kind: "skin", cost: 5, rebirths: 8, image: require("@/imgs/skins/skin_crystal.png") },
-  { id: "skin_dustin_pixel", name: "Dustin (pixel)", kind: "skin", cost: 1, rebirths: 0, section: "jasmine", image: require("@/imgs/skins/dustin_pixel.png") },
-  { id: "skin_dustin_photo", name: "Dustin (photo)", kind: "skin", cost: 1, rebirths: 0, section: "jasmine", image: require("@/imgs/skins/dustin_photo.png") },
+  { id: "skin_dustin_photo", name: "Dustin", kind: "skin", cost: 1, rebirths: 0, section: "jasmine", image: require("@/imgs/skins/dustin_photo.png") },
   // Tap effects
   { id: "tap_hearts", name: "Heart Burst", kind: "tap", cost: 1, rebirths: 1, image: require("@/imgs/gems/p_heart.png") },
   { id: "tap_sparkles", name: "Sparkles", kind: "tap", cost: 2, rebirths: 3, image: require("@/imgs/gems/p_sparkle.png") },
@@ -89,7 +88,7 @@ export const GEM_KIND_LABEL: Record<GemItemKind, string> = { skin: "Medkit skin"
 
 export const MEDKIT_SKINS: Record<string, ImageSourcePropType> = Object.fromEntries(GEM_ITEMS.filter((i) => i.kind === "skin").map((i) => [i.id, i.image]));
 /** Skins drawn as photos/portraits fill the button; pixel medkits keep the medkit's proportions. */
-export const ROUND_SKINS = new Set(["skin_dustin_pixel", "skin_dustin_photo"]);
+export const ROUND_SKINS = new Set(["skin_dustin_photo"]);
 
 /** Gems available to spend. */
 export const gemBalance = (s: { rebirthPoints: number; gemsSpent?: number; bonusGems?: number }) => s.rebirthPoints + (s.bonusGems ?? 0) - (s.gemsSpent ?? 0);
