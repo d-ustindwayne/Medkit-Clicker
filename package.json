@@ -60,6 +60,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "music:compose": "bun scripts/compose-music.ts",
+    "sfx:compose": "bun scripts/compose-sfx.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "server": "bun server/index.ts",
