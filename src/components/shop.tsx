@@ -1,7 +1,7 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import Animated, { FadeIn, FadeOut, LinearTransition, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import { BOOSTS, COIN, type Boost } from "@/constants/boosts";
 import { MEDKIT_IMAGE, SHOP_ITEMS, itemCost, type ShopItem } from "@/constants/items";
@@ -214,13 +214,19 @@ function BoostsList() {
 function ShopPage() {
   const [tab, setTab] = useState<"supplies" | "boosts">("supplies");
   const [qty, setQty] = useState(1);
+  // The x1 / x10 / x100 box slides shut on the Boosts tab and the tabs stretch into its space.
+  const [qtyW, setQtyW] = useState(0);
+  const open = useSharedValue(1);
+  useEffect(() => {
+    open.set(withTiming(tab === "supplies" ? 1 : 0, { duration: 220 }));
+  }, [tab, open]);
+  const qtyStyle = useAnimatedStyle(() => ({ width: qtyW ? qtyW * open.get() : undefined, opacity: open.get(), marginLeft: -8 * (1 - open.get()) }));
   const { playSfx } = useAudio();
   return (
     <View className="flex-1">
       {/* The Supplies / Boosts switch stays put while the list scrolls; x1 / x10 / x100 sits on its right. */}
       <View className="mx-4 mb-2 flex-row gap-2">
       {/* The tabs grow smoothly to the full width when x1 / x10 / x100 fades out (Boosts tab). */}
-      <Animated.View layout={LinearTransition.duration(220)} style={{ flex: 1 }}>
       <View className="flex-1 flex-row border-2 border-outline" accessibilityRole="tablist">
         {(["supplies", "boosts"] as const).map((id) => (
           <Pressable
@@ -237,10 +243,13 @@ function ShopPage() {
           </Pressable>
         ))}
       </View>
-      </Animated.View>
-      {tab === "supplies" && (
-        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(150)} layout={LinearTransition.duration(220)}>
-        <View className="flex-row border-2 border-outline" accessibilityRole="radiogroup" accessibilityLabel="How many to buy">
+      <Animated.View style={[{ overflow: "hidden" }, qtyStyle]} pointerEvents={tab === "supplies" ? "auto" : "none"}>
+        <View
+          onLayout={(e) => setQtyW(e.nativeEvent.layout.width)}
+          className="flex-row self-start border-2 border-outline"
+          accessibilityRole="radiogroup"
+          accessibilityLabel="How many to buy"
+        >
           {[1, 10, 100].map((n) => (
             <Pressable
               key={n}
@@ -257,8 +266,7 @@ function ShopPage() {
             </Pressable>
           ))}
         </View>
-        </Animated.View>
-      )}
+      </Animated.View>
       </View>
       <ScrollView contentContainerClassName="px-4 pb-4">{tab === "supplies" ? <SuppliesList qty={qty} /> : <BoostsList />}</ScrollView>
     </View>

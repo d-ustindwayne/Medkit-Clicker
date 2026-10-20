@@ -18,6 +18,7 @@ import { saveSticker } from "@/lib/stickers";
 
 const MAX_LEVEL = GEM_LEVEL_COSTS.length;
 const pickGems = (s: GameState) => ({
+  pendingIcon: s.pendingIcon,
   gemUpgrades: s.gemUpgrades, gemItems: s.gemItems, medkitSkin: s.medkitSkin, tapEffect: s.tapEffect,
   rebirths: s.rebirths, rebirthPoints: s.rebirthPoints, gemsSpent: s.gemsSpent, bonusGems: s.bonusGems, unlockedSections: s.unlockedSections,
 });
@@ -83,7 +84,8 @@ function ItemTile({ item }: { item: GemItem }) {
   const locked = state.rebirths < item.rebirths;
   const affordable = gemBalance(state) >= item.cost;
   const bgIndex = BACKGROUNDS.findIndex((b) => b.id === item.id);
-  const [iconName, setIconName] = useState(appIcon);
+  const [currentIcon] = useState(appIcon);
+  const iconName = state.pendingIcon ? iconFromPending(state.pendingIcon) : currentIcon;
   const equipped =
     (item.kind === "skin" && state.medkitSkin === item.id) ||
     (item.kind === "tap" && state.tapEffect === item.id) ||
@@ -118,8 +120,11 @@ function ItemTile({ item }: { item: GemItem }) {
   const later = () => {
     setAskRestart(false);
     dispatch({ type: "setPendingIcon", icon: chosen });
-    setIconName(iconFromPending(chosen));
-    pushToast({ kind: "info", title: "App icon saved", body: "The new icon appears after you close and reopen the app." });
+    pushToast({
+      kind: "info",
+      title: chosen === "default" ? "Original icon" : "App icon saved",
+      body: chosen === "default" ? "The original icon comes back after you close and reopen the app." : `The ${item.name} icon appears after you close and reopen the app.`,
+    });
   };
   const switchIcon = () => setAskRestart(true);
   const use = () => {
@@ -142,10 +147,17 @@ function ItemTile({ item }: { item: GemItem }) {
           ) : owned ? (
             item.kind === "room" ? (
               <Text className="text-center font-body text-xs text-ink opacity-70">In your My Room tray</Text>
-            ) : item.kind === "sticker" ? (
-              <PixelButton label="Save" tone="success" onPress={save} />
             ) : (
-              <PixelButton label={equipped ? "Using" : "Use"} tone={equipped ? "plain" : "success"} onPress={use} />
+              <View className="items-center gap-1">
+                <View style={{ opacity: 0 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                  <GemCost cost={item.cost} />
+                </View>
+                {item.kind === "sticker" ? (
+                  <PixelButton label="Save" tone="success" onPress={save} />
+                ) : (
+                  <PixelButton label={equipped ? "Using" : "Use"} tone={equipped ? "plain" : "success"} onPress={use} />
+                )}
+              </View>
             )
           ) : (
             <View className="items-center gap-1">

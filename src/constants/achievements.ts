@@ -248,6 +248,15 @@ const LIST: Achievement[] = [
     check: (s) => s.unlockedSections.includes("jasmine"),
   },
   {
+    id: "the_limit",
+    name: "The Edge of Infinity",
+    description: "Heal 179.769 uncentillion patients, the most a phone can count.",
+    image: TROPHY.diamond,
+    secret: true,
+    coins: 10,
+    check: (s) => s.totalHealed >= Number.MAX_VALUE,
+  },
+  {
     id: "hidden_medkit",
     name: "Hidden Medkit",
     description: "Find the medkit hiding on the About page.",
