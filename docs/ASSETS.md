@@ -26,7 +26,6 @@ To add more swipe pages (a pharmacy, a lab and so on), add an entry to `SCENES` 
 
 | File | Size | What it is | Hook |
 | --- | --- | --- | --- |
-| `src/imgs/rewards/chocolate_box.png` | 256 × 256, transparent | Icon for "Box of chocolates" in Care Package. A drawn pixel gift box is used until then. | Add an `image` field to the reward in `src/constants/rewards.ts` (I'll wire it when the file exists) |
 
 ## New shop items (when you design them)
 

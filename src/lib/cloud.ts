@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
-import { Directory, File, Paths } from "expo-file-system";
+import { Directory, Paths } from "expo-file-system";
 
 // Talks to the Medkit Clicker server (server/index.ts). Nothing here logs anyone in: a redeem code
-// is traded once for a token, and the token opens that section's music and rewards.
+// is traded once for a token, and the token opens that section's rewards.
 // Turned off unless EXPO_PUBLIC_API_URL is set at build time.
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, "");
@@ -11,11 +11,10 @@ export const cloudEnabled = !!API_URL;
 
 const TOKEN_KEY = "mc/cloud/token/v1";
 const DEVICE_KEY = "mc/device/v1";
+/** Where downloaded songs were listed (no longer used; cleared on launch). */
 const LIBRARY_KEY = "mc/music/library/v1";
 
-export type CloudReward = { id: string; name: string; cost: number; limit: number; redeemed: number[] };
-export type CachedPlaylist = { id: string; name: string; tracks: string[] };
-type Manifest = { id: string; name: string; tracks: { id: number; position: number; size: number; sha256: string }[] }[];
+export type CloudReward = { id: string; name: string; cost: number; limit: number | null; redeemed: number[] };
 
 /** The free server sleeps when idle and takes up to about a minute to wake, so allow that, but no more. */
 const TIMEOUT_MS = 75_000;
@@ -70,51 +69,17 @@ export async function unlockOnline(code: string) {
 
 export const fetchRewards = (token: string) => call<CloudReward[]>("/rewards", { token });
 
-/** Redeems on the server, which checks the limit and alerts Dustin. */
-export const redeemOnline = async (token: string, rewardId: string) =>
-  call<{ ok: true; at: number; used: number; limit: number; notified: boolean }>("/redeem", { method: "POST", token, body: JSON.stringify({ rewardId, deviceId: await deviceId() }) });
+/** Redeems on the server, which checks the limit and alerts Dustin. `note` is the answer to the reward's question, if any. */
+export const redeemOnline = async (token: string, rewardId: string, note?: string) =>
+  call<{ ok: true; at: number; used: number; limit: number | null; notified: boolean }>("/redeem", { method: "POST", token, body: JSON.stringify({ rewardId, deviceId: await deviceId(), note }) });
 
-const musicDir = () => new Directory(Paths.document, "music");
-
-/** Playlists already downloaded to this phone (only files that are really there). */
-export async function loadCachedPlaylists(): Promise<CachedPlaylist[]> {
+/** Songs used to download after a code unlock; that's gone, so free the space they took. */
+export function clearDownloadedMusic() {
   try {
-    const raw = await AsyncStorage.getItem(LIBRARY_KEY);
-    const list = raw ? (JSON.parse(raw) as CachedPlaylist[]) : [];
-    return list.map((p) => ({ ...p, tracks: p.tracks.filter((uri) => new File(uri).exists) })).filter((p) => p.tracks.length > 0);
+    const dir = new Directory(Paths.document, "music");
+    if (dir.exists) dir.delete();
+    AsyncStorage.removeItem(LIBRARY_KEY).catch(() => {});
   } catch {
-    return [];
+    // nothing to clean up
   }
-}
-
-/**
- * Downloads every song the token can open into the app's documents folder, skipping files it
- * already has. `onProgress` gets (done, total) in songs. Returns the playlists ready to play.
- */
-export async function downloadMusic(token: string, onProgress: (done: number, total: number) => void): Promise<CachedPlaylist[]> {
-  const manifest = await call<Manifest>("/music", { token });
-  const total = manifest.reduce((n, p) => n + p.tracks.length, 0);
-  let done = 0;
-  onProgress(done, total);
-  const root = musicDir();
-  if (!root.exists) root.create({ intermediates: true });
-  const library: CachedPlaylist[] = [];
-  for (const p of manifest) {
-    const dir = new Directory(root, p.id);
-    if (!dir.exists) dir.create({ intermediates: true });
-    const tracks: string[] = [];
-    for (const t of p.tracks) {
-      // The file name carries the checksum, so a changed song downloads again.
-      const file = new File(dir, `${t.position}-${t.sha256.slice(0, 12)}.m4a`);
-      if (!file.exists || file.size !== t.size) {
-        if (file.exists) file.delete();
-        await File.downloadFileAsync(`${API_URL}/music/track/${t.id}`, file, { headers: { authorization: `Bearer ${token}` }, idempotent: true });
-      }
-      tracks.push(file.uri);
-      onProgress(++done, total);
-    }
-    library.push({ id: p.id, name: p.name, tracks });
-  }
-  await AsyncStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
-  return library;
 }

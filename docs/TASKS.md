@@ -33,7 +33,6 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [ ] What each rebirth unlocks (`REBIRTH_UNLOCKS`, currently empty)
 - [x] Rewards section title is now "Care Package" (app and database, 2026-10-20); the gift icon and the "Tell Dustin" wording are kept
 - [x] Background names and colours (Rose Grid, Mint Crosses, Lavender Dots, Peach Stripes, Sky Checker, Candy Hearts, Plain), kept 2026-10-20
-- [x] Playlist display names: "normal" is labelled "Everyday", "favourites" is "My Favs", "filipino_rap" is "Pinoy Rap" (kept)
 - [ ] Hospital page numbers (`src/constants/hospital.ts`), picked by Claude:
   - an emergency ambulance every 2-4 minutes (decided 2026-10-20: rarer, bigger); it parks at the entrance with "Patient: <condition>!" and waits 20 s
   - tapping it pays 3 minutes of healing, or 25 taps early on, whichever is more
@@ -110,7 +109,7 @@ Still unused:
 - [ ] **Rewards survive Delete progress and imports on purpose,** so the 3-chocolate limit can't be reset. Reinstalling the app or clearing its data does reset it, because there's no server.
 - [ ] **Saving to Download:** Android 11+ won't let apps pick the root of Download. Export asks for a folder once (Documents by default, or a subfolder of Download) and then remembers it.
 - [ ] **iOS is untested.** It needs a Mac or a cloud build (`eas build`) to check.
-- [x] **Music is copyrighted:** it's no longer in the app or in git. It lives in the database and downloads after the code ([DATABASE.md](DATABASE.md)).
+- [x] **Music is copyrighted:** retired. The app plays only its own BeepBox soundtrack; the code no longer unlocks music (2026-10-20).
 - [ ] **Old native build on the emulator:** `com.dust.dev.mc` is from before the audio and save libraries. Use Expo Go, or run `bunx expo prebuild --clean` then `bun run android` to replace it.
 - [x] **Unit tests:** `bun test` runs 31 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
 - [x] **Nothing is committed to git.** Done: pushed to https://github.com/d-ustindwayne/Medkit-Clicker (`main`).
@@ -154,7 +153,11 @@ Still unused:
 - [x] More shop items: 13 in total, with order and prices decided by Claude
 - [ ] What rebirth points buy, and the per-rebirth unlocks
 - [ ] More achievements and easter eggs
-- [ ] More rewards in Care Package (each: name, cost, limit)
+- [x] Care Package rewards (2026-10-20; prices and the extra sentimental ones picked by Claude, all deliberately expensive):
+  - A kiss 10M (no limit), A long hug 15M (no limit), Bar of chocolate 25M (5), Tub of ice cream 40M (5)
+  - Late-night call 150M (no limit), Movie night on Discord 500M (no limit, asks which title), A song, just for you 1B (no limit, asks which song)
+  - Handwritten letter 5B (5), I cook for you 20B (no limit, asks which dish), Surprise gift 100B (3), A day at Albert Park 1T (no limit, date and time picker)
+- [x] The redeem code is hidden: five taps on the hospital icon in About. It no longer unlocks music
 - [ ] PHL export (when the PHL project is ready)
 
 ### Phase 4: Release

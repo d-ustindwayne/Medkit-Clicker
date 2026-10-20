@@ -17,7 +17,7 @@ It runs on Android, iOS and the web, built with Expo 57, React Native, React 19,
 - **Sick patients** turn up in your room at random. Treat them in a quick minigame (injection timing, CPR rhythm or a bandage-wrap tap race) for patients and coins.
 - **Redeem codes** unlock hidden sections, like a rewards shop where patients buy real-life treats (with a limit on each).
 - **Original soundtrack:** five chill lo-fi loops made in BeepBox (*Waiting Room*, *Morning Rounds*, *Night Shift*, *Visiting Hours* (a waltz), *Recovery Room*), included for every player.
-- **Music player** with the soundtrack plus six playlists unlocked by code, play/pause, track skipping and seeking; sound effects with their own volume; vibration feedback (with an off switch) on phones.
+- **Music player** for the soundtrack: play/pause, track skipping and seeking; sound effects with their own volume; vibration feedback (with an off switch) on phones.
 - **Light and dark themes** from the original design, with seven backgrounds, each with its own pattern and colours.
 - **Swipe pages:** My Room next to the medkit, and the outside of the hospital next to the shop, drawn as full-width pixel scenes.
 - **Saves:** autosaves every 10 seconds and when the app is backgrounded. Export (to a folder you choose) or import a save as JSON or CSV.
@@ -25,25 +25,16 @@ It runs on Android, iOS and the web, built with Expo 57, React Native, React 19,
 
 ## Getting started
 
-Requires [Bun](https://bun.sh/) and, for the music bundle, [ffmpeg](https://ffmpeg.org/).
+Requires [Bun](https://bun.sh/) and, to render the soundtrack, [ffmpeg](https://ffmpeg.org/).
 
 ```bash
 bun install
-bun run music    # encodes your music library for the database (see below)
 bun run start
 ```
 
 ### Music
 
 **Soundtrack.** The game's own music is composed in code as BeepBox songs (`scripts/compose-music.ts`). `bun run music:compose` writes the BeepBox files to `src/audio/soundtrack/beepbox/` and renders each one with BeepBox's synth to a seamlessly looping MP3 in `src/audio/soundtrack/`. To open a song in the [BeepBox](https://www.beepbox.co) editor, use File > Import JSON. These files are committed and ship in the app.
-
-**Personal playlists.** The songs may be copyrighted, so they're neither in this repository nor in the app. They live in the database and download only after the redeem code is entered (see [docs/DATABASE.md](docs/DATABASE.md)).
-
-1. Put your tracks in `src/audio/music/<playlist>/track_N.mp3`. The playlist folders are `cup_of_joe`, `love`, `filipino_rap`, `favourites`, `lo-fi` and `normal`.
-2. Run `bun run music`. This compresses every track to AAC at 64 kbps into `src/audio/encoded/` (about 110 MB).
-3. Run `bun run db:setup` to upload them.
-
-`BUNDLE=1 bun run music` bundles the songs into the app instead, for offline testing. All three folders are gitignored. Playlist names are in `src/constants/playlist-names.ts`.
 
 ## Scripts
 
@@ -53,7 +44,6 @@ bun run start
 | `bun run android` / `bun run ios`   | Build and run on a device or emulator                                                                             |
 | `bun run web`                       | Run in the browser                                                                                                |
 | `bun run music:compose` | Compose the soundtrack: BeepBox JSON plus looping MP3s (needs ffmpeg) |
-| `bun run music` | Encode the music for upload (`BUNDLE=1` also bundles it into the app) |
 | `bun run db:setup` | Create the database tables and upload codes, rewards and music |
 | `bun run server` | Run the API locally (needs `.env`, see `.env.example`) |
 | `bun run apk:phone` | Small release APK for real phones (arm64 only, minified) → `android/app/build/outputs/apk/release/` |
@@ -70,7 +60,7 @@ bun run start
 src/
   app/            Expo Router screens (_layout.tsx, index.tsx)
   components/     Medkit button, shop, side menu, toasts, UI controls, room/ (My Room), ward/ (minigames)
-  constants/      Shop items, achievements, boosts, patients, rooms, playlists, theme palettes
+  constants/      Shop items, achievements, boosts, patients, rooms, rewards, the soundtrack, theme palettes
   hooks/          Game state provider and audio provider
   lib/            Game reducer, number formatting, storage, save export/import
   imgs/ fonts/ audio/ media/   Sprites, fonts, sound, design references
@@ -105,4 +95,4 @@ The game started as a gift: Dustin made it for Jasmine Sison Taboy, a nursing st
 
 ## License
 
-The code is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for the licenses of bundled fonts. The soundtrack in `src/audio/soundtrack/` is original to this project and covered by the same license. The personal playlists are not included and are not covered by it.
+The code is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for the licenses of bundled fonts. The soundtrack in `src/audio/soundtrack/` is original to this project and covered by the same license.

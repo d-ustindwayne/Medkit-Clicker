@@ -1,9 +1,10 @@
 # Database: Aiven PostgreSQL + a small API
 
 **Status (2026-10-20):**
-- The Aiven database is set up: tables created, Jasmine's code, the rewards and all 53 songs uploaded (123 MB of 1 GB).
+- The Aiven database is set up: tables created, Jasmine's code and the 11 Care Package rewards uploaded.
+- The code-unlocked music was retired (2026-10-20). The old `playlists` and `tracks` tables still hold 123 MB; remove them with `DROP TABLE tracks, playlists;` if the space is needed.
 - The API was tested end to end against it from this laptop.
-- The API is live on Render (free plan) and was tested end to end from outside: wrong codes rejected, rewards and music served.
+- The API is live on Render (free plan) and was tested end to end from outside: wrong codes rejected and rewards served.
 - The app reads its address from `EXPO_PUBLIC_API_URL` in `.env.local`.
 
 ## What goes in the database (and what doesn't)
@@ -12,13 +13,12 @@ The database holds only what shouldn't ship inside the app:
 
 | Data | Why it's in the database |
 | --- | --- |
-| **Your music library** (53 songs, about 108 MB) | The songs may be copyrighted, so they no longer ship in the public app. Only someone who enters the code downloads them. This also makes the APK about 108 MB smaller. |
 | **Redeem codes** (hash only) and **reward sections** | The code check moves to the server. |
-| **Rewards and redemptions** | The server enforces limits, so a reinstall can't reset the 3 chocolates. Each redemption alerts you. |
+| **Rewards and redemptions** | The server enforces limits, so a reinstall can't reset them. Each redemption alerts you, with the answer if the reward asks one (a movie title, a date). |
 
-The game itself (progress, items, achievements, rooms) stays on the phone, so the game works offline and for anyone. Everyone without the code gets the normal game with no music. With Jasmine's code, the app unlocks her rewards and downloads all the music.
+The game itself (progress, items, achievements, rooms) stays on the phone, so the game works offline and for anyone. Everyone gets the same game and soundtrack. The code is hidden (five taps on the hospital icon in About) and only unlocks Jasmine's Care Package.
 
-**No user accounts:** the redeem code is the only key. `POST /unlock` trades the code for a token (an HMAC signature of the section name), and that token opens the section's music and rewards. Each phone also sends a random device id with redemptions, so you can tell phones apart. It's not a login.
+**No user accounts:** the redeem code is the only key. `POST /unlock` trades the code for a token (an HMAC signature of the section name), and that token opens the section's rewards. Each phone also sends a random device id with redemptions, so you can tell phones apart. It's not a login.
 
 ## Which Aiven service
 
@@ -39,8 +39,6 @@ From your screenshot:
 | `access_codes` | section, SHA-256 of the code, title ("Care Package"), who to notify |
 | `rewards` | id, section, name, cost in patients, max uses |
 | `redemptions` | reward, device id, when, when the alert was sent |
-| `playlists` | id, section, display name, order |
-| `tracks` | playlist, position, size, checksum, the audio (`BYTEA`, 64 kbps AAC) |
 
 ## API (`server/index.ts`, Bun, no dependencies)
 
@@ -49,8 +47,6 @@ From your screenshot:
 | `POST /unlock` `{code}` | returns a token and the section, or 404 for a wrong code |
 | `GET /rewards` | rewards with their redemption history |
 | `POST /redeem` `{rewardId, deviceId}` | checks the limit inside a transaction, records the redemption, **sends you an ntfy alert** |
-| `GET /music` | playlists and track list (no audio) |
-| `GET /music/track/:id` | one song's audio |
 
 ## App size
 
@@ -85,14 +81,12 @@ The free plan sleeps after 15 minutes without requests. The first request after 
    - `DATABASE_URL`
    - `SERVER_SECRET`: a long random string
    - `NTFY_TOPIC`: a hard-to-guess topic name; install the ntfy app on your phone and subscribe to it
-3. `bun run music` encodes the songs into `src/audio/encoded/`. This is already done.
-4. `bun run db:setup` creates the tables and uploads the code hash, the rewards and the songs. It's safe to run again; unchanged songs are skipped.
-5. **Host the API:** build `server/Dockerfile`, or run `bun run server`, using the same `.env` values.
-6. In `.env.local`, add `EXPO_PUBLIC_API_URL=https://your-api-host` and rebuild the app.
+3. `bun run db:setup` creates the tables and uploads the code hash and the rewards. It's safe to run again.
+4. **Host the API:** build `server/Dockerfile`, or run `bun run server`, using the same `.env` values.
+5. In `.env.local`, add `EXPO_PUBLIC_API_URL=https://your-api-host` and rebuild the app.
 
-With the server running, Jasmine opens **Redeem code** and enters the code. Her rewards unlock, the music downloads (with progress in Settings), and every redemption buzzes your phone.
+With the server running, Jasmine taps the hospital icon in **About** five times and enters the code. Care Package appears in the menu, and every redemption buzzes your phone.
 
 **Offline and server-less builds still work:**
 - the code is checked against the local hash
 - redemptions fall back to the share sheet
-- for offline testing with music, `BUNDLE=1 bun run music` bundles the songs into the app again

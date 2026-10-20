@@ -10,7 +10,7 @@ Medkit Clicker is a one-page React Native application built with Expo 57, React 
 - **Run Web**: `bun run web`
 - **Linting**: `bun run lint`
 - **Typecheck**: `bun run typecheck`
-- **Build music bundle**: `bun run music` (needs ffmpeg; output in `src/audio/bundle/`, gitignored)
+- **Compose the soundtrack**: `bun run music:compose` (BeepBox JSON + looping MP3s in `src/audio/soundtrack/`; needs ffmpeg)
 
 ## 🎨 Coding Standards & Style
 - **Components**: Use functional components with hooks.

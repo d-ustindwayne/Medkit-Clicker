@@ -91,14 +91,13 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
                 ))}
                 <MenuLink label="Achievements" detail={`${Object.keys(achievements).length}/${ACHIEVEMENTS.length}`} onPress={() => setPage("achievements")} />
                 <MenuLink label="Settings" onPress={() => setPage("settings")} />
-                <MenuLink label="Redeem code" onPress={() => setPage("redeem")} />
                 <MenuLink label="Visit website" onPress={() => Linking.openURL(APP_INFO.website)} />
                 <MenuLink label="About" onPress={() => setPage("about")} />
               </>
             )}
             {page === "achievements" && <AchievementsPage />}
             {page === "settings" && <SettingsPage onDone={close} />}
-            {page === "about" && <AboutPage />}
+            {page === "about" && <AboutPage onSecret={() => setPage("redeem")} />}
             {page === "redeem" && <RedeemPage onUnlocked={(id) => setPage(`rewards:${id}`)} />}
             {page.startsWith("rewards:") && <RewardsPage sectionId={page.slice("rewards:".length)} />}
           </ScrollView>

@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Image } from "expo-image";
 import Constants from "expo-constants";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { APP_INFO, CREDIT } from "@/constants/app";
@@ -17,12 +18,22 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function AboutPage() {
+/** `onSecret` runs after five taps on the hospital icon: the hidden way in to the redeem code. */
+export function AboutPage({ onSecret }: { onSecret?: () => void }) {
   const s = useGameState();
+  const [taps, setTaps] = useState(0);
+  const tapIcon = () => {
+    if (taps + 1 >= 5) {
+      setTaps(0);
+      onSecret?.();
+    } else setTaps(taps + 1);
+  };
   return (
     <View className="gap-5">
       <View className="items-center gap-2">
-        <Image source={HOSPITAL_IMAGE} style={{ width: 72, height: 72 }} contentFit="contain" />
+        <Pressable onPress={tapIcon} accessible={false}>
+          <Image source={HOSPITAL_IMAGE} style={{ width: 72, height: 72 }} contentFit="contain" />
+        </Pressable>
         <Text className="font-display text-xl text-ink">{APP_INFO.name}</Text>
         <Text className="font-body text-xs text-ink opacity-70">Version {Constants.expoConfig?.version ?? "1.0.0"}</Text>
       </View>
@@ -43,7 +54,7 @@ export function AboutPage() {
       </HardShadow>
 
       <Text className="font-body text-sm leading-5 text-ink">
-        {CREDIT} Code released under the {APP_INFO.license}. Original soundtrack made in BeepBox; songs in unlocked playlists belong to their artists.
+        {CREDIT} Code released under the {APP_INFO.license}. Original soundtrack made in BeepBox.
       </Text>
     </View>
   );

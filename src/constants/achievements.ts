@@ -1,7 +1,6 @@
 import type { ImageSourcePropType } from "react-native";
 
 import { HOSPITAL_IMAGE, SHOP_ITEMS, type ItemId } from "@/constants/items";
-import { PLAYLIST_NAMES } from "@/constants/playlist-names";
 import { healingRate } from "@/constants/rebirth";
 import type { GameState } from "@/lib/game";
 import { formatCount } from "@/lib/format";
@@ -202,11 +201,11 @@ const LIST: Achievement[] = [
   {
     id: "dj_nurse",
     name: "DJ Nurse",
-    description: "Listen to every playlist.",
+    description: "Listen to the soundtrack.",
     image: TROPHY.nurse,
     secret: true,
     coins: 3,
-    check: (s) => PLAYLIST_NAMES.every(([id]) => s.playlistsHeard.includes(id)),
+    check: (s) => s.playlistsHeard.includes("soundtrack"),
   },
   {
     id: "lights_out",

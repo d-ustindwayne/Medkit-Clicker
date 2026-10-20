@@ -36,7 +36,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 ## Settings
 - [ ] Music player: play/pause, previous/next, tapping the bar seeks, the time updates
 - [ ] 📱 Music sounds right and stops when the app is in the background
-- [ ] Playlist stepper switches playlists, and the track resets to 1
+- [ ] The soundtrack plays all five songs in turn
 - [ ] The music and sound-effect volume bars work; the mute button silences them
 - [ ] The Vibration toggle turns all vibration off and on
 - [ ] The background stepper cycles all 7 patterns; dark mode switches the palette everywhere, including dialogs
@@ -177,7 +177,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - "You still healed 0 patients" after an early loss
 
 **Still for you to test** (they need the real code or more coins):
-- entering Jasmine's code: rewards unlock and the music download shows progress in Settings
+- entering Jasmine's code (five taps on the About icon): Care Package unlocks
 - a real redemption, which should send an ntfy alert to your phone
 - the 4 animated backgrounds (15 / 10 coins)
 - the rhythm and bandage minigames and a minigame win

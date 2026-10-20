@@ -212,7 +212,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
       const reward = section?.rewards.find((r) => r.id === action.rewardId);
       if (!section || !reward || !state.unlockedSections.includes(section.id)) return state;
       const history = state.redemptions[reward.id] ?? [];
-      if (history.length >= reward.limit || state.healed < reward.cost) return state;
+      if ((reward.limit !== null && history.length >= reward.limit) || state.healed < reward.cost) return state;
       return {
         ...state,
         healed: state.healed - reward.cost,

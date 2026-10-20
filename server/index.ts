@@ -1,6 +1,6 @@
 // Medkit Clicker API: a tiny Bun server between the app and PostgreSQL.
 // The app never sees the database password. There are no user accounts: POST /unlock trades a
-// redeem code for a token (an HMAC of the section), and that token opens the section's music and
+// redeem code for a token (an HMAC of the section), and that token opens the section's
 // rewards. Run locally with `bun run server`; deploy with server/Dockerfile.
 //
 // Env: DATABASE_URL (Postgres), DATABASE_CA (Aiven's CA certificate text, or a path to it),
@@ -74,40 +74,27 @@ Bun.serve({
         SELECT r.id, r.name, r.cost, r.max_uses, COALESCE(array_agg(EXTRACT(EPOCH FROM d.redeemed_at) * 1000 ORDER BY d.redeemed_at) FILTER (WHERE d.id IS NOT NULL), '{}') AS times
         FROM rewards r LEFT JOIN redemptions d ON d.reward_id = r.id
         WHERE r.section = ${section} GROUP BY r.id ORDER BY r.sort, r.id`;
-      return json(rows.map((r: { id: string; name: string; cost: string; max_uses: number; times: number[] }) => ({ id: r.id, name: r.name, cost: Number(r.cost), limit: r.max_uses, redeemed: r.times.map(Number) })));
+      return json(rows.map((r: { id: string; name: string; cost: string; max_uses: number | null; times: number[] }) => ({ id: r.id, name: r.name, cost: Number(r.cost), limit: r.max_uses, redeemed: r.times.map(Number) })));
     }
 
     // Redeem: the server enforces the limit, records it and alerts Dustin.
     if (path === "/redeem" && req.method === "POST") {
-      const { rewardId, deviceId } = (await req.json().catch(() => ({}))) as { rewardId?: string; deviceId?: string };
+      const { rewardId, deviceId, note } = (await req.json().catch(() => ({}))) as { rewardId?: string; deviceId?: string; note?: string };
+      const answer = typeof note === "string" ? note.trim().slice(0, 200) : "";
       const [reward] = await sql`SELECT r.id, r.name, r.max_uses, a.title FROM rewards r JOIN access_codes a ON a.section = r.section WHERE r.id = ${rewardId ?? ""} AND r.section = ${section}`;
       if (!reward) return json({ error: "Unknown reward" }, 404);
       const result = await sql.begin(async (tx) => {
         const [{ used }] = await tx`SELECT count(*)::int AS used FROM redemptions WHERE reward_id = ${reward.id} FOR UPDATE`;
-        if (used >= reward.max_uses) return null;
-        const [row] = await tx`INSERT INTO redemptions (reward_id, device_id) VALUES (${reward.id}, ${deviceId ?? "unknown"}) RETURNING id, EXTRACT(EPOCH FROM redeemed_at) * 1000 AS at`;
+        // max_uses NULL means no limit.
+        if (reward.max_uses !== null && used >= reward.max_uses) return null;
+        const [row] = await tx`INSERT INTO redemptions (reward_id, device_id, note) VALUES (${reward.id}, ${deviceId ?? "unknown"}, ${answer || null}) RETURNING id, EXTRACT(EPOCH FROM redeemed_at) * 1000 AS at`;
         return { id: row.id, at: Number(row.at), used: used + 1 };
       });
       if (!result) return json({ error: "No redemptions left for this reward." }, 409);
-      const sent = await notify(`${reward.title}: "${reward.name}" was redeemed (${result.used}/${reward.max_uses}).`);
+      const count = reward.max_uses === null ? `#${result.used}` : `${result.used}/${reward.max_uses}`;
+      const sent = await notify(`${reward.title}: "${reward.name}" was redeemed (${count}).${answer ? ` Note: ${answer}` : ""}`);
       if (sent) await sql`UPDATE redemptions SET notified_at = now() WHERE id = ${result.id}`;
       return json({ ok: true, at: result.at, used: result.used, limit: reward.max_uses, notified: sent });
-    }
-
-    // Music manifest: playlists and track metadata (no audio).
-    if (path === "/music" && req.method === "GET") {
-      const rows = await sql`
-        SELECT p.id, p.name, json_agg(json_build_object('id', t.id, 'position', t.position, 'size', t.size_bytes, 'sha256', t.sha256) ORDER BY t.position) AS tracks
-        FROM playlists p JOIN tracks t ON t.playlist_id = p.id WHERE p.section = ${section} GROUP BY p.id ORDER BY p.sort, p.id`;
-      return json(rows);
-    }
-
-    // One song's audio.
-    const track = path.match(/^\/music\/track\/(\d+)$/);
-    if (track && req.method === "GET") {
-      const [row] = await sql`SELECT t.mime, t.data FROM tracks t JOIN playlists p ON p.id = t.playlist_id WHERE t.id = ${Number(track[1])} AND p.section = ${section}`;
-      if (!row) return json({ error: "Not found" }, 404);
-      return new Response(row.data, { headers: { "content-type": row.mime, "cache-control": "private, max-age=31536000, immutable" } });
     }
 
     return json({ error: "Not found" }, 404);

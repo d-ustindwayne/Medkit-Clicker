@@ -212,9 +212,9 @@ describe("paid backgrounds", () => {
 
 describe("server sync", () => {
   test("redemption history keeps the longer list and never refunds", () => {
-    const s = run(newGame(), { type: "syncRedemptions", history: { chocolate_box: [1, 2] } });
-    expect(s.redemptions.chocolate_box).toEqual([1, 2]);
-    expect(run(s, { type: "syncRedemptions", history: { chocolate_box: [1] } }).redemptions.chocolate_box).toEqual([1, 2]);
+    const s = run(newGame(), { type: "syncRedemptions", history: { chocolate_bar: [1, 2] } });
+    expect(s.redemptions.chocolate_bar).toEqual([1, 2]);
+    expect(run(s, { type: "syncRedemptions", history: { chocolate_bar: [1] } }).redemptions.chocolate_bar).toEqual([1, 2]);
   });
 });
 
