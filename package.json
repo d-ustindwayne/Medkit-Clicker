@@ -58,6 +58,8 @@
     "test": "bun test",
     "server": "bun server/index.ts",
     "db:setup": "bun scripts/db-setup.ts",
+    "apk:phone": "cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a -Pandroid.enableMinifyInReleaseBuilds=true -Pandroid.enableShrinkResourcesInReleaseBuilds=true",
+    "apk:emulator": "cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 -Pandroid.enableMinifyInReleaseBuilds=true -Pandroid.enableShrinkResourcesInReleaseBuilds=true",
     "tasks": "bun scripts/tasks.ts",
     "add-code": "bun scripts/add-code.ts"
   },

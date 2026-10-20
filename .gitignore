@@ -50,3 +50,6 @@ src/audio/encoded/
 # Commercial font, not redistributable
 src/fonts/arialroundedmt.ttf
 src/fonts/arlrdbd.ttf
+
+# Database credentials pasted from Aiven (never commit)
+database_setup.txt

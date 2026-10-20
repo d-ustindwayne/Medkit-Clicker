@@ -48,6 +48,17 @@ From your screenshot:
 | `GET /music` | playlists and track list (no audio) |
 | `GET /music/track/:id` | one song's audio |
 
+## App size
+
+Moving the game's own art into the database was considered and rejected: all of it (items, rooms, characters, scenes, achievements) is about **0.5 MB**, so it would save almost nothing and would break playing offline on first launch. What made the APK big was:
+- native code for 4 CPU types: 88 MB
+- unminified app code: 49 MB
+- the music: now in the database
+
+`bun run apk:phone` builds for real phones only (arm64) with Android's code shrinker on. Expect roughly 40 MB instead of about 230 MB.
+
+**Future idea:** a "live content" table, so new items, achievements or backgrounds can be added from the database without shipping an app update.
+
 ## Setting it up
 
 1. **Aiven:** create a PostgreSQL service, then copy its Service URI (it ends in `?sslmode=require`).
