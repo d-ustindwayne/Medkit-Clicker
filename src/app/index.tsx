@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BackgroundPattern } from "@/components/background-pattern";
 import { CurrencyBar } from "@/components/currency-bar";
+import { HallOfFame } from "@/components/hall-of-fame";
 import { MedkitButton, ORBIT_SCALE } from "@/components/medkit-button";
 import { MenuDrawer } from "@/components/menu/menu-drawer";
 import { Shop } from "@/components/shop";
@@ -232,6 +233,7 @@ export default function GameScreen() {
       </View>
 
       <ToastStack />
+      <HallOfFame />
       <MenuDrawer visible={menuOpen} onClose={() => setMenuOpen(false)} />
     </View>
   );

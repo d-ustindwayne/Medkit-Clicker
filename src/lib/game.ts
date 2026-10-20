@@ -69,6 +69,8 @@ export type GameState = {
   bonusGems: number;
   /** Promo codes already claimed on this phone (SHA-256 hashes). */
   promoClaims: string[];
+  /** Rebirth 50 hall of fame: sent, declined, or not answered yet. */
+  fame: "none" | "sent" | "declined";
 };
 
 export type GameAction =
@@ -99,6 +101,7 @@ export type GameAction =
   | { type: "revealAboutMedkit" }
   | { type: "claimPromo"; hash: string; kind: "medkits" | "coins" | "gems"; amount: number }
   | { type: "devRebirth" }
+  | { type: "setFame"; fame: "sent" | "declined" }
   /** Place an item (or move it, including from another room) at x, y: fractions of the room art. */
   | { type: "placeItem"; room: string; item: string; x: number; y: number }
   | { type: "removeItem"; room: string; item: string }
@@ -149,6 +152,7 @@ export const newGame = (): GameState => ({
   aboutMedkit: false,
   bonusGems: 0,
   promoClaims: [],
+  fame: "none",
 });
 
 /** Multiplier from a gem upgrade: 1 + per-level step x level. */
@@ -355,6 +359,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
       if (action.kind === "gems") return { ...claimed, bonusGems: state.bonusGems + action.amount };
       return earn(claimed, action.amount);
     }
+    case "setFame":
+      return { ...state, fame: action.fame };
     case "devRebirth":
       // Dev tools: a rebirth without the patient requirement.
       return { ...state, healed: 0, runHealed: 0, owned: emptyOwned(), rebirths: state.rebirths + 1, rebirthPoints: state.rebirthPoints + 1 };
@@ -449,6 +455,7 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     aboutMedkit: s.aboutMedkit === true,
     bonusGems: typeof s.bonusGems === "number" ? s.bonusGems : 0,
     promoClaims: Array.isArray(s.promoClaims) ? s.promoClaims : [],
+    fame: s.fame === "sent" || s.fame === "declined" ? s.fame : "none",
     room: s.room && typeof s.room.current === "string" ? { current: s.room.current, placed: { ...(s.room.placed ?? {}) } } : base.room,
   };
 };
