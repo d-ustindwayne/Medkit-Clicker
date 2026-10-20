@@ -4,6 +4,7 @@ import { ScrollView, Text, View } from "react-native";
 
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
+import { PixelIcon } from "@/components/ui/pixel-icon";
 import { BACKGROUNDS } from "@/constants/backgrounds";
 import { GEM_ITEMS, GEM_KIND_LABEL, GEM_LEVEL_COSTS, GEM_UPGRADES, gemBalance, type GemItem, type GemItemKind, type GemUpgrade } from "@/constants/gems";
 import { GEM } from "@/constants/rebirth";
@@ -155,8 +156,10 @@ export function GemShop() {
   const state = useGameSelector(pickGems);
   // Code-only items (like the Dustin skins) only exist for whoever unlocked their section.
   const items = GEM_ITEMS.filter((i) => !i.section || state.unlockedSections.includes(i.section));
+  const locked = state.rebirths < 1;
   return (
-    <ScrollView contentContainerClassName="gap-4 px-4 pb-6">
+    <View className="flex-1">
+    <ScrollView contentContainerClassName="gap-4 px-4 pb-6" scrollEnabled={!locked}>
       <View className="flex-row items-center justify-between border-2 border-outline bg-accent px-3 py-2">
         <Text className="font-body text-sm text-ink">Your {GEM.name}</Text>
         <View className="flex-row items-center gap-1">
@@ -188,5 +191,20 @@ export function GemShop() {
         </View>
       ))}
     </ScrollView>
+      {/* Until the first rebirth the whole Gem Shop is a preview behind a lock. */}
+      {locked && (
+        <View className="absolute inset-0 items-center justify-center bg-ink/55 px-8">
+          <HardShadow offset={4}>
+            <View className="items-center gap-2 border-[3px] border-outline bg-surface px-5 py-4">
+              <PixelIcon name="lock" size={24} />
+              <Text className="font-pixel text-sm tracking-[2px] text-ink">REBIRTH TO ACCESS</Text>
+              <Text className="text-center font-body text-sm leading-5 text-ink">
+                Rebirth on the Hospital page to earn your first {GEM.one} and open the Gem Shop.
+              </Text>
+            </View>
+          </HardShadow>
+        </View>
+      )}
+    </View>
   );
 }

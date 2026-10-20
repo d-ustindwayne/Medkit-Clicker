@@ -82,7 +82,7 @@ export const GEM_ITEMS: GemItem[] = [
       ["natal_gem", "Natal Gem", 1, require("@/imgs/stickers/natal_gem.png")],
       ["golden_medkit", "Golden Medkit", 1, require("@/imgs/stickers/golden_medkit.png")],
     ] as const
-  ).map(([id, name, cost, image]): GemItem => ({ id: `sticker_${id}`, name, kind: "sticker", cost, rebirths: 0, image })),
+  ).map(([id, name, cost, image]): GemItem => ({ id: `sticker_${id}`, name, kind: "sticker", cost, rebirths: 1, image })),
 ];
 
 export const GEM_KIND_LABEL: Record<GemItemKind, string> = { skin: "Medkit skin", tap: "Tap effect", background: "Animated background", room: "My Room item", icon: "App icon", sticker: "Sticker" };
