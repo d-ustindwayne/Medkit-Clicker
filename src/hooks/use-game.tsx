@@ -9,7 +9,10 @@ import { formatCount, formatDuration } from "@/lib/format";
 import { gameReducer, maxAwaySeconds, newGame, type GameAction, type GameState } from "@/lib/game";
 import { DEFAULT_SETTINGS, clearGame, loadGame, loadSettings, saveGame, saveSettings, type Settings } from "@/lib/storage";
 
-const TICK_MS = 100;
+// 5 updates a second: smooth enough for the counter, and half the work of 10.
+const TICK_MS = 200;
+/** Achievements unlocked in the first minute after launch wait, so their toasts aren't missed on start-up. */
+const ACHIEVEMENT_QUIET_MS = 60_000;
 const AUTOSAVE_MS = 10_000;
 /** Gaps longer than this (app closed, backgrounded, tab hidden) count as time away. */
 const AWAY_THRESHOLD_S = 5;
@@ -29,6 +32,9 @@ type GameActions = {
 };
 
 const StateContext = createContext<GameState | null>(null);
+/** The same state as a subscribable store, for components that only need a slice of it. */
+type Store = { get: () => GameState; subscribe: (listener: () => void) => () => void };
+const StoreContext = createContext<Store | null>(null);
 const SettingsContext = createContext<Settings>(DEFAULT_SETTINGS);
 const ToastContext = createContext<Toast[]>([]);
 const ActionsContext = createContext<GameActions | null>(null);
@@ -78,6 +84,8 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       if (saved) {
         dispatch({ type: "load", state: saved.state });
         stateRef.current = saved.state;
+        // Achievements already in the save are not new; anything unlocked from here on gets a toast.
+        seenAchievements.current = new Set(Object.keys(saved.state.achievements));
         lastTick.current = saved.savedAt;
       } else {
         lastTick.current = Date.now();
@@ -89,8 +97,18 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
     };
   }, []);
 
+  // The store: components using useGameSelector re-render only when their slice changes.
+  const listeners = useRef(new Set<() => void>());
+  const [store] = useState<Store>(() => ({
+    get: () => stateRef.current,
+    subscribe: (l) => {
+      listeners.current.add(l);
+      return () => listeners.current.delete(l);
+    },
+  }));
   useEffect(() => {
     stateRef.current = state;
+    listeners.current.forEach((l) => l());
   }, [state]);
 
   useEffect(() => {
@@ -134,21 +152,25 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
     };
   }, [ready]);
 
-  // Toast newly unlocked achievements (not the ones that came from the save).
+  // Toast newly unlocked achievements (not the ones that came from the save). For the first minute
+  // after launch they queue up, then show, so nothing is missed while the app is starting.
+  const [launchedAt] = useState(() => Date.now());
+  const [quiet, setQuiet] = useState(true);
   useEffect(() => {
-    if (!ready) return;
+    const id = setTimeout(() => setQuiet(false), Math.max(0, ACHIEVEMENT_QUIET_MS - (Date.now() - launchedAt)));
+    return () => clearTimeout(id);
+  }, [launchedAt]);
+  useEffect(() => {
+    if (!ready || quiet) return;
     const ids = Object.keys(state.achievements);
-    if (!seenAchievements.current) {
-      seenAchievements.current = new Set(ids);
-      return;
-    }
+    seenAchievements.current ??= new Set();
     for (const id of ids) {
       if (seenAchievements.current.has(id)) continue;
       seenAchievements.current.add(id);
       const a = ACHIEVEMENTS.find((x) => x.id === id);
       if (a) pushToast({ kind: "achievement", title: a.name, body: `${a.description} +${a.coins} Care ${a.coins === 1 ? "Coin" : "Coins"}`, image: a.image });
     }
-  }, [ready, state.achievements, pushToast]);
+  }, [ready, quiet, state.achievements, pushToast]);
 
   const actions = useMemo<GameActions>(() => {
     const updateSettings = (patch: Partial<Settings>) =>
@@ -185,7 +207,9 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
     <ActionsContext value={actions}>
       <SettingsContext value={settings}>
         <ToastContext value={toasts}>
-          <StateContext value={state}>{children}</StateContext>
+          <StoreContext value={store}>
+            <StateContext value={state}>{children}</StateContext>
+          </StoreContext>
         </ToastContext>
       </SettingsContext>
     </ActionsContext>
@@ -196,6 +220,44 @@ export function useGameState() {
   const state = use(StateContext);
   if (!state) throw new Error("useGameState must be used inside GameProvider");
   return state;
+}
+
+const shallowEqual = (a: unknown, b: unknown) => {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== "object" || typeof b !== "object" || !a || !b) return false;
+  const ka = Object.keys(a), kb = Object.keys(b);
+  return ka.length === kb.length && ka.every((k) => Object.is((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+};
+
+/**
+ * Subscribes to part of the game state: the component re-renders only when the selected value
+ * changes (compared shallowly, so a selector can return a small object of fields).
+ */
+export function useGameSelector<T>(select: (s: GameState) => T): T {
+  const store = use(StoreContext);
+  if (!store) throw new Error("useGameSelector must be used inside GameProvider");
+  const [value, setValue] = useState(() => select(store.get()));
+  const latest = useRef(select);
+  useEffect(() => {
+    latest.current = select;
+  });
+  useEffect(() => {
+    const check = () =>
+      setValue((prev) => {
+        const next = latest.current(store.get());
+        return shallowEqual(prev, next) ? prev : next;
+      });
+    check();
+    return store.subscribe(check);
+  }, [store]);
+  return value;
+}
+
+/** The current state without subscribing, for event handlers. */
+export function useGameStore() {
+  const store = use(StoreContext);
+  if (!store) throw new Error("useGameStore must be used inside GameProvider");
+  return store;
 }
 
 export function useGameActions() {

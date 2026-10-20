@@ -27,7 +27,7 @@ import { SICK_PATIENTS } from "@/constants/patients";
 import { healingRate } from "@/constants/rebirth";
 import { HOSPITAL_SCENE } from "@/constants/scenes";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameActions, useGameState } from "@/hooks/use-game";
+import { useGameActions, useGameSelector, useGameStore } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { formatCount } from "@/lib/format";
 import { emergencyReward } from "@/lib/game";
@@ -198,7 +198,7 @@ const Walker = memo(function Walker({ v, width, onGone }: { v: Visitor; width: n
 
 /** Cars, visitors and emergencies. Only spawns while the page is on screen. */
 function Street({ width, active }: { width: number; active: boolean }) {
-  const state = useGameState();
+  const store = useGameStore();
   const { dispatch, pushToast } = useGameActions();
   const { playSfx } = useAudio();
   const haptic = useHaptics();
@@ -209,10 +209,11 @@ function Street({ width, active }: { width: number; active: boolean }) {
   // Read by the timers, so a busy hospital gets more visitors without restarting them.
   const gap = useRef(9);
   const emergency = useRef(false);
-  const rate = healingRate(state);
+  // Rounded so the street doesn't re-render on every tick.
+  const visitorEvery = useGameSelector((s) => Math.round(visitorGap(healingRate(s)) * 10) / 10);
   useEffect(() => {
-    gap.current = visitorGap(rate);
-  }, [rate]);
+    gap.current = visitorEvery;
+  }, [visitorEvery]);
   useEffect(() => {
     emergency.current = call !== null;
   }, [call]);
@@ -251,7 +252,7 @@ function Street({ width, active }: { width: number; active: boolean }) {
   const [visitorGone] = useState(() => (id: number) => setVisitors((list) => list.filter((v) => v.id !== id)));
   const [ambulanceGone] = useState(() => () => setCall(null));
   const admit = () => {
-    const amount = emergencyReward(state);
+    const amount = emergencyReward(store.get());
     dispatch({ type: "earn", amount });
     haptic.success();
     playSfx("buy");
@@ -273,7 +274,7 @@ function Street({ width, active }: { width: number; active: boolean }) {
 
 /** Second page of the shop area: the hospital from outside. It grows with rebirths. */
 export function HospitalPage({ width, active }: { width: number; active: boolean }) {
-  const { rebirths } = useGameState();
+  const rebirths = useGameSelector((s) => s.rebirths);
   const { tier } = hospitalTier(rebirths);
   const height = width * (ART_H / ART_W);
   return (

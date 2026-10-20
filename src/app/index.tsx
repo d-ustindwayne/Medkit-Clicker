@@ -17,7 +17,7 @@ import { ownsBackground } from "@/constants/backgrounds";
 import { BOOSTS, LUCKY_MULT } from "@/constants/boosts";
 import { healingRate } from "@/constants/rebirth";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameState, useSettings } from "@/hooks/use-game";
+import { useGameSelector, useSettings } from "@/hooks/use-game";
 import { useNow } from "@/hooks/use-now";
 import { usePalette } from "@/hooks/use-palette";
 import { formatCount, formatRate } from "@/lib/format";
@@ -51,7 +51,7 @@ function MenuButton({ onPress }: { onPress: () => void }) {
 
 /** Countdown chips for running boosts and Lucky Stethoscope taps. */
 function ActiveBoosts() {
-  const { boosts, luckyTaps } = useGameState();
+  const { boosts, luckyTaps } = useGameSelector((s) => ({ boosts: s.boosts, luckyTaps: s.luckyTaps }));
   const now = useNow();
   const active = BOOSTS.filter((b) => (boosts[b.id] ?? 0) > now);
   if (active.length === 0 && luckyTaps === 0) return null;
@@ -78,7 +78,7 @@ function ActiveBoosts() {
 }
 
 function Counter({ compact }: { compact: boolean }) {
-  const { healed, owned, rebirths, boosts, room } = useGameState();
+  const { healed, owned, rebirths, boosts, room } = useGameSelector((s) => ({ healed: s.healed, owned: s.owned, rebirths: s.rebirths, boosts: s.boosts, room: s.room }));
   const palette = usePalette();
   const rate = healingRate({ owned, rebirths, boosts, room });
   const label = `${Math.floor(healed) === 1 ? "Patient" : "Patients"} Healed`;
@@ -119,14 +119,18 @@ function Counter({ compact }: { compact: boolean }) {
 /** The chosen background; an unbought paid one falls back to the default until it's bought. */
 function Backdrop({ width, height }: { width: number; height: number }) {
   const settings = useSettings();
-  const { ownedBackgrounds } = useGameState();
+  const ownedBackgrounds = useGameSelector((s) => s.ownedBackgrounds);
   const index = ownsBackground(settings.background, ownedBackgrounds) ? settings.background : 0;
   return <BackgroundPattern index={index} theme={settings.theme} width={width} height={height} />;
 }
 
 /** Swipeable stage: the medkit, then My Room. */
 function Clicker({ width, height, compact }: { width: number; height: number; compact: boolean }) {
-  const { owned, rebirths, boosts, luckyTaps, patient, room, gemUpgrades, medkitSkin, tapEffect } = useGameState();
+  // Only what the medkit area shows, so it doesn't redraw on every tick.
+  const { owned, rebirths, boosts, luckyTaps, patient, room, gemUpgrades, medkitSkin, tapEffect } = useGameSelector((s) => ({
+    owned: s.owned, rebirths: s.rebirths, boosts: s.boosts, luckyTaps: s.luckyTaps, patient: s.patient, room: s.room,
+    gemUpgrades: s.gemUpgrades, medkitSkin: s.medkitSkin, tapEffect: s.tapEffect,
+  }));
   const [editing, setEditing] = useState(false);
   const [page, setPage] = useState(0);
   // Leave room for the orbiting supplies around the medkit.

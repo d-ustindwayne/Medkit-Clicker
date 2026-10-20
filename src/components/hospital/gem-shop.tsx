@@ -8,12 +8,17 @@ import { BACKGROUNDS } from "@/constants/backgrounds";
 import { GEM_ITEMS, GEM_KIND_LABEL, GEM_LEVEL_COSTS, GEM_UPGRADES, gemBalance, type GemItem, type GemItemKind, type GemUpgrade } from "@/constants/gems";
 import { GEM } from "@/constants/rebirth";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
+import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
+import type { GameState } from "@/lib/game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { appIcon, setAppIcon } from "@/lib/app-icon";
 import { saveSticker } from "@/lib/stickers";
 
 const MAX_LEVEL = GEM_LEVEL_COSTS.length;
+const pickGems = (s: GameState) => ({
+  gemUpgrades: s.gemUpgrades, gemItems: s.gemItems, medkitSkin: s.medkitSkin, tapEffect: s.tapEffect,
+  rebirths: s.rebirths, rebirthPoints: s.rebirthPoints, gemsSpent: s.gemsSpent, unlockedSections: s.unlockedSections,
+});
 
 function GemCost({ cost }: { cost: number }) {
   return (
@@ -25,7 +30,7 @@ function GemCost({ cost }: { cost: number }) {
 }
 
 function UpgradeCard({ upgrade }: { upgrade: GemUpgrade }) {
-  const state = useGameState();
+  const state = useGameSelector(pickGems);
   const { dispatch } = useGameActions();
   const { playSfx } = useAudio();
   const haptic = useHaptics();
@@ -67,7 +72,7 @@ function UpgradeCard({ upgrade }: { upgrade: GemUpgrade }) {
 }
 
 function ItemTile({ item }: { item: GemItem }) {
-  const state = useGameState();
+  const state = useGameSelector(pickGems);
   const settings = useSettings();
   const { dispatch, updateSettings, pushToast } = useGameActions();
   const { playSfx } = useAudio();
@@ -147,7 +152,7 @@ const SECTION_TITLE: Record<GemItemKind, string> = { skin: "MEDKIT SKINS", tap: 
 
 /** Third page of the shop: spend Natal Gems on permanent upgrades and cosmetics. */
 export function GemShop() {
-  const state = useGameState();
+  const state = useGameSelector(pickGems);
   // Code-only items (like the Dustin skins) only exist for whoever unlocked their section.
   const items = GEM_ITEMS.filter((i) => !i.section || state.unlockedSections.includes(i.section));
   return (

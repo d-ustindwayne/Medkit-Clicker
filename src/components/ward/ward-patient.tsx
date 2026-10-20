@@ -6,11 +6,11 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepea
 import { TreatModal } from "@/components/ward/treat-modal";
 import { SICK_PATIENTS, type SickPatient } from "@/constants/patients";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameState } from "@/hooks/use-game";
+import { useGameSelector } from "@/hooks/use-game";
 
 /** The sick patient waiting by the ward bed, drawn over the ward scene. Tap to treat. */
 export function WardPatient({ width, height }: { width: number; height: number }) {
-  const { patient } = useGameState();
+  const patient = useGameSelector((s) => s.patient);
   const { playSfx, unlock } = useAudio();
   // Kept separately so the result screen stays up after the patient is treated and leaves.
   const [treating, setTreating] = useState<SickPatient | null>(null);

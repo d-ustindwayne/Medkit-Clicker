@@ -11,7 +11,7 @@ import { WardPatient } from "@/components/ward/ward-patient";
 import { CHARACTER_PX, ITEM_PX, ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, unlockHint, type Placement, type RoomItem } from "@/constants/room";
 import { STAFF_FRAMES, WALK_FRAME_MS, WALK_SEQUENCE } from "@/constants/staff";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameActions, useGameState } from "@/hooks/use-game";
+import { useGameActions, useGameSelector } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 
 const ART_W = 320;
@@ -103,7 +103,7 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
 
 /** "My Room": decorate hospital rooms with unlocked items; staff walk around and patients turn up. */
 export function RoomPage({ width, editing, onEditingChange }: { width: number; editing: boolean; onEditingChange: (on: boolean) => void }) {
-  const state = useGameState();
+  const state = useGameSelector((s) => ({ room: s.room, achievements: s.achievements, rebirths: s.rebirths, treated: s.treated, owned: s.owned, gemItems: s.gemItems }));
   const { dispatch, pushToast } = useGameActions();
   const { playSfx, unlock } = useAudio();
   const haptic = useHaptics();
