@@ -20,7 +20,7 @@ export function DevTools() {
     ["Skip 1 hour away", () => simulateAway(3600)],
     ["Unlock all achievements", () => dispatch({ type: "devUnlockAll" })],
     ["+20 Care Coins", () => dispatch({ type: "devAddCoins", count: 20 })],
-    ["Call a patient", () => dispatch({ type: "patientArrives", id: SICK_PATIENTS[Math.floor(Math.random() * SICK_PATIENTS.length)].id })],
+    ["Call a patient", () => dispatch({ type: "patientArrives", id: SICK_PATIENTS[Math.floor(Math.random() * SICK_PATIENTS.length)].id, next: Date.now() + 60_000 })],
     ["+1 rebirth", () => dispatch({ type: "devRebirth" })],
     ["+10 Natal Gems", () => dispatch({ type: "claimPromo", hash: `dev-${Date.now()}`, kind: "gems", amount: 10 })],
   ];

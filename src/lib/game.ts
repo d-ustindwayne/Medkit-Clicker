@@ -42,8 +42,8 @@ export type GameState = {
   bonusCoins: number;
   /** Ward patients treated successfully. */
   treated: number;
-  /** The sick patient waiting in the ward, if any. */
-  patient: { id: string; arrivedAt: number } | null;
+  /** Sick patients waiting in My Room (up to MAX_PATIENTS), oldest first. `arrivedAt` identifies each. */
+  patients: { id: string; arrivedAt: number }[];
   /** When the next patient arrives (ms since epoch). */
   nextPatientAt: number;
   /** My Room: which room is shown, and the items placed in each. */
@@ -91,10 +91,10 @@ export type GameAction =
   /** Server history (reward id -> times); keeps whichever history is longer, never refunds. */
   | { type: "syncRedemptions"; history: Record<string, number[]> }
   | { type: "useBoost"; id: string }
-  | { type: "patientArrives"; id: string }
+  | { type: "patientArrives"; id: string; next: number }
   /** The patient was transferred (waited too long) or treated; `next` schedules the next arrival. */
-  | { type: "patientLeaves"; next: number }
-  | { type: "treat"; won: boolean; next: number }
+  | { type: "patientLeaves"; arrivedAt: number }
+  | { type: "treat"; won: boolean; arrivedAt: number }
   | { type: "setRoom"; room: string }
   | { type: "buyBackground"; id: string }
   | { type: "buyGemUpgrade"; id: string }
@@ -144,7 +144,7 @@ export const newGame = (): GameState => ({
   luckyTaps: 0,
   bonusCoins: 0,
   treated: 0,
-  patient: null,
+  patients: [],
   nextPatientAt: Date.now() + 60_000,
   room: { current: ROOMS[0].id, placed: {} },
   ownedBackgrounds: [],
@@ -191,6 +191,9 @@ export const redeemedThisYear = (times: number[], now = Date.now()) => {
   const year = new Date(now).getFullYear();
   return times.filter((t) => new Date(t).getFullYear() === year).length;
 };
+
+/** At most this many sick patients wait in My Room at once. */
+export const MAX_PATIENTS = 3;
 
 /** Patients paid for treating a ward patient: minutes of production, with a floor early in the game. */
 export const treatReward = (s: { owned: Record<ItemId, number>; rebirths: number; gemUpgrades?: Record<string, number> }, won: boolean) => {
@@ -330,15 +333,18 @@ const apply = (state: GameState, action: GameAction): GameState => {
       const amount = e.rateSeconds ? Math.max(healingRate(base) * e.rateSeconds, tapValue(base) * 10) : tapValue(base) * (e.taps ?? 0);
       return earn(paid, amount);
     }
-    case "patientArrives":
-      if (state.patient) return state;
-      return { ...state, patient: { id: action.id, arrivedAt: Date.now() } };
+    case "patientArrives": {
+      if (state.patients.length >= MAX_PATIENTS) return state;
+      // Arrival times must differ: they tell patients apart.
+      const at = Math.max(Date.now(), (state.patients.at(-1)?.arrivedAt ?? 0) + 1);
+      return { ...state, patients: [...state.patients, { id: action.id, arrivedAt: at }], nextPatientAt: action.next };
+    }
     case "patientLeaves":
-      return { ...state, patient: null, nextPatientAt: action.next };
+      return { ...state, patients: state.patients.filter((p) => p.arrivedAt !== action.arrivedAt) };
     case "treat": {
-      if (!state.patient) return state;
+      if (!state.patients.some((p) => p.arrivedAt === action.arrivedAt)) return state;
       const amount = treatReward(state, action.won);
-      const done = { ...state, patient: null, nextPatientAt: action.next };
+      const done = { ...state, patients: state.patients.filter((p) => p.arrivedAt !== action.arrivedAt) };
       return earn(action.won ? { ...done, treated: state.treated + 1, bonusCoins: state.bonusCoins + WIN_COINS } : done, amount);
     }
     case "buyBackground": {
@@ -469,7 +475,8 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     luckyTaps: typeof s.luckyTaps === "number" ? s.luckyTaps : 0,
     bonusCoins: typeof s.bonusCoins === "number" ? s.bonusCoins : 0,
     treated: typeof s.treated === "number" ? s.treated : 0,
-    patient: s.patient && typeof s.patient.id === "string" ? s.patient : null,
+    // Older saves had one waiting patient.
+    patients: Array.isArray(s.patients) ? s.patients.slice(0, MAX_PATIENTS) : (s as { patient?: { id: string; arrivedAt: number } | null }).patient ? [(s as { patient: { id: string; arrivedAt: number } }).patient] : [],
     nextPatientAt: typeof s.nextPatientAt === "number" ? s.nextPatientAt : base.nextPatientAt,
     // Natal Gems are one per rebirth; older saves had cube-root rebirth points, so cap them at the rebirth count.
     rebirthPoints: Math.min(typeof s.rebirthPoints === "number" ? s.rebirthPoints : 0, typeof s.rebirths === "number" ? s.rebirths : 0),

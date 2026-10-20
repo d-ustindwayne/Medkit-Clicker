@@ -8,12 +8,19 @@ import { SICK_PATIENTS, type SickPatient } from "@/constants/patients";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameSelector } from "@/hooks/use-game";
 
-/** The sick patient waiting by the ward bed, drawn over the ward scene. Tap to treat. */
+/** Where waiting patients stand (fractions of the room art), first to arrive on the right. */
+const SPOTS = [
+  { x: 0.66, y: 0.79 },
+  { x: 0.46, y: 0.81 },
+  { x: 0.84, y: 0.77 },
+];
+
+/** Sick patients waiting in My Room (up to three), drawn over the room. Tap one to treat them. */
 export function WardPatient({ width, height }: { width: number; height: number }) {
-  const patient = useGameSelector((s) => s.patient);
+  const patients = useGameSelector((s) => s.patients);
   const { playSfx, unlock } = useAudio();
   // Kept separately so the result screen stays up after the patient is treated and leaves.
-  const [treating, setTreating] = useState<SickPatient | null>(null);
+  const [treating, setTreating] = useState<{ patient: SickPatient; arrivedAt: number } | null>(null);
   const reduceMotion = useReducedMotion();
   const bob = useSharedValue(0);
   useEffect(() => {
@@ -22,9 +29,11 @@ export function WardPatient({ width, height }: { width: number; height: number }
   }, [bob, reduceMotion]);
   const bubble = useAnimatedStyle(() => ({ transform: [{ translateY: bob.get() }] }));
 
-  const info = patient ? SICK_PATIENTS.find((p) => p.id === patient.id) : undefined;
-  const modal = treating && <TreatModal patient={treating} onClose={() => setTreating(null)} />;
-  if (!info) {
+  const modal = treating && <TreatModal patient={treating.patient} arrivedAt={treating.arrivedAt} onClose={() => setTreating(null)} />;
+  const waiting = patients
+    .map((p) => ({ ...p, info: SICK_PATIENTS.find((x) => x.id === p.id) }))
+    .filter((p): p is typeof p & { info: SickPatient } => !!p.info);
+  if (waiting.length === 0) {
     return (
       <>
         <View className="absolute left-0 right-0 top-2 items-center" pointerEvents="none">
@@ -40,23 +49,30 @@ export function WardPatient({ width, height }: { width: number; height: number }
   const size = width * (64 / 320);
   return (
     <>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Treat patient: ${info.condition}`}
-        onPress={() => {
-          unlock();
-          playSfx("click");
-          setTreating(info);
-        }}
-        style={{ position: "absolute", left: width * 0.66, top: height * 0.79 - size, width: size, height: size }}
-      >
-        <Image source={info.image} style={{ width: size, height: size }} contentFit="contain" />
-        <Animated.View style={[{ position: "absolute", top: -size * 0.12, alignSelf: "center" }, bubble]}>
-          <View className="items-center justify-center rounded-full border-2 border-outline bg-primary px-2">
-            <Text className="font-pixel text-base text-ink">!</Text>
-          </View>
-        </Animated.View>
-      </Pressable>
+      {waiting.map((p, i) => {
+        const spot = SPOTS[i % SPOTS.length];
+        return (
+          <Pressable
+            key={p.arrivedAt}
+            accessibilityRole="button"
+            accessibilityLabel={`Treat patient: ${p.info.condition}`}
+            onPress={() => {
+              unlock();
+              playSfx("click");
+              setTreating({ patient: p.info, arrivedAt: p.arrivedAt });
+            }}
+            // People lower on screen stand in front (and in front of the furniture).
+            style={{ position: "absolute", left: width * spot.x - size / 2, top: height * spot.y - size, width: size, height: size, zIndex: 50 + Math.round(spot.y * 10) }}
+          >
+            <Image source={p.info.image} style={{ width: size, height: size }} contentFit="contain" />
+            <Animated.View style={[{ position: "absolute", top: -size * 0.12, alignSelf: "center" }, bubble]}>
+              <View className="items-center justify-center rounded-full border-2 border-outline bg-primary px-2">
+                <Text className="font-pixel text-base text-ink">!</Text>
+              </View>
+            </Animated.View>
+          </Pressable>
+        );
+      })}
       {modal}
     </>
   );

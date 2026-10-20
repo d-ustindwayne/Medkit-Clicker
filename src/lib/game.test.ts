@@ -43,7 +43,7 @@ describe("saves", () => {
     expect(s.owned.dna).toBe(0);
     expect(s.coinsSpent).toBe(0);
     expect(s.boosts).toEqual({});
-    expect(s.patient).toBeNull();
+    expect(s.patients).toEqual([]);
     expect(s.room.current).toBe(ROOMS[0].id);
   });
 
@@ -115,18 +115,30 @@ describe("boosts", () => {
 
 describe("ward patients", () => {
   test("a patient arrives, and a win pays patients, a coin and counts as treated", () => {
-    const s = run(newGame(), { type: "patientArrives", id: SICK_PATIENTS[0].id });
-    expect(s.patient?.id).toBe(SICK_PATIENTS[0].id);
-    const won = run(s, { type: "treat", won: true, next: 123 });
-    expect(won.patient).toBeNull();
+    const s = run(newGame(), { type: "patientArrives", id: SICK_PATIENTS[0].id, next: 123 });
+    expect(s.patients.map((p) => p.id)).toEqual([SICK_PATIENTS[0].id]);
+    expect(s.nextPatientAt).toBe(123);
+    const won = run(s, { type: "treat", won: true, arrivedAt: s.patients[0].arrivedAt });
+    expect(won.patients).toEqual([]);
     expect(won.treated).toBe(1);
     expect(won.bonusCoins).toBe(1);
     expect(won.healed).toBeGreaterThan(s.healed);
-    expect(won.nextPatientAt).toBe(123);
+  });
+
+  test("up to three wait at once, each treated or transferred on its own", () => {
+    let s = newGame();
+    for (let i = 0; i < 5; i++) s = run(s, { type: "patientArrives", id: SICK_PATIENTS[i].id, next: 1 });
+    expect(s.patients).toHaveLength(3);
+    const [a, b] = s.patients;
+    s = run(s, { type: "patientLeaves", arrivedAt: a.arrivedAt });
+    s = run(s, { type: "treat", won: true, arrivedAt: b.arrivedAt });
+    expect(s.patients).toHaveLength(1);
+    expect(s.treated).toBe(1);
   });
 
   test("a loss pays a little and doesn't count", () => {
-    const s = run(newGame(), { type: "patientArrives", id: SICK_PATIENTS[1].id }, { type: "treat", won: false, next: 1 });
+    const one = run(newGame(), { type: "patientArrives", id: SICK_PATIENTS[1].id, next: 1 });
+    const s = run(one, { type: "treat", won: false, arrivedAt: one.patients[0].arrivedAt });
     expect(s.treated).toBe(0);
     expect(s.bonusCoins).toBe(0);
   });
@@ -134,10 +146,9 @@ describe("ward patients", () => {
   test("treating with nobody there does nothing", () => {
     // Compare fields, not identity: Night Shift can unlock if the tests run between midnight and 5 a.m.
     const s = newGame();
-    const after = run(s, { type: "treat", won: true, next: 1 });
+    const after = run(s, { type: "treat", won: true, arrivedAt: 1 });
     expect(after.treated).toBe(0);
     expect(after.healed).toBe(s.healed);
-    expect(after.nextPatientAt).toBe(s.nextPatientAt);
   });
 });
 

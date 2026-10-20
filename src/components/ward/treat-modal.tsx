@@ -8,7 +8,7 @@ import { useDone, useJuice, type GameProps } from "@/components/ward/game-kit";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { COIN } from "@/constants/boosts";
-import { WIN_COINS, minigameTuning, nextPatientDelay, type SickPatient } from "@/constants/patients";
+import { WIN_COINS, minigameTuning, type SickPatient } from "@/constants/patients";
 import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
@@ -207,7 +207,8 @@ function BandageGame({ onDone, tuning }: GameProps) {
 const GAMES = { injection: InjectionGame, rhythm: RhythmGame, bandage: BandageGame, ...MORE_GAMES };
 
 /** Treating a ward patient: intro, the patient's minigame, then the result. */
-export function TreatModal({ patient, onClose }: { patient: SickPatient; onClose: () => void }) {
+/** `arrivedAt` is the waiting patient being treated; leave it out to just play (Dev Tools). */
+export function TreatModal({ patient, arrivedAt, onClose }: { patient: SickPatient; arrivedAt?: number; onClose: () => void }) {
   const { theme } = useSettings();
   const state = useGameState();
   const { dispatch } = useGameActions();
@@ -219,7 +220,7 @@ export function TreatModal({ patient, onClose }: { patient: SickPatient; onClose
 
   const finish = (won: boolean) => {
     const amount = treatReward(state, won);
-    dispatch({ type: "treat", won, next: Date.now() + nextPatientDelay() });
+    if (arrivedAt !== undefined) dispatch({ type: "treat", won, arrivedAt });
     if (won) dispatch({ type: "minigameWon", game: patient.game });
     setResult({ won, amount });
     setPhase("result");

@@ -7,7 +7,7 @@ import { PATIENT_WAIT_MS, SICK_PATIENTS, nextPatientDelay } from "@/constants/pa
 import { healingRate } from "@/constants/rebirth";
 import type { ThemeName } from "@/constants/theme";
 import { formatCount, formatDuration } from "@/lib/format";
-import { gameReducer, maxAwaySeconds, newGame, type GameAction, type GameState } from "@/lib/game";
+import { MAX_PATIENTS, gameReducer, maxAwaySeconds, newGame, type GameAction, type GameState } from "@/lib/game";
 import { DEFAULT_SETTINGS, clearGame, loadGame, loadSettings, saveGame, saveSettings, type Settings } from "@/lib/storage";
 
 // 5 updates a second: smooth enough for the counter, and half the work of 10.
@@ -127,14 +127,14 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       if (seconds > AWAY_THRESHOLD_S) grantAway(seconds);
       else dispatch({ type: "tick", seconds });
       // A sick patient turns up in My Room now and then, and is transferred if nobody comes.
+      // Patients keep coming (up to three wait at once); each is transferred if nobody comes in time.
       const s = stateRef.current;
-      if (!s.patient && now >= s.nextPatientAt) {
+      if (s.patients.length < MAX_PATIENTS && now >= s.nextPatientAt) {
         const p = SICK_PATIENTS[Math.floor(Math.random() * SICK_PATIENTS.length)];
-        dispatch({ type: "patientArrives", id: p.id });
+        dispatch({ type: "patientArrives", id: p.id, next: now + nextPatientDelay() });
         pushToast({ kind: "info", title: "A patient needs you", body: `${p.condition}! Swipe the medkit over to My Room to help.`, image: p.image });
-      } else if (s.patient && now - s.patient.arrivedAt > PATIENT_WAIT_MS) {
-        dispatch({ type: "patientLeaves", next: now + nextPatientDelay() });
       }
+      for (const p of s.patients) if (now - p.arrivedAt > PATIENT_WAIT_MS) dispatch({ type: "patientLeaves", arrivedAt: p.arrivedAt });
     }, TICK_MS);
     return () => clearInterval(id);
   }, [ready, grantAway, pushToast]);

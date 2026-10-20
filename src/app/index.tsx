@@ -125,8 +125,8 @@ function Backdrop({ width, height }: { width: number; height: number }) {
 /** Swipeable stage: the medkit, then My Room. */
 function Clicker({ width, height, compact }: { width: number; height: number; compact: boolean }) {
   // Only what the medkit area shows, so it doesn't redraw on every tick.
-  const { owned, rebirths, boosts, luckyTaps, patient, room, gemUpgrades, medkitSkin, tapEffect } = useGameSelector((s) => ({
-    owned: s.owned, rebirths: s.rebirths, boosts: s.boosts, luckyTaps: s.luckyTaps, patient: s.patient, room: s.room,
+  const { owned, rebirths, boosts, luckyTaps, waiting, room, gemUpgrades, medkitSkin, tapEffect } = useGameSelector((s) => ({
+    owned: s.owned, rebirths: s.rebirths, boosts: s.boosts, luckyTaps: s.luckyTaps, waiting: s.patients.length, room: s.room,
     gemUpgrades: s.gemUpgrades, medkitSkin: s.medkitSkin, tapEffect: s.tapEffect,
   }));
   const [editing, setEditing] = useState(false);
@@ -154,8 +154,8 @@ function Clicker({ width, height, compact }: { width: number; height: number; co
           },
           {
             key: "room",
-            label: patient ? "My Room, a patient is waiting" : "My Room",
-            badge: !!patient,
+            label: waiting ? `My Room, ${waiting} ${waiting === 1 ? "patient is" : "patients are"} waiting` : "My Room",
+            badge: waiting > 0,
             content: <RoomPage width={width} editing={editing} onEditingChange={setEditing} />,
           },
         ]}
