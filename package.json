@@ -56,6 +56,8 @@
     "music": "sh ./scripts/build-music.sh",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "server": "bun server/index.ts",
+    "db:setup": "bun scripts/db-setup.ts",
     "tasks": "bun scripts/tasks.ts",
     "add-code": "bun scripts/add-code.ts"
   },

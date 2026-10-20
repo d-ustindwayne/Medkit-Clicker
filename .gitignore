@@ -30,7 +30,8 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files (.env holds the server's DATABASE_URL and secrets)
+.env
 .env*.local
 
 # typescript
@@ -44,6 +45,7 @@ yarn-error.*
 # Music: full library and the trimmed bundle are copyrighted, keep them out of git (see README)
 src/audio/music/
 src/audio/bundle/
+src/audio/encoded/
 
 # Commercial font, not redistributable
 src/fonts/arialroundedmt.ttf

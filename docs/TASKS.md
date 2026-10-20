@@ -54,7 +54,9 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
   - room unlocks: 15 achievements, 1 rebirth, 10 patients treated, 40 achievements
   - each item's unlock and bonus
   - the +50% bonus cap
-- [ ] Cloud and alerts plan (see [CLOUD.md](CLOUD.md))
+- [ ] Create the Aiven PostgreSQL service, host the API and run `bun run db:setup` (see [DATABASE.md](DATABASE.md))
+- [ ] Natal Gem name and icon ("Natal" means "of birth"; alternatives: Cradle Gem, Bloom Gem)
+- [ ] Paid background prices: Purple Rain 15, Heart Monitor 15, Night Shift Sky 10, Blood Stream 10 Care Coins
 
 ## Shop items (decided by Claude, 2026-10-20)
 
@@ -95,12 +97,12 @@ Still unused:
 ## Concerns to address
 
 - [ ] **The last achievements are still out of reach.** 13 items get to about a billion per second after weeks, so the 10^15 healed milestones are reachable but the tail (10^18 and up) needs upgrades or rebirth spending. That's intentional for a long game, but worth a look when rebirth points get a use.
-- [ ] **Reward notifications are manual.** Redeeming opens the share sheet so Jasmine can send you the message. See [NOTIFICATIONS.md](NOTIFICATIONS.md) for the plan (ntfy.sh alerts, plus local reminders).
+- [ ] **Reward notifications:** built into the server (ntfy.sh alert on every redemption), live once the API is deployed. Until then, redeeming opens the share sheet. Local reminders are still a plan ([NOTIFICATIONS.md](NOTIFICATIONS.md)).
 - [ ] **Everything is on-device, so it isn't tamper-proof.** Someone could edit an exported save and import it to give themselves patients. The redeem code is stored only as a hash, so it can't be read from the code, but a determined person could still bypass the check. That's fine for a gift; it would need a server to be secure.
 - [ ] **Rewards survive Delete progress and imports on purpose,** so the 3-chocolate limit can't be reset. Reinstalling the app or clearing its data does reset it, because there's no server.
 - [ ] **Saving to Download:** Android 11+ won't let apps pick the root of Download. Export asks for a folder once (Documents by default, or a subfolder of Download) and then remembers it.
 - [ ] **iOS is untested.** It needs a Mac or a cloud build (`eas build`) to check.
-- [ ] **Music is copyrighted and not in git.** A fresh clone needs `bun run music` with your own MP3s. The bundle is about 47 MB.
+- [x] **Music is copyrighted:** it's no longer in the app or in git. It lives in the database and downloads after the code ([DATABASE.md](DATABASE.md)).
 - [ ] **Old native build on the emulator:** `com.dust.dev.mc` is from before the audio and save libraries. Use Expo Go, or run `bunx expo prebuild --clean` then `bun run android` to replace it.
 - [x] **Unit tests:** `bun test` runs 23 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
 - [x] **Nothing is committed to git.** Done: pushed to https://github.com/d-ustindwayne/Medkit-Clicker (`main`).

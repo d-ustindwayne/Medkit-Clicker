@@ -130,8 +130,12 @@ describe("ward patients", () => {
   });
 
   test("treating with nobody there does nothing", () => {
+    // Compare fields, not identity: Night Shift can unlock if the tests run between midnight and 5 a.m.
     const s = newGame();
-    expect(run(s, { type: "treat", won: true, next: 1 })).toBe(s);
+    const after = run(s, { type: "treat", won: true, next: 1 });
+    expect(after.treated).toBe(0);
+    expect(after.healed).toBe(s.healed);
+    expect(after.nextPatientAt).toBe(s.nextPatientAt);
   });
 });
 
@@ -199,8 +203,16 @@ describe("paid backgrounds", () => {
     const bought = run(s, { type: "buyBackground", id: "purple_rain" });
     expect(bought.ownedBackgrounds).toEqual(["purple_rain"]);
     expect(coinBalance(bought)).toBe(coinBalance(s) - 15);
-    expect(run(bought, { type: "buyBackground", id: "purple_rain" })).toBe(bought); // already owned
+    expect(coinBalance(run(bought, { type: "buyBackground", id: "purple_rain" }))).toBe(coinBalance(bought)); // already owned
     expect(run(newGame(), { type: "buyBackground", id: "heart_monitor" }).ownedBackgrounds).toEqual([]); // no coins
     expect(run(s, { type: "buyBackground", id: "rose_grid" }).ownedBackgrounds).toEqual([]); // free
+  });
+});
+
+describe("server sync", () => {
+  test("redemption history keeps the longer list and never refunds", () => {
+    const s = run(newGame(), { type: "syncRedemptions", history: { chocolate_box: [1, 2] } });
+    expect(s.redemptions.chocolate_box).toEqual([1, 2]);
+    expect(run(s, { type: "syncRedemptions", history: { chocolate_box: [1] } }).redemptions.chocolate_box).toEqual([1, 2]);
   });
 });

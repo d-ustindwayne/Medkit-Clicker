@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image } from "expo-image";
 import { Share, Text, View } from "react-native";
 
@@ -9,6 +9,7 @@ import { PixelIcon } from "@/components/ui/pixel-icon";
 import { MEDKIT_IMAGE } from "@/constants/items";
 import { REWARD_SECTIONS, type Reward, type RewardSection } from "@/constants/rewards";
 import { useGameActions, useGameState } from "@/hooks/use-game";
+import { cloudEnabled, fetchRewards, getToken, redeemOnline } from "@/lib/cloud";
 import { formatCount } from "@/lib/format";
 
 const shareRedemption = (section: RewardSection, reward: Reward, index: number, at: number) =>
@@ -28,8 +29,25 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
   const left = reward.limit - history.length;
   const affordable = healed >= reward.cost;
 
-  const redeem = () => {
+  const redeem = async () => {
     setConfirming(false);
+    // Online: the server checks the limit, records it and alerts the giver automatically.
+    const token = cloudEnabled ? await getToken() : null;
+    if (token) {
+      try {
+        const res = await redeemOnline(token, reward.id);
+        dispatch({ type: "redeem", rewardId: reward.id });
+        pushToast({ kind: "info", title: "Redeemed", body: res.notified ? `${reward.name}. ${section.notify} has been told!` : `${reward.name}. Let ${section.notify} know!` });
+        if (!res.notified) shareRedemption(section, reward, history.length, res.at);
+        return;
+      } catch (e) {
+        if ((e as { status?: number }).status === 409) {
+          pushToast({ kind: "info", title: "All redeemed", body: `There are no ${reward.name.toLowerCase()} left to redeem.` });
+          return;
+        }
+        // offline: fall back to the share sheet below
+      }
+    }
     const at = Date.now();
     dispatch({ type: "redeem", rewardId: reward.id });
     pushToast({ kind: "info", title: "Redeemed", body: `${reward.name}. Let ${section.notify} know!` });
@@ -98,7 +116,23 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
 
 export function RewardsPage({ sectionId }: { sectionId: string }) {
   const { healed } = useGameState();
+  const { dispatch } = useGameActions();
   const section = REWARD_SECTIONS.find((s) => s.id === sectionId);
+
+  // Pull the server's redemption history so a reinstall can't reset the limits.
+  useEffect(() => {
+    if (!cloudEnabled) return;
+    let cancelled = false;
+    getToken()
+      .then((token) => (token ? fetchRewards(token) : []))
+      .then((rewards) => {
+        if (!cancelled && rewards.length) dispatch({ type: "syncRedemptions", history: Object.fromEntries(rewards.map((r) => [r.id, r.redeemed])) });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch]);
   if (!section) return null;
 
   return (

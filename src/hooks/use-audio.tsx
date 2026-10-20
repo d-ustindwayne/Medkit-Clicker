@@ -2,8 +2,9 @@ import { createContext, use, useCallback, useEffect, useMemo, useState, type Rea
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, type AudioPlayer } from "expo-audio";
 import { Platform } from "react-native";
 
-import { PLAYLISTS, SFX, type SfxName } from "@/constants/playlists";
+import { BUNDLED_PLAYLISTS, SFX, type Playlist, type SfxName } from "@/constants/playlists";
 import { useGameActions, useSettings } from "@/hooks/use-game";
+import { cloudEnabled, downloadMusic, getToken, loadCachedPlaylists, type CachedPlaylist } from "@/lib/cloud";
 import { VOLUME_STEPS } from "@/lib/storage";
 
 type AudioControls = {
@@ -13,6 +14,15 @@ type AudioControls = {
 };
 
 export type MusicState = {
+  /** Playlists that can play on this phone (downloaded, or bundled for testing). Empty = no music. */
+  library: { id: string; name: string }[];
+  /** True when a code token is saved and the server is configured, so songs can download. */
+  canDownload: boolean;
+  /** Songs downloaded so far, while a download runs. */
+  download: { done: number; total: number } | null;
+  downloadError: string | null;
+  /** Downloads (or updates) the code-locked music. Call after a code unlock. */
+  fetchMusic: () => Promise<void>;
   playlistName: string;
   trackIndex: number;
   trackCount: number;
@@ -50,15 +60,29 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const buy = useAudioPlayer(SFX.buy);
   const invalid = useAudioPlayer(SFX.invalid);
 
+  // The music library: songs downloaded after a code unlock, plus any bundled for testing.
+  const [cached, setCached] = useState<CachedPlaylist[]>([]);
+  const [token, setToken] = useState<string | null>(null);
+  const [download, setDownload] = useState<{ done: number; total: number } | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  useEffect(() => {
+    loadCachedPlaylists().then(setCached);
+    getToken().then(setToken);
+  }, []);
+  const library: Playlist[] = useMemo(() => {
+    const downloaded = cached.map((p) => ({ id: p.id, name: p.name, tracks: p.tracks.map((uri) => ({ uri })) }));
+    return [...downloaded, ...BUNDLED_PLAYLISTS.filter((b) => !cached.some((c) => c.id === b.id))];
+  }, [cached]);
+
   // Music: one player that walks through the selected playlist. The track index resets when the
   // playlist changes because it is stored alongside the playlist it belongs to.
-  const playlist = PLAYLISTS[settings.playlist % PLAYLISTS.length];
-  const trackCount = playlist.tracks.length;
-  const [track, setTrack] = useState({ playlist: playlist.id, index: 0 });
-  const trackIndex = (((track.playlist === playlist.id ? track.index : 0) % trackCount) + trackCount) % trackCount;
-  const music = useAudioPlayer(playlist.tracks[0]);
+  const playlist = library.length > 0 ? library[settings.playlist % library.length] : null;
+  const trackCount = playlist?.tracks.length ?? 0;
+  const [track, setTrack] = useState({ playlist: playlist?.id ?? "", index: 0 });
+  const trackIndex = trackCount === 0 ? 0 : ((((track.playlist === playlist?.id ? track.index : 0) % trackCount) + trackCount) % trackCount);
+  const music = useAudioPlayer(playlist?.tracks[0] ?? null);
   const status = useAudioPlayerStatus(music);
-  const musicOn = unlocked && settings.musicVolume > 0 && !paused;
+  const musicOn = unlocked && settings.musicVolume > 0 && !paused && !!playlist;
 
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false }).catch(() => {});
@@ -66,12 +90,13 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const sub = music.addListener("playbackStatusUpdate", (s) => {
-      if (s.didJustFinish) setTrack({ playlist: playlist.id, index: trackIndex + 1 });
+      if (s.didJustFinish && playlist) setTrack({ playlist: playlist.id, index: trackIndex + 1 });
     });
     return () => sub.remove();
-  }, [music, playlist.id, trackIndex]);
+  }, [music, playlist, trackIndex]);
 
   useEffect(() => {
+    if (!playlist) return;
     music.replace(playlist.tracks[trackIndex]);
     // replace() keeps the paused/playing state, so restart explicitly.
     if (musicOn) music.play();
@@ -80,13 +105,13 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setVolume(music, settings.musicVolume / VOLUME_STEPS);
-    if (musicOn) {
+    if (musicOn && playlist) {
       music.play();
       dispatch({ type: "heardPlaylist", id: playlist.id });
     } else {
       music.pause();
     }
-  }, [music, musicOn, settings.musicVolume, playlist.id, dispatch]);
+  }, [music, musicOn, settings.musicVolume, playlist, dispatch]);
 
   const sfxVolume = settings.sfxVolume / VOLUME_STEPS;
   const playSfx = useCallback(
@@ -103,9 +128,28 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const unlock = useCallback(() => setUnlocked(true), []);
   const controls = useMemo(() => ({ playSfx, unlock }), [playSfx, unlock]);
 
+  const fetchMusic = useCallback(async () => {
+    const saved = await getToken();
+    setToken(saved);
+    if (!saved || !cloudEnabled) return;
+    setDownloadError(null);
+    try {
+      setCached(await downloadMusic(saved, (done, total) => setDownload({ done, total })));
+    } catch (e) {
+      setDownloadError(e instanceof Error ? e.message : "Download failed. Check the connection and try again.");
+    } finally {
+      setDownload(null);
+    }
+  }, []);
+
   const musicState = useMemo<MusicState>(
     () => ({
-      playlistName: playlist.name,
+      library: library.map(({ id, name }) => ({ id, name })),
+      canDownload: cloudEnabled && !!token,
+      download,
+      downloadError,
+      fetchMusic,
+      playlistName: playlist?.name ?? "",
       trackIndex,
       trackCount,
       playing: musicOn,
@@ -116,17 +160,17 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         setUnlocked(true);
         setPaused((p) => !p);
       },
-      next: () => setTrack({ playlist: playlist.id, index: trackIndex + 1 }),
+      next: () => playlist && setTrack({ playlist: playlist.id, index: trackIndex + 1 }),
       // Like most players: restart the song if it's past the first few seconds, else go back one.
       previous: () => {
         if (status.currentTime > 3) music.seekTo(0).catch(() => {});
-        else setTrack({ playlist: playlist.id, index: trackIndex - 1 });
+        else if (playlist) setTrack({ playlist: playlist.id, index: trackIndex - 1 });
       },
       seek: (seconds) => {
         music.seekTo(seconds).catch(() => {});
       },
     }),
-    [playlist, trackIndex, trackCount, musicOn, paused, status.currentTime, status.duration, music],
+    [library, token, download, downloadError, fetchMusic, playlist, trackIndex, trackCount, musicOn, paused, status.currentTime, status.duration, music],
   );
 
   return (

@@ -27,18 +27,19 @@ Requires [Bun](https://bun.sh/) and, for the music bundle, [ffmpeg](https://ffmp
 
 ```bash
 bun install
-bun run music    # builds src/audio/bundle from your music library (see below)
+bun run music    # encodes your music library for the database (see below)
 bun run start
 ```
 
 ### Music
 
-The songs are copyrighted, so they're not in this repository. To build the app with music:
+The songs may be copyrighted, so they're neither in this repository nor in the app. They live in the database and download only after the redeem code is entered (see [docs/DATABASE.md](docs/DATABASE.md)).
 
 1. Put your tracks in `src/audio/music/<playlist>/track_N.mp3`. The playlist folders are `cup_of_joe`, `love`, `filipino_rap`, `favourites`, `lo-fi` and `normal`.
-2. Run `bun run music`. This compresses every track to AAC at 64 kbps in `src/audio/bundle/` (about 110 MB for the full library) and writes the track list the app reads, `src/audio/bundle/index.ts`.
+2. Run `bun run music`. This compresses every track to AAC at 64 kbps into `src/audio/encoded/` (about 110 MB).
+3. Run `bun run db:setup` to upload them.
 
-Both folders are gitignored. Playlist names and tracks are set in `src/constants/playlists.ts`.
+`BUNDLE=1 bun run music` bundles the songs into the app instead, for offline testing. All three folders are gitignored. Playlist names are in `src/constants/playlist-names.ts`.
 
 ## Scripts
 
@@ -47,7 +48,9 @@ Both folders are gitignored. Playlist names and tracks are set in `src/constants
 | `bun run start`                     | Start the Expo dev server                                                                                         |
 | `bun run android` / `bun run ios`   | Build and run on a device or emulator                                                                             |
 | `bun run web`                       | Run in the browser                                                                                                |
-| `bun run music`                     | Build the trimmed music bundle                                                                                    |
+| `bun run music` | Encode the music for upload (`BUNDLE=1` also bundles it into the app) |
+| `bun run db:setup` | Create the database tables and upload codes, rewards and music |
+| `bun run server` | Run the API locally (needs `.env`, see `.env.example`) |
 | `bun run lint`                      | Lint with ESLint                                                                                                  |
 | `bun run typecheck`                 | Type-check with TypeScript                                                                                        |
 | `bun run test`                      | Unit tests for the game logic (Bun's built-in runner)                                                             |
@@ -76,7 +79,7 @@ Game balance (prices, rates and growth) lives in `src/constants/items.ts`. Devel
 - [docs/TESTING.md](docs/TESTING.md): the test checklist and the latest results
 - [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md): the plan for reward alerts and reminders
 - [docs/ROOM.md](docs/ROOM.md): how My Room works (rooms, items, unlocks, bonuses)
-- [docs/CLOUD.md](docs/CLOUD.md): plan for MongoDB Atlas cloud saves and reward alerts
+- [docs/DATABASE.md](docs/DATABASE.md): Aiven PostgreSQL, the API, and how to set them up
 
 ## Redeem codes
 

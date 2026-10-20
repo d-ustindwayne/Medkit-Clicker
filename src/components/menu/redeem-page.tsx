@@ -4,7 +4,10 @@ import { ActivityIndicator, Text, TextInput, View } from "react-native";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
+import { useMusic } from "@/hooks/use-audio";
+import { cloudEnabled, unlockOnline } from "@/lib/cloud";
 import { sectionForCode } from "@/lib/codes";
+import { REWARD_SECTIONS } from "@/constants/rewards";
 
 /** Enter a code to unlock a hidden section. Codes are checked by hash; see src/constants/rewards.ts. */
 export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => void }) {
@@ -14,12 +17,25 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
   const [code, setCode] = useState("");
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const music = useMusic();
 
   const submit = async () => {
     setChecking(true);
     setError(null);
     try {
-      const section = await sectionForCode(code);
+      // The server is the source of truth; the local hash check covers offline and server-less builds.
+      let online = false;
+      let section = null;
+      if (cloudEnabled) {
+        try {
+          const res = await unlockOnline(code);
+          section = res ? (REWARD_SECTIONS.find((s) => s.id === res.section) ?? null) : null;
+          online = !!res;
+        } catch {
+          // offline or server down: fall through to the local check
+        }
+      }
+      section ??= await sectionForCode(code);
       if (!section) {
         setError("That code didn't match anything. Check the spelling and try again.");
         return;
@@ -29,6 +45,10 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
         pushToast({ kind: "info", title: "Unlocked", body: `${section.title} is now in the menu.` });
       }
       setCode("");
+      if (online) {
+        pushToast({ kind: "info", title: "Downloading your music", body: "Your playlists are on their way. They'll show up in Settings." });
+        music.fetchMusic();
+      }
       onUnlocked(section.id);
     } finally {
       setChecking(false);

@@ -1,6 +1,8 @@
 # Notification plan
 
-A plan only: nothing here is built yet. There are two kinds of notification:
+**Update:** part 1 (reward alerts to Dustin via ntfy.sh) is built into the server; see [DATABASE.md](DATABASE.md). Part 2 (local reminders) is still a plan.
+
+There are two kinds of notification:
 - **For Dustin:** a remote alert when Jasmine redeems a reward.
 - **For Jasmine:** local reminders from the game itself.
 

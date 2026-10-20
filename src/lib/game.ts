@@ -61,6 +61,8 @@ export type GameAction =
   | { type: "unlockSection"; id: string }
   | { type: "rebirth" }
   | { type: "redeem"; rewardId: string }
+  /** Server history (reward id -> times); keeps whichever history is longer, never refunds. */
+  | { type: "syncRedemptions"; history: Record<string, number[]> }
   | { type: "useBoost"; id: string }
   | { type: "patientArrives"; id: string }
   /** The patient was transferred (waited too long) or treated; `next` schedules the next arrival. */
@@ -203,6 +205,17 @@ const apply = (state: GameState, action: GameAction): GameState => {
         healed: state.healed - reward.cost,
         redemptions: { ...state.redemptions, [reward.id]: [...history, Date.now()] },
       };
+    }
+    case "syncRedemptions": {
+      const redemptions = { ...state.redemptions };
+      let changed = false;
+      for (const [id, times] of Object.entries(action.history)) {
+        if (times.length > (redemptions[id]?.length ?? 0)) {
+          redemptions[id] = times;
+          changed = true;
+        }
+      }
+      return changed ? { ...state, redemptions } : state;
     }
     case "useBoost": {
       const boost = BOOSTS.find((b) => b.id === action.id);
