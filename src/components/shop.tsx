@@ -17,7 +17,7 @@ import { useHaptics } from "@/hooks/use-haptics";
 import { useNow } from "@/hooks/use-now";
 import { usePalette } from "@/hooks/use-palette";
 import { formatCount, formatRate } from "@/lib/format";
-import { coinBalance, priceOf } from "@/lib/game";
+import { bulkCost, coinBalance, priceOf } from "@/lib/game";
 
 type CardProps = {
   item: ShopItem;
@@ -28,9 +28,11 @@ type CardProps = {
   progress: number;
   /** Not yet affordable and never bought: shown as a silhouette. */
   hidden: boolean;
+  /** How many one tap buys (x1 / x10 / x100). */
+  qty: number;
 };
 
-const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progress, hidden }: CardProps) {
+const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progress, hidden, qty }: CardProps) {
   const { dispatch } = useGameActions();
   const { playSfx, unlock } = useAudio();
   const haptic = useHaptics();
@@ -44,7 +46,7 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
       <HardShadow offset={5}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={hidden ? "Unknown item" : `Buy ${item.name} for ${formatCount(cost)}. You own ${owned}.`}
+        accessibilityLabel={hidden ? "Unknown item" : `Buy ${qty > 1 ? `${qty} ` : ""}${item.name} for ${formatCount(cost)}. You own ${owned}.`}
         accessibilityState={{ disabled: !affordable }}
         onPress={() => {
           unlock();
@@ -53,7 +55,7 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
             haptic.denied();
             return playSfx("invalid");
           }
-          dispatch({ type: "buy", item: item.id });
+          dispatch({ type: "buy", item: item.id, count: qty });
           playSfx("buy");
           haptic.buy();
           scale.set(withSequence(withTiming(1.05, { duration: 70 }), withSpring(1, { damping: 8, stiffness: 300 })));
@@ -73,7 +75,7 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
             </Text>
             <View className="flex-row items-center gap-1">
               <Image source={MEDKIT_IMAGE} style={{ width: 16, height: 16 }} contentFit="contain" />
-              <Text className="font-number text-base leading-5 text-ink">{formatCount(cost)}</Text>
+              <Text className="font-number text-base leading-5 text-ink">{formatCount(cost)}{qty > 1 ? ` for ${qty}` : ""}</Text>
             </View>
             {!hidden && <Text className="font-body text-xs text-ink opacity-70">+{formatRate(item.rate)} per second each</Text>}
           </View>
@@ -100,15 +102,16 @@ const SHOP_PAGES = [
   { id: "gems", title: "GEMS", label: "Gem Shop" },
 ];
 
-function SuppliesList() {
+function SuppliesList({ qty }: { qty: number }) {
   const state = useGameState();
   const { healed, totalHealed, owned } = state;
   return (
     <>
       {SHOP_ITEMS.map((item) => {
-        const cost = priceOf(state, item);
+        const cost = qty === 1 ? priceOf(state, item) : bulkCost(state, item, qty);
         return (
           <ShopCard
+            qty={qty}
             key={item.id}
             item={item}
             owned={owned[item.id]}
@@ -210,11 +213,13 @@ function BoostsList() {
 /** The shop page: a Supplies / Boosts switch above the list. */
 function ShopPage() {
   const [tab, setTab] = useState<"supplies" | "boosts">("supplies");
+  const [qty, setQty] = useState(1);
   const { playSfx } = useAudio();
   return (
     <View className="flex-1">
-      {/* The Supplies / Boosts switch stays put while the list scrolls. */}
-      <View className="mx-4 mb-2 flex-row border-2 border-outline" accessibilityRole="tablist">
+      {/* The Supplies / Boosts switch stays put while the list scrolls; x1 / x10 / x100 sits on its right. */}
+      <View className="mx-4 mb-2 flex-row gap-2">
+      <View className="flex-1 flex-row border-2 border-outline" accessibilityRole="tablist">
         {(["supplies", "boosts"] as const).map((id) => (
           <Pressable
             key={id}
@@ -230,7 +235,27 @@ function ShopPage() {
           </Pressable>
         ))}
       </View>
-      <ScrollView contentContainerClassName="px-4 pb-4">{tab === "supplies" ? <SuppliesList /> : <BoostsList />}</ScrollView>
+      {tab === "supplies" && (
+        <View className="flex-row border-2 border-outline" accessibilityRole="radiogroup" accessibilityLabel="How many to buy">
+          {[1, 10, 100].map((n) => (
+            <Pressable
+              key={n}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: qty === n }}
+              accessibilityLabel={`Buy ${n} at a time`}
+              onPress={() => {
+                if (qty !== n) playSfx("click");
+                setQty(n);
+              }}
+              className={`items-center justify-center px-1.5 ${qty === n ? "bg-ink" : "bg-surface"}`}
+            >
+              <Text className={`font-pixel text-xs ${qty === n ? "text-surface" : "text-ink"}`}>x{n}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+      </View>
+      <ScrollView contentContainerClassName="px-4 pb-4">{tab === "supplies" ? <SuppliesList qty={qty} /> : <BoostsList />}</ScrollView>
     </View>
   );
 }

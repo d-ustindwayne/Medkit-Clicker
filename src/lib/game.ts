@@ -64,7 +64,7 @@ export type GameState = {
 export type GameAction =
   | { type: "tap" }
   | { type: "tick"; seconds: number }
-  | { type: "buy"; item: ItemId }
+  | { type: "buy"; item: ItemId; count?: number }
   | { type: "earn"; amount: number }
   | { type: "heardPlaylist"; id: string }
   | { type: "switchedTheme" }
@@ -168,6 +168,13 @@ export const maxAwaySeconds = (s: { gemUpgrades?: Record<string, number> }) => (
 export const priceOf = (s: Pick<GameState, "owned" | "boosts"> & { gemUpgrades?: Record<string, number> }, item: (typeof SHOP_ITEMS)[number]) =>
   Math.ceil(itemCost(item, s.owned[item.id]) * boostMultiplier(s.boosts, "price") * gemMult(s, "bulk_orders", -0.02));
 
+/** What the next `count` units of an item cost together (each one priced as it would be when bought). */
+export const bulkCost = (s: Pick<GameState, "owned" | "boosts"> & { gemUpgrades?: Record<string, number> }, item: (typeof SHOP_ITEMS)[number], count: number) => {
+  let total = 0;
+  for (let k = 0; k < count; k++) total += priceOf({ ...s, owned: { ...s.owned, [item.id]: s.owned[item.id] + k } }, item);
+  return total;
+};
+
 export const totalOwned = (owned: Record<ItemId, number>) =>
   Object.values(owned).reduce((a, b) => a + b, 0);
 
@@ -200,12 +207,14 @@ const apply = (state: GameState, action: GameAction): GameState => {
     case "buy": {
       const item = SHOP_ITEMS.find((i) => i.id === action.item);
       if (!item) return state;
-      const cost = priceOf(state, item);
+      // x1 / x10 / x100: all or nothing, so the bundle is only bought when every unit is affordable.
+      const count = Math.max(1, Math.floor(action.count ?? 1));
+      const cost = bulkCost(state, item, count);
       if (state.healed < cost) return state;
       return {
         ...state,
         healed: state.healed - cost,
-        owned: { ...state.owned, [item.id]: state.owned[item.id] + 1 },
+        owned: { ...state.owned, [item.id]: state.owned[item.id] + count },
       };
     }
     case "earn":

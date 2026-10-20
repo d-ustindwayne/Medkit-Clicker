@@ -7,7 +7,7 @@ import { SICK_PATIENTS, minigameTuning } from "@/constants/patients";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
 import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, roomBonus } from "@/constants/room";
-import { coinBalance, coinsEarned, emergencyReward, maxAwaySeconds, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
+import { bulkCost, coinBalance, coinsEarned, emergencyReward, maxAwaySeconds, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
 
 const run = (s: GameState, ...actions: GameAction[]) => actions.reduce(gameReducer, s);
 const rich = () => run(newGame(), { type: "earn", amount: 1e15 });
@@ -215,6 +215,20 @@ describe("server sync", () => {
     const s = run(newGame(), { type: "syncRedemptions", history: { chocolate_bar: [1, 2] } });
     expect(s.redemptions.chocolate_bar).toEqual([1, 2]);
     expect(run(s, { type: "syncRedemptions", history: { chocolate_bar: [1] } }).redemptions.chocolate_bar).toEqual([1, 2]);
+  });
+});
+
+describe("bulk buying", () => {
+  test("x10 costs the next ten prices together and is all-or-nothing", () => {
+    const bandage = SHOP_ITEMS[0];
+    const ten = bulkCost(newGame(), bandage, 10);
+    let one = 0;
+    for (let k = 0; k < 10; k++) one += itemCost(bandage, k);
+    expect(ten).toBe(one);
+    expect(run({ ...newGame(), healed: ten - 1 }, { type: "buy", item: bandage.id, count: 10 }).owned.bandage).toBe(0);
+    const s = run({ ...newGame(), healed: ten }, { type: "buy", item: bandage.id, count: 10 });
+    expect(s.owned.bandage).toBe(10);
+    expect(s.healed).toBe(0);
   });
 });
 
