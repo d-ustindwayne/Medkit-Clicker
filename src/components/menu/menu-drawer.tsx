@@ -13,7 +13,7 @@ import { ToastStack } from "@/components/toast-stack";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { PixelIcon } from "@/components/ui/pixel-icon";
-import { ACHIEVEMENTS } from "@/constants/achievements";
+import { visibleAchievements } from "@/constants/achievements";
 import { APP_INFO } from "@/constants/app";
 import { REWARD_SECTIONS } from "@/constants/rewards";
 import { themeVars } from "@/constants/theme";
@@ -55,6 +55,7 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
   const [page, setPage] = useState<Page>("menu");
   const { theme } = useSettings();
   const { achievements, unlockedSections, rebirths, fame } = useGameState();
+  const visible = visibleAchievements(unlockedSections);
   const { dispatch } = useGameActions();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -91,7 +92,7 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
                 {REWARD_SECTIONS.filter((s) => unlockedSections.includes(s.id)).map((s) => (
                   <MenuLink key={s.id} label={s.title} onPress={() => setPage(`rewards:${s.id}`)} />
                 ))}
-                <MenuLink label="Achievements" detail={`${Object.keys(achievements).length}/${ACHIEVEMENTS.length}`} onPress={() => setPage("achievements")} />
+                <MenuLink label="Achievements" detail={`${visible.filter((a) => achievements[a.id] !== undefined).length}/${visible.length}`} onPress={() => setPage("achievements")} />
                 <MenuLink label="Settings" onPress={() => setPage("settings")} />
                 <MenuLink label="Visit website" onPress={() => Linking.openURL(APP_INFO.website)} />
                 <MenuLink label="About" onPress={() => setPage("about")} />

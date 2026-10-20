@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { useKeepAwake } from "expo-keep-awake";
 import { AppState, Pressable, Text, View, useWindowDimensions } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { Easing, type SharedValue, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BackgroundPattern } from "@/components/background-pattern";
@@ -21,6 +21,7 @@ import { healingRate } from "@/constants/rebirth";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
 import { iconFromPending, setAppIcon } from "@/lib/app-icon";
+import { askPhotosOnce } from "@/lib/stickers";
 import { useNow } from "@/hooks/use-now";
 import { usePalette } from "@/hooks/use-palette";
 import { formatCount, formatRate } from "@/lib/format";
@@ -165,25 +166,40 @@ function Clicker({ width, height, compact }: { width: number; height: number; co
 }
 
 /** Drag the shop's top edge up to give the shop more room (and down to give it back); a tap toggles. */
-function ShopGrip({ expanded, onChange }: { expanded: boolean; onChange: (expanded: boolean) => void }) {
+/**
+ * The handle on top of the shop. The medkit area follows the finger while dragging, then settles
+ * expanded or not on release (a tap toggles).
+ */
+function ShopGrip({ expanded, onChange, height, low, high }: { expanded: boolean; onChange: (expanded: boolean) => void; height: SharedValue<number>; low: number; high: number }) {
   // Touch-responder props; the start point is only read inside the handlers.
-  const startY = useRef(0);
+  const start = useRef({ y: 0, h: 0 });
+  const settle = (up: boolean) => {
+    height.set(withTiming(up ? low : high, { duration: 220, easing: Easing.out(Easing.cubic) }));
+    onChange(up);
+  };
   return (
     <View
       onStartShouldSetResponder={() => true}
       onMoveShouldSetResponder={() => true}
+      onResponderTerminationRequest={() => false}
       onResponderGrant={(e) => {
-        startY.current = e.nativeEvent.pageY;
+        start.current = { y: e.nativeEvent.pageY, h: height.get() };
+      }}
+      onResponderMove={(e) => {
+        const h = start.current.h + e.nativeEvent.pageY - start.current.y;
+        height.set(Math.min(high, Math.max(low, h)));
       }}
       onResponderRelease={(e) => {
-        const dy = e.nativeEvent.pageY - startY.current;
-        if (dy < -24) onChange(true);
-        else if (dy > 24) onChange(false);
-        else if (Math.abs(dy) < 6) onChange(!expanded);
+        const dy = e.nativeEvent.pageY - start.current.y;
+        if (Math.abs(dy) < 6) settle(!expanded);
+        else if (dy < -24) settle(true);
+        else if (dy > 24) settle(false);
+        else settle(height.get() < (low + high) / 2);
       }}
+      onResponderTerminate={() => settle(expanded)}
       accessibilityRole="button"
       accessibilityLabel={expanded ? "Shrink the shop" : "Expand the shop"}
-      className="absolute left-0 right-0 top-0 z-20 h-6 items-center justify-center"
+      className="absolute left-0 right-0 top-0 z-20 h-7 items-center justify-center"
     >
       <View className="h-1.5 w-12 rounded-full bg-ink/40" />
     </View>
@@ -209,6 +225,11 @@ function PendingIcon() {
 export default function GameScreen() {
   // Keep the phone awake while the game is open (idle games are watched, not tapped).
   useKeepAwake();
+  useEffect(() => {
+    // Ask for photo access once, a moment after the first launch, so saving stickers works later.
+    const t = setTimeout(() => void askPhotosOnce(), 4000);
+    return () => clearTimeout(t);
+  }, []);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -240,7 +261,7 @@ export default function GameScreen() {
         className={wide ? "border-l-[3px] border-outline" : "flex-1 border-t-[3px] border-outline"}
         style={wide ? { width: SIDEBAR_WIDTH, paddingTop: insets.top, paddingRight: insets.right } : { paddingBottom: insets.bottom }}
       >
-        {!wide && <ShopGrip expanded={shopUp} onChange={setShopUp} />}
+        {!wide && <ShopGrip expanded={shopUp} onChange={setShopUp} height={animatedHeight} low={height * 0.36} high={height * 0.56} />}
         <Shop compact={!wide} width={wide ? SIDEBAR_WIDTH : width} />
       </View>
 

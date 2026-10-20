@@ -14,6 +14,8 @@ export type Achievement = {
   image: ImageSourcePropType;
   /** Hidden until unlocked. */
   secret?: boolean;
+  /** Only listed (and counted) once this reward section is unlocked. */
+  section?: string;
   /** Care Coins paid when unlocked (spent on boosts). */
   coins: number;
   check: (s: GameState) => boolean;
@@ -244,6 +246,7 @@ const LIST: Achievement[] = [
     description: "Unlock the Care Package.",
     image: TROPHY.nurse,
     secret: true,
+    section: "jasmine",
     coins: 5,
     check: (s) => s.unlockedSections.includes("jasmine"),
   },
@@ -349,5 +352,8 @@ const LIST: Achievement[] = [
 
 /** Care Coins pay half the listed amount, rounded up (decided 2026-10-20), so coins feel precious. */
 export const ACHIEVEMENTS: Achievement[] = LIST.map((a) => ({ ...a, coins: Math.ceil(a.coins / 2) }));
+
+/** The achievements this player can see: section-only ones appear once their section is unlocked. */
+export const visibleAchievements = (unlockedSections: string[]) => ACHIEVEMENTS.filter((a) => !a.section || unlockedSections.includes(a.section));
 
 export type AchievementId = string;

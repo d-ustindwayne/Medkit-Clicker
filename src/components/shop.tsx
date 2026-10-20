@@ -250,8 +250,9 @@ function ShopPage() {
       </View>
       <Animated.View style={[{ overflow: "hidden" }, qtyStyle]} pointerEvents={tab === "supplies" ? "auto" : "none"}>
         <View
+          // Absolute, so it keeps its natural width (and the row its height) while the box animates open.
           onLayout={(e) => setQtyW(e.nativeEvent.layout.width)}
-          className="flex-row self-start border-2 border-outline"
+          className="absolute bottom-0 left-0 top-0 flex-row border-2 border-outline"
           accessibilityRole="radiogroup"
           accessibilityLabel="How many to buy"
         >
@@ -267,7 +268,7 @@ function ShopPage() {
               }}
               className={`items-center justify-center px-1.5 ${qty === n ? "bg-ink" : "bg-surface"}`}
             >
-              <Text className={`font-pixel text-xs ${qty === n ? "text-surface" : "text-ink"}`}>x{n}</Text>
+              <Text numberOfLines={1} className={`font-pixel text-xs ${qty === n ? "text-surface" : "text-ink"}`}>x{n}</Text>
             </Pressable>
           ))}
         </View>

@@ -56,6 +56,5 @@ database_setup.txt
 aiven-ca.pem
 render-env.txt
 
-
 # Third-party reference images (stock/licensed): kept locally, not redistributed
 src/media/photos/references/

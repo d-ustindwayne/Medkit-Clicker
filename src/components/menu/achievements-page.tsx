@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Image } from "@/components/ui/image";
 import { Pressable, Text, View } from "react-native";
 
-import { ACHIEVEMENTS } from "@/constants/achievements";
+import { visibleAchievements } from "@/constants/achievements";
 import { COIN } from "@/constants/boosts";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { useGameState } from "@/hooks/use-game";
@@ -17,6 +17,7 @@ const formatPercent = (p: number) => {
 export function AchievementsPage() {
   const state = useGameState();
   const { achievements } = state;
+  const ACHIEVEMENTS = visibleAchievements(state.unlockedSections);
   const [selected, setSelected] = useState(ACHIEVEMENTS[0].id);
   const unlockedCount = ACHIEVEMENTS.filter((a) => achievements[a.id] !== undefined).length;
   const current = ACHIEVEMENTS.find((a) => a.id === selected) ?? ACHIEVEMENTS[0];

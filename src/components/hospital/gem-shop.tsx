@@ -100,7 +100,7 @@ function ItemTile({ item }: { item: GemItem }) {
     if (item.kind === "room") pushToast({ kind: "info", title: item.name, body: "It's in your My Room tray now. Swipe the medkit to My Room to place it.", image: item.image });
   };
   const save = () => {
-    saveSticker(item.image as number, item.name)
+    saveSticker(item.id.replace(/^sticker_/, ""), item.name)
       .then((where) => {
         if (where === "photos") pushToast({ kind: "info", title: "Sticker saved", body: `${item.name} is in your photos.`, image: item.image });
         else if (where === "folder") pushToast({ kind: "info", title: "Sticker saved", body: `${item.name} is in the folder you picked.`, image: item.image });
