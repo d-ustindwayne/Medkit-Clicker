@@ -77,7 +77,7 @@ Game balance (prices, rates and growth) lives in `src/constants/items.ts`. Devel
 - [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md): the plan for reward alerts and reminders
 - [docs/ROOM.md](docs/ROOM.md): how My Room works (rooms, items, unlocks, bonuses)
 - [docs/DATABASE.md](docs/DATABASE.md): Aiven PostgreSQL, the API, and how to set them up
-- [docs/WEBSITE.md](docs/WEBSITE.md): the website plan, your vision, and a starter prompt for building it
+- [docs/WEBSITE.md](docs/WEBSITE.md): the website in website/: address, deploy and asset sync
 
 ## Redeem codes
 

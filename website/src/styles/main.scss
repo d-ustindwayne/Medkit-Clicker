@@ -1,0 +1,342 @@
+// Bulma supplies structure (navbar, columns, dropdown, content); the look comes from the game's tokens below.
+@use "bulma/sass/utilities" with (
+  $family-primary: '"Nunito", system-ui, sans-serif',
+  $family-secondary: '"Silkscreen", monospace',
+  $primary: #dd1122,
+  $link: #dd1122,
+  $success: #4edb4e,
+  $danger: #f34747,
+  $radius-small: 0,
+  $radius: 0,
+  $radius-medium: 0,
+  $radius-large: 0,
+  $radius-rounded: 0
+);
+@use "bulma/sass/base";
+@use "bulma/sass/themes";
+@use "bulma/sass/elements/button";
+@use "bulma/sass/elements/content";
+@use "bulma/sass/elements/table";
+@use "bulma/sass/components/navbar";
+@use "bulma/sass/components/dropdown";
+@use "bulma/sass/grid/columns";
+@use "bulma/sass/helpers/visibility";
+
+@font-face {
+  font-family: "Silkscreen";
+  src: url("../assets/fonts/silkscreen.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nunito";
+  src: url("../assets/fonts/nunito-regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nunito";
+  src: url("../assets/fonts/nunito-bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+// The game's palettes (src/constants/theme.ts in the game).
+:root,
+[data-theme="light"] {
+  --primary: #dd1122;
+  --surface: #fafdf3;
+  --ink: #000000;
+  --muted: #5e4449;
+  --success: #4edb4e;
+  --danger: #f34747;
+  --accent: #ffc0cb;
+  --backdrop: #f9e8e8;
+  --outline: #000000;
+  --shadow: #000000;
+  --text-shadow: #ffb3c1;
+  --grid-line: rgb(221 17 34 / 0.06);
+  --on-primary: #ffffff;
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --primary: #a3182a;
+  --surface: #172631;
+  --ink: #eef3f6;
+  --muted: #a9bcc8;
+  --success: #2f9e4f;
+  --danger: #cf3a40;
+  --accent: #24475a;
+  --backdrop: #0f1c24;
+  --outline: #d6e1e8;
+  --shadow: #05090c;
+  --text-shadow: #000000;
+  --grid-line: rgb(79 143 174 / 0.08);
+  --on-primary: #ffffff;
+  color-scheme: dark;
+}
+
+// Type scale on an 8px grid so Silkscreen stays crisp.
+$step-0: 1.125rem; // 18 body
+$step-1: 1.5rem; // 24
+$step-2: 2rem; // 32
+$step-3: 3rem; // 48
+$pixel: "Silkscreen", monospace;
+
+html {
+  background: var(--backdrop);
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  min-height: 100vh;
+  font-family: "Nunito", system-ui, sans-serif;
+  font-size: $step-0;
+  line-height: 1.65;
+  color: var(--ink);
+  background-color: var(--backdrop);
+  // Ward floor tiles: a faint 32px grid.
+  background-image:
+    linear-gradient(var(--grid-line) 2px, transparent 2px),
+    linear-gradient(90deg, var(--grid-line) 2px, transparent 2px);
+  background-size: 32px 32px;
+  background-attachment: fixed;
+}
+
+img.pixel,
+.pixel img {
+  image-rendering: pixelated;
+}
+
+h1,
+h2,
+h3,
+.pixel-font {
+  font-family: $pixel;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+a {
+  color: var(--primary);
+  text-underline-offset: 3px;
+}
+[data-theme="dark"] a:not(.button):not(.navbar-item):not(.dropdown-item) {
+  color: #ff8a96;
+}
+
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+}
+[data-theme="dark"] :focus-visible {
+  outline-color: #ff8a96;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+// Hard offset shadow, no blur, like HardShadow in the game.
+@mixin hard($size: 6px) {
+  border: 3px solid var(--outline);
+  box-shadow: $size $size 0 var(--shadow);
+}
+
+.panel-card {
+  @include hard(8px);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 2rem;
+}
+
+// Buttons: blocky, outlined, pressed down on click.
+.button.pixel-button {
+  @include hard(4px);
+  font-family: $pixel;
+  font-size: 1rem;
+  height: auto;
+  padding: 0.85rem 1.25rem;
+  background: var(--surface);
+  color: var(--ink);
+  transition: transform 80ms ease, box-shadow 80ms ease;
+  gap: 0.6rem;
+
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 var(--shadow);
+    color: var(--ink);
+    border-color: var(--outline);
+  }
+  &:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0 0 0 var(--shadow);
+  }
+  &.is-primary {
+    background: var(--primary);
+    color: var(--on-primary);
+    &:hover {
+      color: var(--on-primary);
+    }
+  }
+  &.is-small {
+    font-size: 0.8125rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+// Navbar
+.navbar.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--surface);
+  border-bottom: 3px solid var(--outline);
+  min-height: 4rem;
+
+  .navbar-item,
+  .navbar-link {
+    color: var(--ink);
+    font-family: $pixel;
+    font-size: 0.9375rem;
+    background: transparent;
+  }
+  .navbar-item:hover,
+  .navbar-link:hover,
+  .navbar-item.router-link-active {
+    color: var(--primary);
+    background: transparent;
+  }
+  [data-theme="dark"] & .navbar-item.router-link-active,
+  [data-theme="dark"] & .navbar-item:hover {
+    color: #ff8a96;
+  }
+  .brand-name {
+    font-size: 1.125rem;
+    margin-left: 0.6rem;
+  }
+  .navbar-burger {
+    color: var(--ink);
+    width: 4rem;
+    height: 4rem;
+  }
+  .navbar-menu {
+    background: var(--surface);
+  }
+  .navbar-dropdown {
+    background: var(--surface);
+    @include hard(4px);
+    border-top: 3px solid var(--outline);
+    padding: 0.25rem 0;
+  }
+  .navbar-link:not(.is-arrowless)::after {
+    border-color: currentColor;
+    border-radius: 0;
+  }
+}
+@media screen and (max-width: 1023px) {
+  .navbar.site-nav .navbar-menu.is-active {
+    border-top: 3px solid var(--outline);
+    box-shadow: none;
+  }
+  .navbar.site-nav .navbar-dropdown {
+    border: 0;
+    box-shadow: none;
+    padding-left: 1rem;
+  }
+}
+
+.theme-toggle {
+  @include hard(3px);
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--ink);
+  cursor: pointer;
+  &:active {
+    transform: translate(3px, 3px);
+    box-shadow: none;
+  }
+}
+
+.content {
+  color: var(--ink);
+  h2,
+  h3 {
+    color: var(--ink);
+    font-weight: 400;
+  }
+  h2 {
+    font-size: $step-2;
+    margin-top: 3rem;
+  }
+  h3 {
+    font-size: $step-1;
+  }
+  strong {
+    color: inherit;
+  }
+  table {
+    background: var(--surface);
+    border: 3px solid var(--outline);
+    th,
+    td {
+      border-color: var(--outline);
+      color: var(--ink);
+      vertical-align: middle;
+    }
+    thead th {
+      font-family: $pixel;
+      font-weight: 400;
+      font-size: 0.875rem;
+      color: var(--ink);
+      background: var(--accent);
+    }
+  }
+}
+
+.site-footer {
+  position: relative;
+  z-index: 2;
+  background: var(--surface);
+  border-top: 3px solid var(--outline);
+  padding: 3rem 1.5rem 2.5rem;
+  font-size: 1rem;
+  color: var(--ink);
+  p + p {
+    margin-top: 0.4rem;
+  }
+  .footer-title {
+    font-family: $pixel;
+    font-size: $step-1;
+    margin-bottom: 0.75rem;
+  }
+}
+
+.page-wrap {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+@media (max-width: 600px) {
+  .page-wrap {
+    padding: 0 1rem;
+  }
+  .panel-card {
+    padding: 1.5rem 1.25rem;
+    box-shadow: 6px 6px 0 var(--shadow);
+  }
+}
