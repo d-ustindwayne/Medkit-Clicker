@@ -9,8 +9,11 @@ export const appIcon = (): string | null => {
   }
 };
 
-/** Switches the home-screen icon. Android may briefly close the app while the launcher updates. */
+/** Switches the home-screen icon now. On Android this can close the app, so prefer applyOnExit. */
 export async function setAppIcon(name: string | null) {
   if (!supportsAlternateIcons) throw new Error("Alternate icons aren't supported here.");
   return setAlternateAppIcon(name as Parameters<typeof setAlternateAppIcon>[0]);
 }
+
+/** "default" means the original icon. */
+export const iconFromPending = (pending: string) => (pending === "default" ? null : pending);

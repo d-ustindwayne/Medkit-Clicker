@@ -3,6 +3,7 @@ import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindo
 import Animated, { FadeIn, SlideInLeft } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { FAME_REBIRTHS } from "@/components/hall-of-fame";
 import { AboutPage } from "@/components/menu/about-page";
 import { AchievementsPage } from "@/components/menu/achievements-page";
 import { RedeemPage } from "@/components/menu/redeem-page";
@@ -17,7 +18,7 @@ import { APP_INFO } from "@/constants/app";
 import { REWARD_SECTIONS } from "@/constants/rewards";
 import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameState, useSettings } from "@/hooks/use-game";
+import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
 
 type Page = "menu" | "achievements" | "settings" | "about" | "redeem" | `rewards:${string}`;
 
@@ -53,7 +54,8 @@ function MenuLink({ label, detail, onPress }: { label: string; detail?: string; 
 export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const [page, setPage] = useState<Page>("menu");
   const { theme } = useSettings();
-  const { achievements, unlockedSections } = useGameState();
+  const { achievements, unlockedSections, rebirths, fame } = useGameState();
+  const { dispatch } = useGameActions();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const close = () => {
@@ -93,6 +95,15 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
                 <MenuLink label="Settings" onPress={() => setPage("settings")} />
                 <MenuLink label="Visit website" onPress={() => Linking.openURL(APP_INFO.website)} />
                 <MenuLink label="About" onPress={() => setPage("about")} />
+                {rebirths >= FAME_REBIRTHS && fame !== "sent" && (
+                  <MenuLink
+                    label="Hall of Fame"
+                    onPress={() => {
+                      dispatch({ type: "setFame", fame: "none" });
+                      close();
+                    }}
+                  />
+                )}
               </>
             )}
             {page === "achievements" && <AchievementsPage />}

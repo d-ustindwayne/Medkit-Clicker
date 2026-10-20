@@ -73,6 +73,8 @@ export type GameState = {
   fame: "none" | "sent" | "declined";
   /** Minigame id -> times won (for the minigame achievements). */
   minigameWins: Record<string, number>;
+  /** An app icon chosen but not applied yet ("default" for the original); applied when the app is left. */
+  pendingIcon: string | null;
 };
 
 export type GameAction =
@@ -103,8 +105,9 @@ export type GameAction =
   | { type: "revealAboutMedkit" }
   | { type: "claimPromo"; hash: string; kind: "medkits" | "coins" | "gems"; amount: number }
   | { type: "devRebirth" }
-  | { type: "setFame"; fame: "sent" | "declined" }
+  | { type: "setFame"; fame: "none" | "sent" | "declined" }
   | { type: "minigameWon"; game: string }
+  | { type: "setPendingIcon"; icon: string | null }
   /** Place an item (or move it, including from another room) at x, y: fractions of the room art. */
   | { type: "placeItem"; room: string; item: string; x: number; y: number }
   | { type: "removeItem"; room: string; item: string }
@@ -157,6 +160,7 @@ export const newGame = (): GameState => ({
   promoClaims: [],
   fame: "none",
   minigameWins: {},
+  pendingIcon: null,
 });
 
 /** Multiplier from a gem upgrade: 1 + per-level step x level. */
@@ -373,6 +377,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
       if (action.kind === "gems") return { ...claimed, bonusGems: state.bonusGems + action.amount };
       return earn(claimed, action.amount);
     }
+    case "setPendingIcon":
+      return { ...state, pendingIcon: action.icon };
     case "minigameWon":
       return { ...state, minigameWins: { ...state.minigameWins, [action.game]: (state.minigameWins[action.game] ?? 0) + 1 } };
     case "setFame":
@@ -473,6 +479,7 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     promoClaims: Array.isArray(s.promoClaims) ? s.promoClaims : [],
     fame: s.fame === "sent" || s.fame === "declined" ? s.fame : "none",
     minigameWins: { ...(s.minigameWins ?? {}) },
+    pendingIcon: typeof s.pendingIcon === "string" ? s.pendingIcon : null,
     room: s.room && typeof s.room.current === "string" ? { current: s.room.current, placed: { ...(s.room.placed ?? {}) } } : base.room,
   };
 };

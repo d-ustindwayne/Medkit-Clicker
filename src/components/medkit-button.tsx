@@ -15,6 +15,7 @@ import { Orbit } from "@/components/fx/orbit";
 import { Sunburst } from "@/components/fx/sunburst";
 import { BURST_MS, TapBurst } from "@/components/fx/tap-burst";
 import { MEDKIT_SKINS, ROUND_SKINS } from "@/constants/gems";
+import { SFX, type SfxName } from "@/constants/playlists";
 import { MEDKIT_IMAGE, type ItemId } from "@/constants/items";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions } from "@/hooks/use-game";
@@ -69,7 +70,7 @@ export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned,
   const onPress = useCallback(() => {
     unlock();
     dispatch({ type: "tap" });
-    playSfx("medkit");
+    playSfx(effect && effect in SFX ? (effect as SfxName) : "medkit");
     haptic.tap();
 
     // Touch coordinates are relative to whichever child was hit (and differ on web),
@@ -79,7 +80,7 @@ export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned,
     const y = size * (0.2 + Math.random() * 0.25);
     setBursts((b) => [...b.slice(-(MAX_BURSTS - 1)), { id, x, y, label: `+${formatShort(tapAmount)}` }]);
     setTimeout(() => setBursts((b) => b.filter((p) => p.id !== id)), BURST_MS);
-  }, [dispatch, playSfx, unlock, haptic, tapAmount, size]);
+  }, [dispatch, playSfx, unlock, haptic, tapAmount, size, effect]);
 
   const box = size * ORBIT_SCALE;
   const sun = size * SUNBURST_SCALE;

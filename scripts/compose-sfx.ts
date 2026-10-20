@@ -87,3 +87,28 @@ sfx("ui_click", "click", 0.09, {
   type: "chip", volume: 40, eqFilter: [lp(4000)], effects: [], fadeInSeconds: 0, fadeOutTicks: 1, wave: "rounded", unison: "none",
   envelopes: [{ target: "noteVolume", envelope: "decay 1" }],
 }, [{ pitches: [P(84)], start: 0, len: 1, bend: -5 }]);
+
+// Tap effects from the Gem Shop each get their own tap sound.
+// Heart Burst: a soft, bouncy "pop-pop" going up.
+sfx("tap_hearts", "tap_hearts", 0.2, {
+  type: "chip", volume: 60, eqFilter: [lp(3500)], effects: ["reverb"], reverb: 15, fadeInSeconds: 0, fadeOutTicks: 2, wave: "rounded", unison: "none",
+  envelopes: [{ target: "noteVolume", envelope: "decay 1" }],
+}, [
+  { pitches: [P(79)], start: 0, len: 1, bend: 2 },
+  { pitches: [P(84)], start: 1, len: 2, bend: 3 },
+]);
+// Sparkles: a high, glassy twinkle.
+sfx("tap_sparkles", "tap_sparkles", 0.3, {
+  type: "FM", volume: 40, eqFilter: [lp(7000)], effects: ["reverb"], reverb: 35, fadeInSeconds: 0, fadeOutTicks: 6,
+  algorithm: Config.algorithms[0].name, feedbackType: "1⟲", feedbackAmplitude: 0,
+  operators: [{ frequency: "1×", amplitude: 15 }, { frequency: "7×", amplitude: 4 }, { frequency: "1×", amplitude: 0 }, { frequency: "1×", amplitude: 0 }],
+  envelopes: [{ target: "noteVolume", envelope: "decay 2" }, { target: "operatorAmplitude", envelope: "decay 1", index: 1 }],
+}, [
+  { pitches: [P(91)], start: 0, len: 2 },
+  { pitches: [P(96)], start: 1, len: 3 },
+]);
+// Bubbles: a round "bloop" that bends up.
+sfx("tap_bubbles", "tap_bubbles", 0.18, {
+  type: "chip", volume: 60, eqFilter: [lp(2500)], effects: [], fadeInSeconds: 0, fadeOutTicks: 2, wave: "rounded", unison: "none",
+  envelopes: [{ target: "noteVolume", envelope: "decay 1" }],
+}, [{ pitches: [P(67)], start: 0, len: 3, bend: 9 }]);

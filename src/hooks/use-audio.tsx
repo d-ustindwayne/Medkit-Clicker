@@ -59,6 +59,9 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const medkit = useAudioPlayer(SFX.medkit);
   const buy = useAudioPlayer(SFX.buy);
   const invalid = useAudioPlayer(SFX.invalid);
+  const tapHearts = useAudioPlayer(SFX.tap_hearts);
+  const tapSparkles = useAudioPlayer(SFX.tap_sparkles);
+  const tapBubbles = useAudioPlayer(SFX.tap_bubbles);
 
   // The music library: the game's soundtrack, then the playlists downloaded after Jasmine's code.
   const [cached, setCached] = useState<CachedPlaylist[]>([]);
@@ -121,12 +124,12 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const playSfx = useCallback(
     (name: SfxName) => {
       if (sfxVolume <= 0) return;
-      const player = { click, medkit, buy, invalid }[name];
+      const player = { click, medkit, buy, invalid, tap_hearts: tapHearts, tap_sparkles: tapSparkles, tap_bubbles: tapBubbles }[name];
       setVolume(player, sfxVolume);
       player.seekTo(0).catch(() => {});
       player.play();
     },
-    [click, medkit, buy, invalid, sfxVolume],
+    [click, medkit, buy, invalid, tapHearts, tapSparkles, tapBubbles, sfxVolume],
   );
 
   const unlock = useCallback(() => setUnlocked(true), []);

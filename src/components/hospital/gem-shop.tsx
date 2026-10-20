@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Image } from "@/components/ui/image";
-import { ScrollView, Text, View } from "react-native";
+import { BackHandler, ScrollView, Text, View } from "react-native";
 
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { PixelIcon } from "@/components/ui/pixel-icon";
@@ -12,7 +13,7 @@ import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
 import type { GameState } from "@/lib/game";
 import { useHaptics } from "@/hooks/use-haptics";
-import { appIcon, setAppIcon } from "@/lib/app-icon";
+import { appIcon, iconFromPending, setAppIcon } from "@/lib/app-icon";
 import { saveSticker } from "@/lib/stickers";
 
 const MAX_LEVEL = GEM_LEVEL_COSTS.length;
@@ -98,19 +99,29 @@ function ItemTile({ item }: { item: GemItem }) {
   };
   const save = () => {
     saveSticker(item.image as number)
-      .then((ok) =>
-        pushToast(ok ? { kind: "info", title: "Sticker saved", body: `${item.name} is in your photos.`, image: item.image } : { kind: "info", title: "Can't save yet", body: "Allow saving to photos to keep stickers." }),
-      )
+      .then((how) => {
+        if (how === "saved") pushToast({ kind: "info", title: "Sticker saved", body: `${item.name} is in your photos.`, image: item.image });
+        else if (how === "failed") pushToast({ kind: "info", title: "Couldn't save", body: "This phone won't let the app save images." });
+      })
       .catch(() => pushToast({ kind: "info", title: "Couldn't save", body: "Something went wrong saving the sticker. Try again." }));
   };
-  const switchIcon = () => {
-    setAppIcon(equipped ? null : item.name)
-      .then((name) => {
-        setIconName(name);
-        pushToast({ kind: "info", title: "App icon changed", body: name ? `Your home screen shows the ${name} icon now.` : "Back to the original icon." });
-      })
+  // Changing the icon can close the app on Android, so it waits: restart now, or it's applied the
+  // next time the app is left.
+  const [askRestart, setAskRestart] = useState(false);
+  const chosen = equipped ? "default" : item.name;
+  const restartNow = () => {
+    setAskRestart(false);
+    setAppIcon(iconFromPending(chosen))
+      .then(() => BackHandler.exitApp())
       .catch(() => pushToast({ kind: "info", title: "Couldn't change the icon", body: "This phone doesn't allow changing the app icon." }));
   };
+  const later = () => {
+    setAskRestart(false);
+    dispatch({ type: "setPendingIcon", icon: chosen });
+    setIconName(iconFromPending(chosen));
+    pushToast({ kind: "info", title: "App icon saved", body: "The new icon appears after you close and reopen the app." });
+  };
+  const switchIcon = () => setAskRestart(true);
   const use = () => {
     if (item.kind === "icon") return switchIcon();
     if (item.kind === "skin") dispatch({ type: "equip", slot: "skin", id: equipped ? null : item.id });
@@ -144,6 +155,18 @@ function ItemTile({ item }: { item: GemItem }) {
           )}
         </View>
       </HardShadow>
+      {item.kind === "icon" && (
+        <ConfirmDialog
+          visible={askRestart}
+          title="Change the app icon?"
+          body={`The ${equipped ? "original" : item.name} icon shows after the app restarts. Restart now, or keep playing and it changes next time you open the game.`}
+          cancelLabel="Later"
+          confirmLabel="Restart now"
+          confirmTone="success"
+          onCancel={later}
+          onConfirm={restartNow}
+        />
+      )}
     </View>
   );
 }

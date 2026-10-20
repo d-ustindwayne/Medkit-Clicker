@@ -87,11 +87,16 @@ function SpriteParticle({ t, size, i, seed, count, image, motion }: { t: SharedV
   const style = useAnimatedStyle(() => {
     const k = t.get();
     if (motion === "float") {
-      // Hearts drift up from around the medkit, swaying, and pop in then fade.
-      const sx = Math.cos(angle) * size * 0.3;
+      // Hearts spurt out of the medkit in every direction, arc and fall a little, popping in big.
+      const d = size * (0.28 + 0.5 * k);
       return {
-        opacity: k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85,
-        transform: [{ translateX: sx + Math.sin(k * 9 + i) * 10 }, { translateY: Math.sin(angle) * size * 0.2 - k * size * 0.55 }, { scale: 0.6 + Math.min(1, k * 4) * 0.6 }],
+        opacity: k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3,
+        transform: [
+          { translateX: Math.cos(angle) * d },
+          { translateY: Math.sin(angle) * d + size * 0.35 * k * k },
+          { scale: (k < 0.15 ? k / 0.15 : 1) * (1.25 - k * 0.45) },
+          { rotate: `${Math.cos(angle) * 25 * k}deg` },
+        ],
       };
     }
     if (motion === "burst") {

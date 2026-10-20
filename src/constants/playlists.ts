@@ -19,6 +19,10 @@ export const SOUNDTRACK: Playlist = {
 export const SFX = {
   click: require("@/audio/sfx/click.mp3"),
   medkit: require("@/audio/sfx/click_medkit.mp3"),
+  // Gem Shop tap effects play their own tap sound instead of the medkit's.
+  tap_hearts: require("@/audio/sfx/tap_hearts.mp3"),
+  tap_sparkles: require("@/audio/sfx/tap_sparkles.mp3"),
+  tap_bubbles: require("@/audio/sfx/tap_bubbles.mp3"),
   buy: require("@/audio/sfx/buy_valid.mp3"),
   invalid: require("@/audio/sfx/buy_invalid.mp3"),
 };

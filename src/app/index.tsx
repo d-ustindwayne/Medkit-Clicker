@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { useKeepAwake } from "expo-keep-awake";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { AppState, Pressable, Text, View, useWindowDimensions } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -19,7 +19,8 @@ import { ownsBackground } from "@/constants/backgrounds";
 import { BOOSTS, LUCKY_MULT } from "@/constants/boosts";
 import { healingRate } from "@/constants/rebirth";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameSelector, useSettings } from "@/hooks/use-game";
+import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
+import { iconFromPending, setAppIcon } from "@/lib/app-icon";
 import { useNow } from "@/hooks/use-now";
 import { usePalette } from "@/hooks/use-palette";
 import { formatCount, formatRate } from "@/lib/format";
@@ -189,6 +190,22 @@ function ShopGrip({ expanded, onChange }: { expanded: boolean; onChange: (expand
   );
 }
 
+/** Applies an app icon chosen in the Gem Shop once the player leaves the app. */
+function PendingIcon() {
+  const pending = useGameSelector((s) => s.pendingIcon);
+  const { dispatch } = useGameActions();
+  useEffect(() => {
+    if (!pending) return;
+    const sub = AppState.addEventListener("change", (s) => {
+      if (s !== "background") return;
+      dispatch({ type: "setPendingIcon", icon: null });
+      setAppIcon(iconFromPending(pending)).catch(() => {});
+    });
+    return () => sub.remove();
+  }, [pending, dispatch]);
+  return null;
+}
+
 export default function GameScreen() {
   // Keep the phone awake while the game is open (idle games are watched, not tapped).
   useKeepAwake();
@@ -229,6 +246,7 @@ export default function GameScreen() {
 
       <ToastStack />
       <HallOfFame />
+      <PendingIcon />
       <MenuDrawer visible={menuOpen} onClose={() => setMenuOpen(false)} />
     </View>
   );

@@ -18,14 +18,17 @@ export function HallOfFame() {
   const { dispatch, pushToast } = useGameActions();
   const { theme } = useSettings();
   const palette = usePalette();
-  const [later, setLater] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [feedback, setFeedback] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (rebirths < FAME_REBIRTHS || fame !== "none" || later || !cloudEnabled) return null;
+  if (rebirths < FAME_REBIRTHS || fame !== "none" || !cloudEnabled) return null;
 
+  const decline = () => {
+    dispatch({ type: "setFame", fame: "declined" });
+    pushToast({ kind: "info", title: "Maybe later", body: "You can still join the hall of fame from the menu: Hall of Fame, below About." });
+  };
   const send = async () => {
     setSending(true);
     setError(null);
@@ -42,7 +45,7 @@ export function HallOfFame() {
   };
   const field = "min-h-11 border-2 border-outline bg-surface px-3 font-rounded text-base text-ink";
   return (
-    <Modal transparent visible animationType="fade" onRequestClose={() => setLater(true)}>
+    <Modal transparent visible animationType="fade" onRequestClose={decline}>
       <View style={themeVars[theme]} className="flex-1 items-center justify-center p-6">
         <View className="absolute inset-0 bg-black/60" />
         <HardShadow offset={6} className="w-full max-w-sm">
@@ -70,10 +73,10 @@ export function HallOfFame() {
               className={`${field} min-h-24 py-2`}
             />
             {error && <Text className="font-body text-xs text-danger">{error}</Text>}
-            <PixelButton tone="success" label={sending ? "Sending..." : "Send"} disabled={sending || !name.trim()} onPress={send} />
+            <Text className="font-body text-xs text-ink opacity-70">Only your name is needed; email and feedback are optional.</Text>
             <View className="flex-row gap-3">
-              <PixelButton label="Not now" className="flex-1" onPress={() => setLater(true)} />
-              <PixelButton label="No thanks" className="flex-1" onPress={() => dispatch({ type: "setFame", fame: "declined" })} />
+              <PixelButton label="No thanks" className="flex-1" onPress={decline} />
+              <PixelButton tone="success" label={sending ? "Sending..." : "Send"} className="flex-1" disabled={sending || !name.trim()} onPress={send} />
             </View>
           </ScrollView>
         </HardShadow>
