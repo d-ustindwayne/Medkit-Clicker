@@ -33,7 +33,7 @@ export const nextPatientDelay = () => (60 + Math.random() * 120) * 1000;
 
 /**
  * Minigames get slightly harder as you treat more patients, reaching the hardest setting at 100.
- * Injection: the needle speeds up to 1.2x and the vein narrows; Rhythm: 110 to 120 bpm with a
+ * Injection: the needle speeds up to 1.2x and the vein narrows; Rhythm: 100 to 110 bpm with a
  * tighter window; Bandage: 25 to 30 wraps in the same 5 seconds.
  */
 export const minigameTuning = (treated: number) => {
@@ -42,8 +42,8 @@ export const minigameTuning = (treated: number) => {
   return {
     needleSpeed: mix(1, 1.2),
     veinWidth: mix(0.18, 0.15),
-    beatMs: Math.round(mix(545, 500)),
-    beatWindowMs: Math.round(mix(160, 130)),
+    beatMs: Math.round(mix(600, 545)), // 100 bpm, up to 110
+    beatWindowMs: Math.round(mix(230, 190)),
     wraps: Math.round(mix(25, 30)),
   };
 };

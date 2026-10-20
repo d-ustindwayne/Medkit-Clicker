@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import type { MinigameTuning } from "@/constants/patients";
 
@@ -29,4 +30,16 @@ export function shuffle<T>(items: T[]) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+/** Game feel: a little pop when something goes right and a shake when it doesn't. */
+export function useJuice() {
+  const scale = useSharedValue(1);
+  const shakeX = useSharedValue(0);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }, { translateX: shakeX.get() }] }));
+  return {
+    style,
+    pop: () => scale.set(withSequence(withTiming(1.12, { duration: 80 }), withSpring(1, { damping: 6, stiffness: 260 }))),
+    shake: () => shakeX.set(withSequence(withTiming(-8, { duration: 45 }), withTiming(8, { duration: 70 }), withTiming(-5, { duration: 60 }), withTiming(0, { duration: 45 }))),
+  };
 }

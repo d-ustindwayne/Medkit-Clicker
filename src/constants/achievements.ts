@@ -5,6 +5,8 @@ import { healingRate } from "@/constants/rebirth";
 import type { GameState } from "@/lib/game";
 import { formatCount } from "@/lib/format";
 
+const MINIGAMES = ["injection", "rhythm", "bandage", "pulse", "pills", "xray", "germs", "breath", "memory"];
+
 export type Achievement = {
   id: string;
   name: string;
@@ -243,6 +245,86 @@ const LIST: Achievement[] = [
     secret: true,
     coins: 3,
     check: (s) => s.aboutMedkit,
+  },
+  {
+    id: "game_injection",
+    name: "Steady Needle",
+    description: "Win the injection minigame.",
+    image: require("@/imgs/shop/syringe.png"),
+    coins: 2,
+    check: (s) => (s.minigameWins["injection"] ?? 0) >= 1,
+  },
+  {
+    id: "game_rhythm",
+    name: "Stayin' Alive",
+    description: "Win the CPR rhythm minigame.",
+    image: require("@/imgs/misc/heart.png"),
+    coins: 2,
+    check: (s) => (s.minigameWins["rhythm"] ?? 0) >= 1,
+  },
+  {
+    id: "game_bandage",
+    name: "Wrap Star",
+    description: "Win the bandage minigame.",
+    image: require("@/imgs/shop/bandage_roll.png"),
+    coins: 2,
+    check: (s) => (s.minigameWins["bandage"] ?? 0) >= 1,
+  },
+  {
+    id: "game_pulse",
+    name: "Pulse Reader",
+    description: "Win the pulse check minigame.",
+    image: require("@/imgs/shop/stethoscope.png"),
+    coins: 2,
+    check: (s) => (s.minigameWins["pulse"] ?? 0) >= 1,
+  },
+  {
+    id: "game_pills",
+    name: "Pill Sorter",
+    description: "Win the sort-the-meds minigame.",
+    image: require("@/imgs/shop/medicines.png"),
+    coins: 2,
+    check: (s) => (s.minigameWins["pills"] ?? 0) >= 1,
+  },
+  {
+    id: "game_xray",
+    name: "Bone Detective",
+    description: "Win the X-ray minigame.",
+    image: require("@/imgs/room/xray_viewer.png"),
+    coins: 2,
+    check: (s) => (s.minigameWins["xray"] ?? 0) >= 1,
+  },
+  {
+    id: "game_germs",
+    name: "Germ Buster",
+    description: "Win the germ minigame.",
+    image: require("@/imgs/stickers/grumpy_germ.png"),
+    coins: 2,
+    check: (s) => (s.minigameWins["germs"] ?? 0) >= 1,
+  },
+  {
+    id: "game_breath",
+    name: "Deep Breaths",
+    description: "Win the breathing minigame.",
+    image: require("@/imgs/shop/facemask.png"),
+    coins: 2,
+    check: (s) => (s.minigameWins["breath"] ?? 0) >= 1,
+  },
+  {
+    id: "game_memory",
+    name: "Sharp Memory",
+    description: "Win the memory minigame.",
+    image: require("@/imgs/shop/dna.png"),
+    coins: 2,
+    check: (s) => (s.minigameWins["memory"] ?? 0) >= 1,
+  },
+  {
+    id: "game_all",
+    name: "All-Rounder",
+    description: "Win every ward minigame at least once.",
+    image: TROPHY.star,
+    coins: 5,
+    check: (s) => MINIGAMES.every((g) => (s.minigameWins[g] ?? 0) >= 1),
   },
 ];
 

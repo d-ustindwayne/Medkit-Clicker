@@ -262,10 +262,10 @@ describe("gem shop", () => {
 
 describe("minigame difficulty", () => {
   test("starts at the original settings and is slightly harder after 100 patients", () => {
-    expect(minigameTuning(0)).toEqual({ needleSpeed: 1, veinWidth: 0.18, beatMs: 545, beatWindowMs: 160, wraps: 25 });
+    expect(minigameTuning(0)).toEqual({ needleSpeed: 1, veinWidth: 0.18, beatMs: 600, beatWindowMs: 230, wraps: 25 });
     expect(minigameTuning(100)).toEqual(minigameTuning(500));
     expect(minigameTuning(100).wraps).toBe(30);
-    expect(minigameTuning(50).beatMs).toBeLessThan(545);
+    expect(minigameTuning(50).beatMs).toBeLessThan(600);
   });
 });
 

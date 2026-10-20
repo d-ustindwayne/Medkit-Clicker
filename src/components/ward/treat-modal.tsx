@@ -4,7 +4,7 @@ import { Modal, Pressable, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
 import { MORE_GAMES } from "@/components/ward/more-games";
-import { useDone, type GameProps } from "@/components/ward/game-kit";
+import { useDone, useJuice, type GameProps } from "@/components/ward/game-kit";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { COIN } from "@/constants/boosts";
@@ -13,6 +13,7 @@ import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
+import { usePalette } from "@/hooks/use-palette";
 import { formatCount } from "@/lib/format";
 import { treatReward } from "@/lib/game";
 
@@ -20,6 +21,7 @@ import { treatReward } from "@/lib/game";
 const ZONES = [0.55, 0.22, 0.64];
 function InjectionGame({ onDone, tuning }: GameProps) {
   const ZONE_W = tuning.veinWidth;
+  const palette = usePalette();
   const done = useDone(onDone);
   const { playSfx } = useAudio();
   const haptic = useHaptics();
@@ -33,12 +35,18 @@ function InjectionGame({ onDone, tuning }: GameProps) {
   }, [round, x, tuning.needleSpeed]);
   const marker = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() * Math.max(0, trackW - 10) }] }));
   const zone = ZONES[round];
+  const juice = useJuice();
 
   const inject = () => {
     const v = x.get();
     const hit = v >= zone && v <= zone + ZONE_W;
-    if (hit) haptic.buy();
-    else haptic.denied();
+    if (hit) {
+      haptic.buy();
+      juice.pop();
+    } else {
+      haptic.denied();
+      juice.shake();
+    }
     playSfx(hit ? "buy" : "invalid");
     const total = hits + (hit ? 1 : 0);
     if (round + 1 >= ZONES.length) return done(total >= 2);
@@ -47,26 +55,41 @@ function InjectionGame({ onDone, tuning }: GameProps) {
   };
 
   return (
+    <Animated.View style={juice.style}>
     <View className="gap-4">
       <Text className="text-center font-number text-base text-ink">
         Shot {round + 1} of {ZONES.length} · {hits} in the vein
       </Text>
       <View className="h-10 justify-center border-2 border-outline bg-[#f3c9a3]" onLayout={(e) => setTrackW(e.nativeEvent.layout.width - 4)}>
         <View className="absolute h-full bg-[#7b5cd6]/60" style={{ left: `${zone * 100}%`, width: `${ZONE_W * 100}%` }} />
-        <Animated.View className="absolute h-full w-2.5 bg-ink" style={marker} />
+        {/* Style, not className: NativeWind classes don't apply to Animated.View on native. */}
+        <Animated.View style={[{ position: "absolute", height: "100%", width: 10, backgroundColor: palette.ink }, marker]} />
       </View>
       <PixelButton label="INJECT" tone="success" onPress={inject} />
     </View>
+    </Animated.View>
   );
 }
 
-// ---------- Rhythm: tap with the heartbeat, 7 of 10 on time ----------
+/** A ring that ripples out from the heart on each on-time tap. */
+function HeartRipple() {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.set(withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) }));
+  }, [t]);
+  const style = useAnimatedStyle(() => ({ opacity: 0.7 * (1 - t.get()), transform: [{ scale: 0.8 + t.get() * 0.8 }] }));
+  return <Animated.View pointerEvents="none" style={[{ position: "absolute", width: 130, height: 130, borderRadius: 65, borderWidth: 5, borderColor: "#4edb4e" }, style]} />;
+}
+
+// ---------- Rhythm: tap with the heartbeat, 6 of 10 on time ----------
 const BEATS = 10;
-const NEED_BEATS = 7;
+const NEED_BEATS = 6;
 function RhythmGame({ onDone, tuning }: GameProps) {
-  // ~110 bpm (the CPR rate) at first, up to 120 bpm.
+  // 100 bpm at first, up to 110 (the CPR rate); a forgiving timing window.
   const BEAT_MS = tuning.beatMs;
   const WINDOW_MS = tuning.beatWindowMs;
+  const juice = useJuice();
+  const [ripple, setRipple] = useState(0);
   const done = useDone(onDone);
   const { playSfx } = useAudio();
   const haptic = useHaptics();
@@ -103,23 +126,29 @@ function RhythmGame({ onDone, tuning }: GameProps) {
       setHitCount(hits.current.length);
       haptic.tap();
       playSfx("medkit");
+      juice.pop();
+      setRipple((n) => n + 1);
     } else {
       haptic.denied();
+      juice.shake();
     }
   };
 
   return (
+    <Animated.View style={juice.style}>
     <View className="items-center gap-3">
       <Text className="font-number text-base text-ink">
         {beat < 0 ? "Get ready..." : `Beat ${beat + 1} of ${BEATS}`} · {hitCount} on time (need {NEED_BEATS})
       </Text>
       <Pressable accessibilityRole="button" accessibilityLabel="Tap with the heartbeat" onPress={press} className="h-36 w-36 items-center justify-center">
+        {ripple > 0 && <HeartRipple key={ripple} />}
         <Animated.View style={heart}>
           <Image source={require("@/imgs/misc/heart.png")} style={{ width: 120, height: 120 }} contentFit="contain" />
         </Animated.View>
       </Pressable>
       <Text className="font-body text-sm text-ink opacity-70">Tap the heart every time it beats.</Text>
     </View>
+    </Animated.View>
   );
 }
 
@@ -133,6 +162,8 @@ function BandageGame({ onDone, tuning }: GameProps) {
   const [wraps, setWraps] = useState(0);
   const [left, setLeft] = useState(WRAP_MS);
   const count = useRef(0);
+  const spin = useSharedValue(0);
+  const rollStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.get()}deg` }] }));
   useEffect(() => {
     const end = Date.now() + WRAP_MS;
     const id = setInterval(() => {
@@ -149,6 +180,7 @@ function BandageGame({ onDone, tuning }: GameProps) {
   const wrap = () => {
     if (left <= 0) return;
     count.current += 1;
+    spin.set(withTiming(count.current * 90, { duration: 120 }));
     setWraps(count.current);
     haptic.tap();
     if (count.current % 3 === 0) playSfx("click");
@@ -163,7 +195,9 @@ function BandageGame({ onDone, tuning }: GameProps) {
         <View className="h-full bg-success" style={{ width: `${Math.min(1, wraps / WRAPS) * 100}%` }} />
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="Wrap the bandage" onPress={wrap} className="h-32 w-32 items-center justify-center border-2 border-outline bg-accent active:scale-95">
-        <Image source={require("@/imgs/shop/bandage_roll.png")} style={{ width: 96, height: 96 }} contentFit="contain" />
+        <Animated.View style={rollStyle}>
+          <Image source={require("@/imgs/shop/bandage_roll.png")} style={{ width: 96, height: 96 }} contentFit="contain" />
+        </Animated.View>
       </Pressable>
       <Text className="font-body text-sm text-ink opacity-70">Tap as fast as you can!</Text>
     </View>
@@ -186,6 +220,7 @@ export function TreatModal({ patient, onClose }: { patient: SickPatient; onClose
   const finish = (won: boolean) => {
     const amount = treatReward(state, won);
     dispatch({ type: "treat", won, next: Date.now() + nextPatientDelay() });
+    if (won) dispatch({ type: "minigameWon", game: patient.game });
     setResult({ won, amount });
     setPhase("result");
   };

@@ -71,6 +71,8 @@ export type GameState = {
   promoClaims: string[];
   /** Rebirth 50 hall of fame: sent, declined, or not answered yet. */
   fame: "none" | "sent" | "declined";
+  /** Minigame id -> times won (for the minigame achievements). */
+  minigameWins: Record<string, number>;
 };
 
 export type GameAction =
@@ -102,6 +104,7 @@ export type GameAction =
   | { type: "claimPromo"; hash: string; kind: "medkits" | "coins" | "gems"; amount: number }
   | { type: "devRebirth" }
   | { type: "setFame"; fame: "sent" | "declined" }
+  | { type: "minigameWon"; game: string }
   /** Place an item (or move it, including from another room) at x, y: fractions of the room art. */
   | { type: "placeItem"; room: string; item: string; x: number; y: number }
   | { type: "removeItem"; room: string; item: string }
@@ -153,6 +156,7 @@ export const newGame = (): GameState => ({
   bonusGems: 0,
   promoClaims: [],
   fame: "none",
+  minigameWins: {},
 });
 
 /** Multiplier from a gem upgrade: 1 + per-level step x level. */
@@ -367,6 +371,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
       if (action.kind === "gems") return { ...claimed, bonusGems: state.bonusGems + action.amount };
       return earn(claimed, action.amount);
     }
+    case "minigameWon":
+      return { ...state, minigameWins: { ...state.minigameWins, [action.game]: (state.minigameWins[action.game] ?? 0) + 1 } };
     case "setFame":
       return { ...state, fame: action.fame };
     case "devRebirth":
@@ -464,6 +470,7 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     bonusGems: typeof s.bonusGems === "number" ? s.bonusGems : 0,
     promoClaims: Array.isArray(s.promoClaims) ? s.promoClaims : [],
     fame: s.fame === "sent" || s.fame === "declined" ? s.fame : "none",
+    minigameWins: { ...(s.minigameWins ?? {}) },
     room: s.room && typeof s.room.current === "string" ? { current: s.room.current, placed: { ...(s.room.placed ?? {}) } } : base.room,
   };
 };
