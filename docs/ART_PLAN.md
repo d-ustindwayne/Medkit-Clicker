@@ -32,7 +32,7 @@ Sprites are grouped by what they're used for. Sources live in `src/media/photos/
 | --- | --- | --- |
 | (root) | The main game art | medkit, hospital |
 | `shop/` | Shop upgrades | syringe, stethoscope, facemask, gloves, medicines (in the shop now); bandage_roll, thermometer, bp_tester, iv_bag, blood_vial, covid_test, microscope, dna (proposed) |
-| `achievements/` | Achievements | trophy_gold (source: the original `trophy.aseprite`), trophy_diamond, trophy_platinum, trophy_bronze, trophy_star, trophy_nurse, trophy_purple, medal, winged_heart, clock_moon |
+| `achievements/` | Achievements | trophy_gold (source: the original `trophy.aseprite`), trophy_diamond, trophy_platinum, trophy_bronze, trophy_star, trophy_nurse, trophy_purple, medal, winged_heart, clock_moon, night_coffee, headphones, light_off, clipboard, supply_shelf (each group has its own; a series like 1 tap / 10 taps shares one) |
 | `misc/` | Purpose not decided yet | apple (source `Apple.aseprite`), coin, bandage (the plaster), heart |
 | `art/` | Large art | nightingale (512 × 512 painting) |
 | `characters/` | People (256 × 256) | 01–16, see the table below; staff 11–16 also have `_walk1` / `_walk2` frames |

@@ -1,6 +1,6 @@
 import type { ImageSourcePropType } from "react-native";
 
-import { HOSPITAL_IMAGE, SHOP_ITEMS, type ItemId } from "@/constants/items";
+import { SHOP_ITEMS, type ItemId } from "@/constants/items";
 import { healingRate } from "@/constants/rebirth";
 import type { GameState } from "@/lib/game";
 import { formatCount } from "@/lib/format";
@@ -105,6 +105,15 @@ const itemTitles: Record<ItemId, string[]> = {
 };
 
 // Achievement art from src/imgs/achievements. Lifetime milestones climb the trophy tiers.
+/** One-off icons so each achievement group has its own art. */
+const ICONS = {
+  nightCoffee: require("@/imgs/achievements/night_coffee.png"),
+  headphones: require("@/imgs/achievements/headphones.png"),
+  lightOff: require("@/imgs/achievements/light_off.png"),
+  clipboard: require("@/imgs/achievements/clipboard.png"),
+  supplyShelf: require("@/imgs/achievements/supply_shelf.png"),
+};
+
 const TROPHY = {
   bronze: require("@/imgs/achievements/trophy_bronze.png"),
   gold: require("@/imgs/achievements/trophy_gold.png"),
@@ -155,7 +164,7 @@ const LIST: Achievement[] = [
     id: `items_${n}`,
     name,
     description: `Own ${formatCount(n)} supplies in total.`,
-    image: HOSPITAL_IMAGE,
+    image: ICONS.supplyShelf,
     coins: 2 + i,
     check: (s: GameState) => totalOwned(s) >= n,
     progress: (s: GameState) => totalOwned(s) / n,
@@ -193,7 +202,7 @@ const LIST: Achievement[] = [
     id: "night_shift",
     name: "Night Shift",
     description: "Play between midnight and 5 a.m. Go to sleep!",
-    image: CLOCK_MOON,
+    image: ICONS.nightCoffee,
     secret: true,
     coins: 3,
     check: () => new Date().getHours() < 5,
@@ -202,7 +211,7 @@ const LIST: Achievement[] = [
     id: "dj_nurse",
     name: "DJ Nurse",
     description: "Listen to the soundtrack.",
-    image: TROPHY.nurse,
+    image: ICONS.headphones,
     secret: true,
     coins: 3,
     check: (s) => s.playlistsHeard.includes("soundtrack"),
@@ -211,7 +220,7 @@ const LIST: Achievement[] = [
     id: "lights_out",
     name: "Lights Out",
     description: "Switch between light and dark mode.",
-    image: TROPHY.star,
+    image: ICONS.lightOff,
     secret: true,
     coins: 3,
     check: (s) => s.themeSwitches >= 1,
@@ -220,7 +229,7 @@ const LIST: Achievement[] = [
     id: "charting_complete",
     name: "Charting Complete",
     description: "Export your save file.",
-    image: TROPHY.purple,
+    image: ICONS.clipboard,
     secret: true,
     coins: 3,
     check: (s) => s.exports >= 1,
