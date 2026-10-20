@@ -6,14 +6,13 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSeq
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { COIN } from "@/constants/boosts";
-import { LOSE_SECONDS, WIN_COINS, WIN_SECONDS, nextPatientDelay, type SickPatient } from "@/constants/patients";
-import { healingRate } from "@/constants/rebirth";
+import { WIN_COINS, nextPatientDelay, type SickPatient } from "@/constants/patients";
 import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { formatCount } from "@/lib/format";
-import { tapValue } from "@/lib/game";
+import { treatReward } from "@/lib/game";
 
 type GameProps = { onDone: (won: boolean) => void };
 
@@ -196,8 +195,7 @@ export function TreatModal({ patient, onClose }: { patient: SickPatient; onClose
   const Game = GAMES[patient.game];
 
   const finish = (won: boolean) => {
-    const base = { owned: state.owned, rebirths: state.rebirths };
-    const amount = won ? Math.max(healingRate(base) * WIN_SECONDS, tapValue(base) * 50) : healingRate(base) * LOSE_SECONDS;
+    const amount = treatReward(state, won);
     dispatch({ type: "treat", won, next: Date.now() + nextPatientDelay() });
     setResult({ won, amount });
     setPhase("result");

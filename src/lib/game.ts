@@ -125,6 +125,12 @@ export const coinsEarned = (s: Pick<GameState, "achievements">) =>
   ACHIEVEMENTS.reduce((sum, a) => sum + (s.achievements[a.id] !== undefined ? a.coins : 0), 0);
 export const coinBalance = (s: Pick<GameState, "achievements" | "coinsSpent" | "bonusCoins">) => coinsEarned(s) + s.bonusCoins - s.coinsSpent;
 
+/** Patients paid for treating a ward patient: minutes of production, with a floor early in the game. */
+export const treatReward = (s: { owned: Record<ItemId, number>; rebirths: number }, won: boolean) => {
+  const base = { owned: s.owned, rebirths: s.rebirths };
+  return won ? Math.max(healingRate(base) * WIN_SECONDS, tapValue(base) * 50) : Math.max(healingRate(base) * LOSE_SECONDS, tapValue(base) * 5);
+};
+
 /** What the next unit of an item costs right now, including a running sale. */
 export const priceOf = (s: Pick<GameState, "owned" | "boosts">, item: (typeof SHOP_ITEMS)[number]) =>
   Math.ceil(itemCost(item, s.owned[item.id]) * boostMultiplier(s.boosts, "price"));
@@ -239,8 +245,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
       return { ...state, patient: null, nextPatientAt: action.next };
     case "treat": {
       if (!state.patient) return state;
-      const base = { owned: state.owned, rebirths: state.rebirths };
-      const amount = action.won ? Math.max(healingRate(base) * WIN_SECONDS, tapValue(base) * 50) : healingRate(base) * LOSE_SECONDS;
+      const amount = treatReward(state, action.won);
       const done = { ...state, patient: null, nextPatientAt: action.next };
       return earn(action.won ? { ...done, treated: state.treated + 1, bonusCoins: state.bonusCoins + WIN_COINS } : done, amount);
     }

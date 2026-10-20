@@ -4,7 +4,7 @@ import { Platform } from "react-native";
 
 import { BUNDLED_PLAYLISTS, SFX, type Playlist, type SfxName } from "@/constants/playlists";
 import { useGameActions, useSettings } from "@/hooks/use-game";
-import { cloudEnabled, downloadMusic, getToken, loadCachedPlaylists, type CachedPlaylist } from "@/lib/cloud";
+import { cloudEnabled, downloadMusic, getToken, loadCachedPlaylists, wakeServer, type CachedPlaylist } from "@/lib/cloud";
 import { VOLUME_STEPS } from "@/lib/storage";
 
 type AudioControls = {
@@ -67,7 +67,11 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   useEffect(() => {
     loadCachedPlaylists().then(setCached);
-    getToken().then(setToken);
+    getToken().then((saved) => {
+      setToken(saved);
+      // Code holders use the server (rewards, new songs): wake it early.
+      if (saved) wakeServer();
+    });
   }, []);
   const library: Playlist[] = useMemo(() => {
     const downloaded = cached.map((p) => ({ id: p.id, name: p.name, tracks: p.tracks.map((uri) => ({ uri })) }));

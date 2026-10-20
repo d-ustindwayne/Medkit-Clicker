@@ -25,6 +25,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "./plugins/with-abi-filters",
       "expo-router",
       [
         "expo-splash-screen",

@@ -3,7 +3,8 @@
 **Status (2026-10-20):**
 - The Aiven database is set up: tables created, Jasmine's code, the rewards and all 53 songs uploaded (123 MB of 1 GB).
 - The API was tested end to end against it from this laptop.
-- Next: deploy the API on Render, then build the app with its address.
+- The API is live on Render (free plan) and was tested end to end from outside: wrong codes rejected, rewards and music served.
+- The app reads its address from `EXPO_PUBLIC_API_URL` in `.env.local`.
 
 ## What goes in the database (and what doesn't)
 

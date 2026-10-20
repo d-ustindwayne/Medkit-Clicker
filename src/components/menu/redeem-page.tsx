@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Text, TextInput, View } from "react-native";
 
 import { PixelButton } from "@/components/ui/pixel-button";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
 import { useMusic } from "@/hooks/use-audio";
-import { cloudEnabled, unlockOnline } from "@/lib/cloud";
+import { cloudEnabled, unlockOnline, wakeServer } from "@/lib/cloud";
 import { sectionForCode } from "@/lib/codes";
 import { REWARD_SECTIONS } from "@/constants/rewards";
 
@@ -18,6 +18,19 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const music = useMusic();
+  // Wake the server while the code is being typed; show a note if it's still slow.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    wakeServer();
+  }, []);
+  useEffect(() => {
+    if (!checking) return;
+    const id = setTimeout(() => setSlow(true), 3000);
+    return () => {
+      clearTimeout(id);
+      setSlow(false);
+    };
+  }, [checking]);
 
   const submit = async () => {
     setChecking(true);
@@ -75,6 +88,7 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
         className="min-h-12 border-2 border-outline bg-surface px-3 font-rounded text-lg tracking-[2px] text-ink"
       />
       {error && <Text className="font-body text-sm text-danger">{error}</Text>}
+      {checking && slow && <Text className="font-body text-sm text-ink opacity-70">Waking up the server. The first check after a break can take up to a minute.</Text>}
       <PixelButton tone="success" onPress={submit} disabled={!code.trim() || checking} accessibilityLabel="Unlock">
         {checking ? <ActivityIndicator color={palette.ink} /> : <Text className="font-rounded text-base text-ink">Unlock</Text>}
       </PixelButton>

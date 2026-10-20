@@ -144,7 +144,8 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
   const placedSorted = [...placed].sort((a, b) => a.y - b.y);
   return (
     <View className="flex-1">
-      <ScenePage scene={room} width={width}>
+      {/* While decorating, the room sits at the top so the item tray fits in the space below it. */}
+      <ScenePage scene={editing ? { ...room, anchor: 0 } : room} width={width}>
         {placedSorted.map((p) => {
           const item = ROOM_ITEMS.find((i) => i.id === p.item);
           if (!item) return null;
@@ -193,7 +194,7 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
             <View className="items-center px-1">
               <Text className="font-pixel text-[10px] tracking-[1px] text-ink">{room.title.toUpperCase()}</Text>
               <Text className="font-number text-xs text-ink">
-                {placed.length}/{room.limit} items
+                {placed.length}/{room.limit} items · +{Math.round(rate * 100)}%/s +{Math.round(tap * 100)}%/tap
               </Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Next room" onPress={() => cycleRoom(1)} className="h-9 w-8 items-center justify-center">
@@ -202,10 +203,7 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
           </View>
 
           {/* Item tray */}
-          <View className="absolute inset-x-0 bottom-0 border-t-2 border-outline bg-surface/95 pb-2 pt-1.5">
-            <Text className="px-3 pb-1 font-body text-xs text-ink">
-              Room bonus: +{Math.round(rate * 100)}% per second, +{Math.round(tap * 100)}% per tap (max +{Math.round(ROOM_BONUS_CAP * 100)}% each). Drag items to move them.
-            </Text>
+          <View className="absolute inset-x-0 bottom-0 border-t-2 border-outline bg-surface/95 py-1.5" accessibilityHint={`Drag placed items to move them. Bonuses are capped at +${Math.round(ROOM_BONUS_CAP * 100)}% each.`}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-3">
               {ROOM_ITEMS.map((item) => {
                 const open = isUnlocked(item.unlock, state);
@@ -218,9 +216,9 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
                     accessibilityRole="button"
                     accessibilityLabel={open ? `${item.name}, ${bonus}${here ? ", placed" : ""}` : `${item.name}, locked: ${unlockHint(item.unlock)}`}
                     onPress={() => tapItem(item)}
-                    className={`w-16 items-center border-2 p-1 ${here ? "border-success bg-success/20" : "border-outline bg-surface"}`}
+                    className={`w-14 items-center border-2 p-0.5 ${here ? "border-success bg-success/20" : "border-outline bg-surface"}`}
                   >
-                    <Image source={item.image} style={{ width: 40, height: 40, opacity: open ? 1 : 0.35 }} contentFit="contain" tintColor={open ? undefined : "#5f6b7b"} />
+                    <Image source={item.image} style={{ width: 32, height: 32, opacity: open ? 1 : 0.35 }} contentFit="contain" tintColor={open ? undefined : "#5f6b7b"} />
                     <Text className="font-body text-[9px] leading-3 text-ink" numberOfLines={1}>
                       {open ? bonus : "locked"}
                     </Text>
