@@ -210,8 +210,9 @@ function ShopPage() {
   const [tab, setTab] = useState<"supplies" | "boosts">("supplies");
   const { playSfx } = useAudio();
   return (
-    <ScrollView contentContainerClassName="px-4 pb-4">
-      <View className="mb-3 flex-row border-2 border-outline" accessibilityRole="tablist">
+    <View className="flex-1">
+      {/* The Supplies / Boosts switch stays put while the list scrolls. */}
+      <View className="mx-4 mb-2 flex-row border-2 border-outline" accessibilityRole="tablist">
         {(["supplies", "boosts"] as const).map((id) => (
           <Pressable
             key={id}
@@ -227,8 +228,8 @@ function ShopPage() {
           </Pressable>
         ))}
       </View>
-      {tab === "supplies" ? <SuppliesList /> : <BoostsList />}
-    </ScrollView>
+      <ScrollView contentContainerClassName="px-4 pb-4">{tab === "supplies" ? <SuppliesList /> : <BoostsList />}</ScrollView>
+    </View>
   );
 }
 
@@ -239,7 +240,7 @@ export function Shop({ compact, width }: { compact: boolean; width: number }) {
     <View className="flex-1 bg-primary">
       <Text
         accessibilityRole="header"
-        className={`text-center font-pixel tracking-[6px] text-ink ${compact ? "pt-2 text-3xl" : "pt-5 text-5xl"}`}
+        className={`text-center font-pixel tracking-[2px] text-ink ${compact ? "pt-2 text-3xl" : "pt-5 text-5xl"}`}
         style={{ textShadowColor: "rgba(0,0,0,0.28)", textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0.1 }}
       >
         {SHOP_PAGES[page].title}

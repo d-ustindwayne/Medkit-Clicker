@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Image } from "expo-image";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BackgroundPattern } from "@/components/background-pattern";
@@ -127,16 +128,23 @@ function Backdrop({ width, height }: { width: number; height: number }) {
 function Clicker({ width, height, compact }: { width: number; height: number; compact: boolean }) {
   const { owned, rebirths, boosts, luckyTaps, patient, room } = useGameState();
   const [editing, setEditing] = useState(false);
+  const [page, setPage] = useState(0);
   // Leave room for the orbiting supplies around the medkit.
   const size = Math.min((width * (compact ? 0.72 : 0.55)) / ORBIT_SCALE, (height * (compact ? 0.52 : 0.58)) / ORBIT_SCALE, 420);
 
   return (
     <View className={`flex-1 items-center ${compact ? "pt-12" : "justify-center pt-4"}`}>
-      <Counter compact={compact} />
+      {/* The counter belongs to the medkit; My Room gets the full height. */}
+      {page === 0 && (
+        <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+          <Counter compact={compact} />
+        </Animated.View>
+      )}
       <Pager
         width={width}
         dots="overlay"
         scrollEnabled={!editing}
+        onPageChange={setPage}
         className="flex-1"
         pages={[
           {

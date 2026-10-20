@@ -14,6 +14,7 @@ import { useGameActions, useGameState } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 
 const ART_W = 320;
+type Box = { x: number; y: number; w: number; h: number };
 
 /** One staff member pacing the floor with a 3-frame walk cycle. */
 const Walker = memo(function Walker({ id, width, height, lane, frame }: { id: string; width: number; height: number; lane: number; frame: number }) {
@@ -30,7 +31,8 @@ const Walker = memo(function Walker({ id, width, height, lane, frame }: { id: st
   const frames = STAFF_FRAMES[id];
   const shown = reduceMotion ? 0 : WALK_SEQUENCE[frame % WALK_SEQUENCE.length];
   return (
-    <Animated.View pointerEvents="none" style={[{ position: "absolute", left: size * 0.1, top: height * (0.97 - lane * 0.035) - size, width: size, height: size }, style]}>
+    // zIndex keeps people in front of furniture (items use up to ~40; a dragged item 50).
+    <Animated.View pointerEvents="none" style={[{ position: "absolute", left: size * 0.1, top: height * (0.97 - lane * 0.035) - size, width: size, height: size, zIndex: 45 }, style]}>
       {frames.map((src, i) => (
         <Image key={i} source={src} style={{ position: "absolute", width: size, height: size, opacity: i === shown ? 1 : 0 }} contentFit="contain" />
       ))}
@@ -141,11 +143,63 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
     playSfx("buy");
   };
 
+  const ghostSize = width * (ITEM_PX / ART_W) * 1.5;
+  // Drag-and-drop from the tray: drag a tile upward and a ghost follows the finger; drop it on the room.
+  const rootRef = useRef<View>(null);
+  const sceneRef = useRef<View>(null);
+  const boxes = useRef<{ root: Box; scene: Box } | null>(null);
+  const touch = useRef<{ x: number; y: number } | null>(null);
+  /** The dragged tile's image, positioned inside this page. */
+  const [ghost, setGhost] = useState<{ item: RoomItem; left: number; top: number } | null>(null);
+  const measure = () => {
+    rootRef.current?.measureInWindow((x, y, w, h) => {
+      const root = { x, y, w, h };
+      sceneRef.current?.measureInWindow((sx, sy, sw, sh) => {
+        boxes.current = { root, scene: { x: sx, y: sy, w: sw, h: sh } };
+      });
+    });
+  };
+  const dragHandlers = (item: RoomItem) => ({
+    onTouchStart: (e: GestureResponderEvent) => {
+      touch.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+      measure();
+    },
+    // Only a mostly-upward drag picks the tile up; sideways drags scroll the tray.
+    onMoveShouldSetResponderCapture: (e: GestureResponderEvent) => {
+      const t = touch.current;
+      if (!t) return false;
+      const dx = e.nativeEvent.pageX - t.x, dy = e.nativeEvent.pageY - t.y;
+      return dy < -12 && Math.abs(dy) > Math.abs(dx);
+    },
+    onResponderTerminationRequest: () => false,
+    onResponderMove: (e: GestureResponderEvent) => {
+      const root = boxes.current?.root;
+      if (root) setGhost({ item, left: e.nativeEvent.pageX - root.x - ghostSize / 2, top: e.nativeEvent.pageY - root.y - ghostSize });
+    },
+    onResponderRelease: (e: GestureResponderEvent) => {
+      setGhost(null);
+      touch.current = null;
+      const b = boxes.current?.scene;
+      const { pageX, pageY } = e.nativeEvent;
+      if (!b || pageX < b.x || pageX > b.x + b.w || pageY < b.y || pageY > b.y + b.h) return;
+      if (!isUnlocked(item.unlock, state)) return tapItem(item); // shows the unlock hint
+      if (!placed.some((p) => p.item === item.id) && placed.length >= room.limit) return tapItem(item); // "room is full"
+      // Items stand on their feet, so the drop point is the bottom of the item.
+      dispatch({ type: "placeItem", room: room.id, item: item.id, x: (pageX - b.x) / b.w, y: (pageY - b.y) / b.h + 0.06 });
+      haptic.buy();
+      playSfx("buy");
+    },
+    onResponderTerminate: () => {
+      setGhost(null);
+      touch.current = null;
+    },
+  });
+
   const placedSorted = [...placed].sort((a, b) => a.y - b.y);
   return (
-    <View className="flex-1">
+    <View ref={rootRef} className="flex-1">
       {/* While decorating, the room sits at the top so the item tray fits in the space below it. */}
-      <ScenePage scene={editing ? { ...room, anchor: 0 } : room} width={width}>
+      <ScenePage scene={editing ? { ...room, anchor: 0 } : room} width={width} contentRef={sceneRef}>
         {placedSorted.map((p) => {
           const item = ROOM_ITEMS.find((i) => i.id === p.item);
           if (!item) return null;
@@ -211,8 +265,8 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
                 const elsewhere = !here && Object.entries(state.room.placed).some(([rid, list]) => rid !== room.id && list.some((p) => p.item === item.id));
                 const bonus = item.bonus.rate ? `+${Math.round(item.bonus.rate * 100)}%/s` : `+${Math.round((item.bonus.tap ?? 0) * 100)}%/tap`;
                 return (
+                  <View key={item.id} {...dragHandlers(item)}>
                   <Pressable
-                    key={item.id}
                     accessibilityRole="button"
                     accessibilityLabel={open ? `${item.name}, ${bonus}${here ? ", placed" : ""}` : `${item.name}, locked: ${unlockHint(item.unlock)}`}
                     onPress={() => tapItem(item)}
@@ -226,11 +280,18 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
                     {elsewhere && <Text className="absolute left-0.5 top-0.5 font-pixel text-[7px] text-ink">IN USE</Text>}
                     {!open && <View className="absolute right-0.5 top-0.5"><PixelIcon name="lock" size={8} /></View>}
                   </Pressable>
+                  </View>
                 );
               })}
             </ScrollView>
           </View>
         </>
+      )}
+
+      {ghost && (
+        <View pointerEvents="none" style={{ position: "absolute", left: ghost.left, top: ghost.top, width: ghostSize, height: ghostSize, opacity: 0.85, zIndex: 100 }}>
+          <Image source={ghost.item.image} style={{ width: ghostSize, height: ghostSize }} contentFit="contain" />
+        </View>
       )}
     </View>
   );
