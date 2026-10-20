@@ -20,7 +20,7 @@ export type GemUpgradeId = "steady_hands" | "night_owl" | "bedside_manner" | "ra
 /** Level of an upgrade (0-5) in a save. */
 export const gemLevel = (s: { gemUpgrades?: Record<string, number> }, id: GemUpgradeId) => s.gemUpgrades?.[id] ?? 0;
 
-export type GemItemKind = "skin" | "tap" | "background" | "room" | "sticker";
+export type GemItemKind = "skin" | "tap" | "background" | "room" | "icon" | "sticker";
 export type GemItem = {
   id: string;
   name: string;
@@ -54,6 +54,12 @@ export const GEM_ITEMS: GemItem[] = [
   { id: "aquarium", name: "Aquarium", kind: "room", cost: 3, rebirths: 3, image: require("@/imgs/room/aquarium_1.png") },
   { id: "lava_lamp", name: "Lava Lamp", kind: "room", cost: 3, rebirths: 7, image: require("@/imgs/room/lava_lamp_1.png") },
   { id: "patient_monitor", name: "Patient Monitor", kind: "room", cost: 4, rebirths: 12, image: require("@/imgs/room/patient_monitor_1.png") },
+  // App icons: change the icon on the phone's home screen (names match app.json's expo-alternate-app-icons)
+  { id: "icon_gold", name: "Gold", kind: "icon", cost: 2, rebirths: 1, image: require("../../assets/images/icons/gold.png") },
+  { id: "icon_candy", name: "Candy", kind: "icon", cost: 2, rebirths: 2, image: require("../../assets/images/icons/candy.png") },
+  { id: "icon_night", name: "Night", kind: "icon", cost: 2, rebirths: 4, image: require("../../assets/images/icons/night.png") },
+  { id: "icon_crystal", name: "Crystal", kind: "icon", cost: 3, rebirths: 8, image: require("../../assets/images/icons/crystal.png") },
+  { id: "icon_dustin", name: "Dustin", kind: "icon", cost: 1, rebirths: 0, section: "jasmine", image: require("../../assets/images/icons/dustin.png") },
   // Stickers: once bought, save the PNG to your photos
   ...(
     [
@@ -79,7 +85,7 @@ export const GEM_ITEMS: GemItem[] = [
   ).map(([id, name, cost, image]): GemItem => ({ id: `sticker_${id}`, name, kind: "sticker", cost, rebirths: 0, image })),
 ];
 
-export const GEM_KIND_LABEL: Record<GemItemKind, string> = { skin: "Medkit skin", tap: "Tap effect", background: "Animated background", room: "My Room item", sticker: "Sticker" };
+export const GEM_KIND_LABEL: Record<GemItemKind, string> = { skin: "Medkit skin", tap: "Tap effect", background: "Animated background", room: "My Room item", icon: "App icon", sticker: "Sticker" };
 
 export const MEDKIT_SKINS: Record<string, ImageSourcePropType> = Object.fromEntries(GEM_ITEMS.filter((i) => i.kind === "skin").map((i) => [i.id, i.image]));
 /** Skins drawn as photos/portraits fill the button; pixel medkits keep the medkit's proportions. */

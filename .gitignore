@@ -55,3 +55,6 @@ src/fonts/arlrdbd.ttf
 database_setup.txt
 aiven-ca.pem
 render-env.txt
+
+# The website is its own project (see docs/WEBSITE.md)
+website/

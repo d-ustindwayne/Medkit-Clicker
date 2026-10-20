@@ -56,6 +56,51 @@
             "photo"
           ]
         }
+      ],
+      [
+        "expo-alternate-app-icons",
+        [
+          {
+            "name": "Gold",
+            "ios": "./assets/images/icons/gold.png",
+            "android": {
+              "foregroundImage": "./assets/images/icons/gold-foreground.png",
+              "backgroundColor": "#fff6d6"
+            }
+          },
+          {
+            "name": "Candy",
+            "ios": "./assets/images/icons/candy.png",
+            "android": {
+              "foregroundImage": "./assets/images/icons/candy-foreground.png",
+              "backgroundColor": "#fff0f5"
+            }
+          },
+          {
+            "name": "Night",
+            "ios": "./assets/images/icons/night.png",
+            "android": {
+              "foregroundImage": "./assets/images/icons/night-foreground.png",
+              "backgroundColor": "#1c2456"
+            }
+          },
+          {
+            "name": "Crystal",
+            "ios": "./assets/images/icons/crystal.png",
+            "android": {
+              "foregroundImage": "./assets/images/icons/crystal-foreground.png",
+              "backgroundColor": "#e0f6ff"
+            }
+          },
+          {
+            "name": "Dustin",
+            "ios": "./assets/images/icons/dustin.png",
+            "android": {
+              "foregroundImage": "./assets/images/icons/dustin-foreground.png",
+              "backgroundColor": "#ffe4ec"
+            }
+          }
+        ]
       ]
     ],
     "experiments": {

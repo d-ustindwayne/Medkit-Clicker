@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Image } from "expo-image";
 import { ScrollView, Text, View } from "react-native";
 
@@ -9,6 +10,7 @@ import { GEM } from "@/constants/rebirth";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
+import { appIcon, setAppIcon } from "@/lib/app-icon";
 import { saveSticker } from "@/lib/stickers";
 
 const MAX_LEVEL = GEM_LEVEL_COSTS.length;
@@ -74,10 +76,12 @@ function ItemTile({ item }: { item: GemItem }) {
   const locked = state.rebirths < item.rebirths;
   const affordable = gemBalance(state) >= item.cost;
   const bgIndex = BACKGROUNDS.findIndex((b) => b.id === item.id);
+  const [iconName, setIconName] = useState(appIcon);
   const equipped =
     (item.kind === "skin" && state.medkitSkin === item.id) ||
     (item.kind === "tap" && state.tapEffect === item.id) ||
-    (item.kind === "background" && settings.background === bgIndex);
+    (item.kind === "background" && settings.background === bgIndex) ||
+    (item.kind === "icon" && iconName === item.name);
 
   const buy = () => {
     dispatch({ type: "buyGemItem", id: item.id });
@@ -93,7 +97,16 @@ function ItemTile({ item }: { item: GemItem }) {
       )
       .catch(() => pushToast({ kind: "info", title: "Couldn't save", body: "Something went wrong saving the sticker. Try again." }));
   };
+  const switchIcon = () => {
+    setAppIcon(equipped ? null : item.name)
+      .then((name) => {
+        setIconName(name);
+        pushToast({ kind: "info", title: "App icon changed", body: name ? `Your home screen shows the ${name} icon now.` : "Back to the original icon." });
+      })
+      .catch(() => pushToast({ kind: "info", title: "Couldn't change the icon", body: "This phone doesn't allow changing the app icon." }));
+  };
   const use = () => {
+    if (item.kind === "icon") return switchIcon();
     if (item.kind === "skin") dispatch({ type: "equip", slot: "skin", id: equipped ? null : item.id });
     else if (item.kind === "tap") dispatch({ type: "equip", slot: "tap", id: equipped ? null : item.id });
     else if (item.kind === "background") updateSettings({ background: equipped ? 0 : bgIndex });
@@ -129,8 +142,8 @@ function ItemTile({ item }: { item: GemItem }) {
   );
 }
 
-const KINDS: GemItemKind[] = ["skin", "tap", "background", "room", "sticker"];
-const SECTION_TITLE: Record<GemItemKind, string> = { skin: "MEDKIT SKINS", tap: "TAP EFFECTS", background: "ANIMATED BACKGROUNDS", room: "ANIMATED ROOM ITEMS", sticker: "STICKERS" };
+const KINDS: GemItemKind[] = ["skin", "tap", "background", "room", "icon", "sticker"];
+const SECTION_TITLE: Record<GemItemKind, string> = { skin: "MEDKIT SKINS", tap: "TAP EFFECTS", background: "ANIMATED BACKGROUNDS", room: "ANIMATED ROOM ITEMS", icon: "APP ICONS", sticker: "STICKERS" };
 
 /** Third page of the shop: spend Natal Gems on permanent upgrades and cosmetics. */
 export function GemShop() {
