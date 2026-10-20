@@ -22,13 +22,13 @@ Committed and pushed to GitHub (`main`). Next up: the sprite polish in [ART_PLAN
 
 These are placeholders I invented so the game works. Each one is yours to keep, change or remove.
 
-- [ ] Tap bonus (`TAP_RATE_BONUS`): each tap heals 1 + 2% of per-second. Set it to 0 for a flat +1 per tap.
-- [ ] Offline earnings: up to 8 hours at the full rate (`MAX_AWAY_S` in `src/hooks/use-game.tsx`).
+- [x] Tap bonus (`TAP_RATE_BONUS`): each tap heals 1 + 2% of per-second (kept 2026-10-20)
+- [x] Offline earnings: up to 4 hours at the full rate (`MAX_AWAY_S` in `src/hooks/use-game.tsx`; decided 2026-10-20)
 - [ ] Locked shop items show as a "???" silhouette until you've earned half their price.
 - [ ] Achievement names, descriptions and thresholds (`src/constants/achievements.ts`), 111 in total, including names for the 8 new items' achievements.
 - [x] Rebirth numbers (decided 2026-10-20): the first rebirth needs 1 billion patients in a run, each one after needs 2.5x more; 1 Natal Gem per rebirth (name kept); +2% healing per rebirth
-- [ ] **To build: the Natal Gem shop** (decided 2026-10-20). Prices still to pick.
-  - permanent upgrades, bought in levels: +10% per tap; +1 h offline time (up to 24 h)
+- [ ] **To build: the Natal Gem shop** (decided 2026-10-20)
+  - permanent upgrades, 5 levels each costing 1, 2, 3, 5, 8 gems: +10% per tap; +1 h offline time (4 h becomes up to 9 h)
   - cosmetics: medkit skins, gem-only animated backgrounds, rare My Room items, alternate app icons, and sticker PNGs to download
 - [ ] What each rebirth unlocks (`REBIRTH_UNLOCKS`, currently empty)
 - [ ] Rewards section title "Jasmine's Rewards", the gift icon, and the wording of the "Tell Dustin" message
@@ -46,7 +46,7 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [ ] How to Play text on the About page
 - [x] "Visit website" links to https://d-ustindwayne.github.io/MedkitClicker (empty until the site is built after the game; plan and starter prompt in [WEBSITE.md](WEBSITE.md))
 - [x] The website code lives in its own repo, `d-ustindwayne/MedkitClicker` (decided 2026-10-20)
-- [ ] Care Coins (`src/constants/achievements.ts` → `coins` on each achievement): the currency name, and the payout per achievement (1–5, harder pays more)
+- [x] Care Coins: each achievement pays half its listed amount, rounded up (1–3 coins; decided 2026-10-20). Boost and background prices may need lowering to match
 - [ ] The 13 boosts in `src/constants/boosts.ts`: names, effects, durations and coin prices
 - [ ] Ward patients (`src/constants/patients.ts`):
   - a patient arrives every 2–5 minutes and waits 3 minutes

@@ -13,7 +13,7 @@ const TICK_MS = 100;
 const AUTOSAVE_MS = 10_000;
 /** Gaps longer than this (app closed, backgrounded, tab hidden) count as time away. */
 const AWAY_THRESHOLD_S = 5;
-const MAX_AWAY_S = 8 * 3600;
+const MAX_AWAY_S = 4 * 3600;
 
 export type Toast = { id: number; title: string; body: string; kind: "achievement" | "info"; image?: ImageSourcePropType };
 

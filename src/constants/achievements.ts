@@ -122,7 +122,7 @@ const tierTrophy = (i: number, count: number) => [TROPHY.bronze, TROPHY.gold, TR
 
 const totalOwned = (s: GameState) => Object.values(s.owned).reduce((a, b) => a + b, 0);
 
-export const ACHIEVEMENTS: Achievement[] = [
+const LIST: Achievement[] = [
   ...healedMilestones.map(([n, name], i) => ({
     id: `healed_${n}`,
     name,
@@ -227,5 +227,8 @@ export const ACHIEVEMENTS: Achievement[] = [
     check: (s) => s.exports >= 1,
   },
 ];
+
+/** Care Coins pay half the listed amount, rounded up (decided 2026-10-20), so coins feel precious. */
+export const ACHIEVEMENTS: Achievement[] = LIST.map((a) => ({ ...a, coins: Math.ceil(a.coins / 2) }));
 
 export type AchievementId = string;

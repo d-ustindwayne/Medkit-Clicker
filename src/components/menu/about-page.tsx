@@ -29,7 +29,7 @@ export function AboutPage() {
 
       <Text className="font-body text-base leading-6 text-ink">
         Tap the medkit to heal patients. Spend them in the shop on supplies that keep healing for you. Your progress saves on
-        its own, and your team keeps working for up to 8 hours while the app is closed.
+        its own, and your team keeps working for up to 4 hours while the app is closed.
       </Text>
 
       <HardShadow offset={5}>

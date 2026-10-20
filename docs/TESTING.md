@@ -5,7 +5,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 ## Start-up and saving
 - [ ] The app opens to the medkit with the splash fading out, and no error screen appears
 - [ ] Close the app with the system back button or from recents, reopen it: patients, items and settings are kept
-- [ ] Close it for a minute or more, reopen it: a "Welcome back" toast shows the earnings (max 8 h)
+- [ ] Close it for a minute or more, reopen it: a "Welcome back" toast shows the earnings (max 4 h)
 - [ ] An old save (from before the 13 items) loads: its syringes, gloves and other items are still owned
 
 ## Medkit (main button)

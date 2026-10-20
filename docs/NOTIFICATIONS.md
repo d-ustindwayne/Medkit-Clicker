@@ -31,7 +31,7 @@ These use `expo-notifications` scheduled local notifications. No server is neede
 
 | Reminder | When | Default |
 | --- | --- | --- |
-| Offline earnings are full | 8 h after the app was closed (`MAX_AWAY_S`), so nothing is wasted | On |
+| Offline earnings are full | 4 h after the app was closed (`MAX_AWAY_S`), so nothing is wasted | On |
 | Daily check-in | Once a day at a time she picks, gentle wording | Off |
 | Take a break | After about 45 min of continuous play: a stress-relief nudge to rest | On |
 | Achievement unlocked while away | Not possible: achievements are checked inside the app | n/a |
@@ -39,7 +39,7 @@ These use `expo-notifications` scheduled local notifications. No server is neede
 **Implementation steps:**
 1. Install `expo-notifications` and add its config plugin in `app.json`.
 2. Create `src/hooks/use-notifications.tsx`. It asks permission the first time a reminder is turned on (Android 13+ needs `POST_NOTIFICATIONS`). It creates an Android channel called "Reminders".
-3. When the app goes to the background (the autosave already runs then): cancel the old "offline full" reminder and schedule a new one 8 h ahead.
+3. When the app goes to the background (the autosave already runs then): cancel the old "offline full" reminder and schedule a new one 4 h ahead.
 4. When the app returns to the foreground: cancel pending one-shot reminders.
 5. Add a "Notifications" card in Settings, with one toggle per reminder and a time picker for the daily check-in.
 6. Use the game's voice and the pixel icon as the notification icon. This needs a monochrome 96×96 PNG of the medkit; I'll list it in `ASSETS.md` when we build this.
