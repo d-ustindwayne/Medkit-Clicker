@@ -4,9 +4,11 @@ declare module "bun:test" {
     toBe(expected: unknown): void;
     toEqual(expected: unknown): void;
     toBeNull(): void;
+    toBeUndefined(): void;
     toHaveLength(length: number): void;
     toBeGreaterThan(n: number): void;
     toBeGreaterThanOrEqual(n: number): void;
+    toBeLessThan(n: number): void;
     toBeLessThanOrEqual(n: number): void;
     toBeCloseTo(n: number, digits?: number): void;
     not: Matchers;

@@ -2,7 +2,7 @@ import { createContext, use, useCallback, useEffect, useMemo, useState, type Rea
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, type AudioPlayer } from "expo-audio";
 import { Platform } from "react-native";
 
-import { BUNDLED_PLAYLISTS, SFX, type Playlist, type SfxName } from "@/constants/playlists";
+import { BUNDLED_PLAYLISTS, SFX, SOUNDTRACK, type Playlist, type SfxName } from "@/constants/playlists";
 import { useGameActions, useSettings } from "@/hooks/use-game";
 import { cloudEnabled, downloadMusic, getToken, loadCachedPlaylists, wakeServer, type CachedPlaylist } from "@/lib/cloud";
 import { VOLUME_STEPS } from "@/lib/storage";
@@ -60,7 +60,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const buy = useAudioPlayer(SFX.buy);
   const invalid = useAudioPlayer(SFX.invalid);
 
-  // The music library: songs downloaded after a code unlock, plus any bundled for testing.
+  // The music library: the game's soundtrack, songs downloaded after a code unlock, and any bundled for testing.
   const [cached, setCached] = useState<CachedPlaylist[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [download, setDownload] = useState<{ done: number; total: number } | null>(null);
@@ -75,7 +75,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   }, []);
   const library: Playlist[] = useMemo(() => {
     const downloaded = cached.map((p) => ({ id: p.id, name: p.name, tracks: p.tracks.map((uri) => ({ uri })) }));
-    return [...downloaded, ...BUNDLED_PLAYLISTS.filter((b) => !cached.some((c) => c.id === b.id))];
+    return [SOUNDTRACK, ...downloaded, ...BUNDLED_PLAYLISTS.filter((b) => !cached.some((c) => c.id === b.id))];
   }, [cached]);
 
   // Music: one player that walks through the selected playlist. The track index resets when the
