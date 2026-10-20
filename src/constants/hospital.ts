@@ -17,8 +17,20 @@ export const HOSPITAL_TIERS: HospitalTier[] = [
   { rebirths: 28, name: "Skyline Medical Center", image: require("@/imgs/scenes/hospital_7.png") },
   { rebirths: 36, name: "Meadow Medical Campus", image: require("@/imgs/scenes/hospital_8.png") },
   { rebirths: 45, name: "Grand Haven Medical Center", image: require("@/imgs/scenes/hospital_9.png") },
+  { rebirths: 50, name: "Grand Haven Reborn", image: require("@/imgs/scenes/hospital_10.png") },
 ];
 export const HOSPITAL_SKY: ImageSourcePropType = require("@/imgs/scenes/hospital_sky.png");
+
+/** The sky follows the phone's clock. `tint` darkens or warms the buildings to match. */
+export type DayPhase = "sunrise" | "day" | "sunset" | "night";
+export const SKIES: Record<DayPhase, { image: ImageSourcePropType; tint: string | null; clouds: number; fill: string }> = {
+  sunrise: { image: require("@/imgs/scenes/hospital_sky_sunrise.png"), tint: "rgba(255,170,150,0.12)", clouds: 0.9, fill: "#7f9fd8" },
+  day: { image: HOSPITAL_SKY, tint: null, clouds: 1, fill: "#8fcff5" },
+  sunset: { image: require("@/imgs/scenes/hospital_sky_sunset.png"), tint: "rgba(255,120,60,0.16)", clouds: 0.8, fill: "#4a4f9a" },
+  night: { image: require("@/imgs/scenes/hospital_sky_night.png"), tint: "rgba(10,16,48,0.42)", clouds: 0.25, fill: "#0b1030" },
+};
+/** Sunrise 5-7, day 7-17, sunset 17-19, night 19-5. */
+export const dayPhase = (hour: number): DayPhase => (hour >= 5 && hour < 7 ? "sunrise" : hour >= 7 && hour < 17 ? "day" : hour >= 17 && hour < 19 ? "sunset" : "night");
 
 /** The look for this many rebirths, and the next one (undefined once fully grown). */
 export const hospitalTier = (rebirths: number) => {

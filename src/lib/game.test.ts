@@ -4,7 +4,7 @@ import { ACHIEVEMENTS } from "@/constants/achievements";
 import { BOOSTS, boostMultiplier } from "@/constants/boosts";
 import { SHOP_ITEMS, itemCost } from "@/constants/items";
 import { SICK_PATIENTS, minigameTuning } from "@/constants/patients";
-import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, hospitalTier, visitorGap } from "@/constants/hospital";
+import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, dayPhase, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
 import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, roomBonus } from "@/constants/room";
 import { bulkCost, coinBalance, coinsEarned, emergencyReward, maxAwaySeconds, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
@@ -280,13 +280,17 @@ describe("rebirth target", () => {
 });
 
 describe("hospital", () => {
-  test("the hospital grows at rebirths 1, 3, 6, 10, 15, 21, 28, 36 and 45, then stays", () => {
-    expect(HOSPITAL_TIERS.map((t) => t.rebirths)).toEqual([0, 1, 3, 6, 10, 15, 21, 28, 36, 45]);
+  test("the hospital grows at rebirths 1, 3, 6, 10, 15, 21, 28, 36, 45 and 50, then stays", () => {
+    expect(HOSPITAL_TIERS.map((t) => t.rebirths)).toEqual([0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 50]);
     expect(hospitalTier(0).tier.name).toBe("Little Clinic");
     expect(hospitalTier(2).tier.rebirths).toBe(1);
     expect(hospitalTier(2).next?.rebirths).toBe(3);
-    expect(hospitalTier(50).tier.rebirths).toBe(45);
-    expect(hospitalTier(50).next).toBeUndefined();
+    expect(hospitalTier(49).tier.rebirths).toBe(45);
+    expect(hospitalTier(50).tier.rebirths).toBe(50);
+    expect(hospitalTier(60).next).toBeUndefined();
+  });
+  test("the sky follows the clock", () => {
+    expect([5, 8, 17, 21, 2].map(dayPhase)).toEqual(["sunrise", "day", "sunset", "night", "night"]);
   });
   test("busier healing brings visitors more often, within 2-9 s", () => {
     expect(visitorGap(0)).toBe(9);

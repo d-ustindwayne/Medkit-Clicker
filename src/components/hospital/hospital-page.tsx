@@ -20,6 +20,8 @@ import {
   VISITORS,
   VISITOR_FEET_Y,
   VISITOR_SPEED,
+  SKIES,
+  dayPhase,
   hospitalTier,
   visitorGap,
 } from "@/constants/hospital";
@@ -29,6 +31,7 @@ import { HOSPITAL_SCENE } from "@/constants/scenes";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector, useGameStore } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
+import { useNow } from "@/hooks/use-now";
 import { formatCount } from "@/lib/format";
 import { emergencyReward } from "@/lib/game";
 
@@ -276,15 +279,22 @@ function Street({ width, active }: { width: number; active: boolean }) {
 export function HospitalPage({ width, active }: { width: number; active: boolean }) {
   const rebirths = useGameSelector((s) => s.rebirths);
   const { tier } = hospitalTier(rebirths);
+  // Re-checked every minute, so the sky turns with the clock while the page is open.
+  const now = useNow(60_000);
+  const sky = SKIES[dayPhase(new Date(now).getHours())];
   const height = width * (ART_H / ART_W);
   return (
     // Clip: clouds and cars start off the page's edges and would otherwise show over the next page.
     <View className="flex-1 overflow-hidden">
-      <ScenePage scene={{ ...HOSPITAL_SCENE, anchor: 1 }} width={width}>
-        {CLOUDS.map((c) => (
-          <Cloud key={c.y} cloud={c} width={width} />
-        ))}
+      <ScenePage scene={{ ...HOSPITAL_SCENE, image: sky.image, fillTop: sky.fill, anchor: 1 }} width={width}>
+        <View pointerEvents="none" style={{ position: "absolute", width, height, opacity: sky.clouds }}>
+          {CLOUDS.map((c) => (
+            <Cloud key={c.y} cloud={c} width={width} />
+          ))}
+        </View>
         <Image source={tier.image} style={{ position: "absolute", width, height }} contentFit="cover" accessibilityLabel={tier.name} />
+        {/* Evening and night light over the buildings; the sky image itself stays bright and starry. */}
+        {sky.tint && <View pointerEvents="none" style={{ position: "absolute", width, height, top: 0, backgroundColor: sky.tint }} />}
         <Street width={width} active={active} />
       </ScenePage>
       <View className="absolute left-3 right-3 top-7">
