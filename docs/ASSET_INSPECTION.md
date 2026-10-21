@@ -1,6 +1,6 @@
 # Asset inspection plan
 
-A plan for checking every game image in one pass. **Status (2026-10-21): planned, not started.** Nothing below has been inspected yet.
+A plan for checking every game image in one pass. **Status (2026-10-21): first pass done, report below. Nothing has been changed yet; fixes wait for approval.**
 
 ## What gets inspected
 
@@ -56,3 +56,23 @@ A plan for checking every game image in one pass. **Status (2026-10-21): planned
 3. **Review list.** Results go into a table here (asset, rule, problem, proposed fix), sorted by how often the asset is seen: medkit, shop, boosts, room, then the rest.
 4. **Your approval, then fixes.** Before/after previews for each fix. Nothing is overwritten until you approve it (the pixel-art rule from the art plan). Fixes are made in the `.aseprite` source and re-exported, never by editing the PNG.
 5. **Re-run** the automatic checks until they come back clean, then rebuild `sticker-data.ts` if a sticker changed (`bun scripts/sticker-data.ts`).
+
+## Results of the first pass (2026-10-21)
+
+The automatic checks found no export problems: every PNG that has a source is an exact upscale of it, and no sprite uses pure black. What's left needs a decision.
+
+| # | Asset(s) | Rule | Problem | Proposed fix |
+| --- | --- | --- | --- | --- |
+| 1 | My Room floor items | Alignment | Feet sit at different heights: bookshelf, teddy bear and IV stand touch the bottom row; hospital bed, crash cart, flower vase and floor lamp end 1 px up; armchair, wheelchair, waiting bench, vending machine and aquarium 2 px up; potted plant, privacy screen, toy box and lava lamp 3 px up. Placed side by side they float at different heights. | Move each sprite down so every floor item stands on the bottom row. |
+| 2 | `room/floor_lamp` | Missing line pixels, effect particles | The pole doesn't reach the shade (a gap with two pale "glow" pixels beside it). | Join the pole to the shade; drop the two glow pixels. |
+| 3 | `achievements/trophy_star`, `trophy_diamond` | Effect particles | A 4-pixel sparkle in the top-left corner. | Remove it. |
+| 4 | `achievements/night_coffee` | Effect particles | Three single-pixel twinkles around the mug (the steam stays). | Remove them. |
+| 5 | `misc/natal_gem` | Effect particles, item matches icon | A pink sparkle top-right; the Natal Gem sticker has none. | Remove it, so icon and sticker match. |
+| 6 | `achievements/light_off` (L7 R3), `trophy_star` (L5 R7), `trophy_diamond` (L3 R6), `shop/bandage_roll` (L4 R2), `shop/thermometer` (L4 R2), `shop/microscope` (L3 R5) | Alignment | Off-centre by 2-4 px (empty columns left vs right). | Re-centre. |
+| 7 | `shop/gloves`, `syringe`, `facemask`, `medicines` | Alignment | They fill the whole 32 px canvas, while the other supplies keep a 1-10 px margin, so they look bigger in the shop list. | Leave a 1-2 px margin like the rest (a small redraw at 30 px). |
+| 8 | `achievements/trophy_gold` | Consistency, made in Aseprite | Bigger and darker-outlined than the bronze, platinum and diamond trophies it sits beside, and it has no source. | Redraw it in the trophy family's style as an `.aseprite`. |
+| 9 | 9 minigame medals, `misc/apple`, stickers made from game art (doctor, golden medkit, Natal Gem, Nightingale, nurse, winged heart) | Made in Aseprite | No `.aseprite` source. | Rebuild sources from the PNGs (the medals as one file with a layer per colour). |
+| 10 | `room/aquarium_*`, `lava_lamp_*`, `patient_monitor_*` | Made in Aseprite | Sources are in `sprites/gems/`, not `sprites/room/`. | Move them. |
+| 11 | `shop/bandage_roll` | Consistency | Pale grey on the white card, with little contrast; it reads weaker than the other supplies. | Your call: a warmer gauze colour or a stronger outline. |
+| 12 | `room/sanitizer` | Effect particles | A detached drip below the nozzle. | Your call: keep (it's part of the object) or remove. |
+| 13 | `gems/p_firefly` | Consistency | 24 × 24 while the other particles are 32 × 32. | Pad to 32 × 32 (no visual change). |
