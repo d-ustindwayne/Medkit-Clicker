@@ -71,13 +71,15 @@ Bun.serve({
       if (!code || !deviceId || deviceId.length > 100) return json({ error: "Missing code" }, 400);
       const hash = sha256(normalize(code));
       const result = await sql.begin(async (tx) => {
-        const [promo] = await tx`SELECT code_sha256, kind, amount, max_claims, message, expires_at FROM promo_codes WHERE code_sha256 = ${hash} FOR UPDATE`;
+        const [promo] = await tx`SELECT code_sha256, kind, amount, rewards, max_claims, message, expires_at FROM promo_codes WHERE code_sha256 = ${hash} FOR UPDATE`;
         if (!promo || (promo.expires_at && new Date(promo.expires_at) < new Date())) return { status: 404 } as const;
         const [{ used }] = await tx`SELECT count(*)::int AS used FROM promo_claims WHERE code_sha256 = ${hash}`;
         if (promo.max_claims !== null && used >= promo.max_claims) return { status: 409 } as const;
         const rows = await tx`INSERT INTO promo_claims (code_sha256, device_id) VALUES (${hash}, ${deviceId}) ON CONFLICT DO NOTHING RETURNING code_sha256`;
         if (rows.length === 0) return { status: 409 } as const;
-        return { status: 200, body: { kind: promo.kind, amount: Number(promo.amount), message: promo.message } } as const;
+        // `rewards` lists a bundle's parts (coins plus a background...); `kind`/`amount` stay for older app versions.
+        const rewards = promo.rewards ?? [{ kind: promo.kind, amount: Number(promo.amount) }];
+        return { status: 200, body: { kind: promo.kind, amount: Number(promo.amount), message: promo.message, rewards } } as const;
       });
       if (result.status !== 200) return json({ error: result.status === 404 ? "That code didn't match anything." : "That code was already used." }, result.status);
       return json(result.body);

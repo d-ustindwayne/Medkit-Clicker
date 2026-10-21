@@ -8,10 +8,11 @@ import { useDone, useJuice, type GameProps } from "@/components/ward/game-kit";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { COIN } from "@/constants/boosts";
-import { WIN_COINS, minigameTuning, type SickPatient } from "@/constants/patients";
+import { WIN_COINS, minigameLevel, minigameTuning, type SickPatient } from "@/constants/patients";
 import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
+import { healingRate } from "@/constants/rebirth";
+import { useGameActions, useGameStore, useSettings } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { usePalette } from "@/hooks/use-palette";
 import { formatCount } from "@/lib/format";
@@ -81,13 +82,13 @@ function HeartRipple() {
   return <Animated.View pointerEvents="none" style={[{ position: "absolute", width: 130, height: 130, borderRadius: 65, borderWidth: 5, borderColor: "#4edb4e" }, style]} />;
 }
 
-// ---------- Rhythm: tap with the heartbeat, 6 of 10 on time ----------
+// ---------- Rhythm: tap with the heartbeat, 6-8 of 10 on time ----------
 const BEATS = 10;
-const NEED_BEATS = 6;
 function RhythmGame({ onDone, tuning }: GameProps) {
-  // 100 bpm at first, up to 110 (the CPR rate); a forgiving timing window.
+  // 100 bpm at first, rising with progress; the timing window narrows and more beats are needed.
   const BEAT_MS = tuning.beatMs;
   const WINDOW_MS = tuning.beatWindowMs;
+  const NEED_BEATS = tuning.beatsNeeded;
   const juice = useJuice();
   const [ripple, setRipple] = useState(0);
   const done = useDone(onDone);
@@ -106,7 +107,8 @@ function RhythmGame({ onDone, tuning }: GameProps) {
       timers.push(
         setTimeout(() => {
           setBeat(k);
-          pulse.set(withSequence(withTiming(1.25, { duration: 80 }), withTiming(1, { duration: 260 })));
+          // A short, steady beat: the heart swells and settles, with no wobble.
+          pulse.set(withSequence(withTiming(1.12, { duration: 70, easing: Easing.out(Easing.quad) }), withTiming(1, { duration: 180, easing: Easing.in(Easing.quad) })));
         }, s - Date.now() + k * BEAT_MS),
       );
     }
@@ -126,7 +128,7 @@ function RhythmGame({ onDone, tuning }: GameProps) {
       setHitCount(hits.current.length);
       haptic.tap();
       playSfx("medkit");
-      juice.pop();
+      // The ripple is the "on time" signal; the panel itself stays still.
       setRipple((n) => n + 1);
     } else {
       haptic.denied();
@@ -210,16 +212,21 @@ const GAMES = { injection: InjectionGame, rhythm: RhythmGame, bandage: BandageGa
 /** `arrivedAt` is the waiting patient being treated; leave it out to just play (Dev Tools). */
 export function TreatModal({ patient, arrivedAt, onClose }: { patient: SickPatient; arrivedAt?: number; onClose: () => void }) {
   const { theme } = useSettings();
-  const state = useGameState();
+  // Read on demand, not subscribed: the game shouldn't re-render with every tick while it's played.
+  const store = useGameStore();
   const { dispatch } = useGameActions();
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
   const [result, setResult] = useState<{ won: boolean; amount: number } | null>(null);
   const Game = GAMES[patient.game];
-  // Fixed for the whole game, so treating this patient doesn't change the rules mid-play.
-  const [tuning] = useState(() => minigameTuning(state.treated));
+  // Fixed for the whole game, so treating this patient doesn't change the rules mid-play. Harder as
+  // more patients are treated and healing per second grows.
+  const [tuning] = useState(() => {
+    const s = store.get();
+    return minigameTuning(minigameLevel(s.treated, healingRate({ owned: s.owned, rebirths: s.rebirths })));
+  });
 
   const finish = (won: boolean) => {
-    const amount = treatReward(state, won);
+    const amount = treatReward(store.get(), won);
     if (arrivedAt !== undefined) dispatch({ type: "treat", won, arrivedAt });
     if (won) dispatch({ type: "minigameWon", game: patient.game });
     setResult({ won, amount });

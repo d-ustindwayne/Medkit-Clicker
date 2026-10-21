@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
 import { Directory, File, Paths } from "expo-file-system";
 
+import type { PromoItem } from "@/lib/game";
+
 // Talks to the Medkit Clicker server (server/index.ts). Nothing here logs anyone in: a redeem code
 // is traded once for a token, and the token opens that section's rewards and music.
 // Turned off unless EXPO_PUBLIC_API_URL is set at build time.
@@ -119,7 +121,8 @@ export async function downloadMusic(token: string, onProgress: (done: number, to
   return library;
 }
 
-export type PromoReward = { kind: "medkits" | "coins" | "gems"; amount: number; message: string | null };
+/** `rewards` lists every part of a bundle; older servers send only `kind` and `amount`. */
+export type PromoReward = { kind: "medkits" | "coins" | "gems" | "bundle"; amount: number; message: string | null; rewards?: PromoItem[] };
 
 /**
  * Claims a promo code (released later by Dustin; see scripts/add-promo.ts). The server allows one

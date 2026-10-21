@@ -36,6 +36,9 @@ export const formatCount = (n: number) => {
   return name ? `${trim(scaled.toFixed(3))} ${name}` : scientific(n);
 };
 
+/** The exact whole number with commas (1,234,567,890), switching to formatCount only past a quadrillion. */
+export const formatWhole = (n: number) => (n < 1e15 ? withCommas(n) : formatCount(n));
+
 /** Like formatCount, but keeps one decimal for small rates such as 0.3/s. */
 export const formatRate = (n: number) => (n < 10 ? trim(n.toFixed(1)) : formatCount(n));
 

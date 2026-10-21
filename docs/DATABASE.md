@@ -3,7 +3,7 @@
 **Status (2026-10-20):**
 - The Aiven database is set up: tables created, the private section's code hash and its rewards uploaded.
 - A private music library (123 MB) is in `playlists` and `tracks`; only the private code downloads it. Everyone else hears only the game's soundtrack.
-- Promo codes: `bun run add-promo <code> <medkits|coins|gems> <amount> [max-claims] [message]`. Anyone can enter one (code entry unlocks from the About icon); one claim per phone.
+- Promo codes: `bun run add-promo <code> <rewards> [max-claims] [message]`, where `<rewards>` is one or more of `medkits:<n>`, `coins:<n>`, `gems:<n>`, `seconds:<n>` (seconds of healing) and `background:<id>`, joined by commas (for example `coins:20,background:purple_rain`). The older `<code> coins 5` form still works. Anyone can enter one (code entry unlocks from the About icon); one claim per phone. Bundles need the server from 2026-10-21 or later.
 - Players who reach rebirth 50 can leave their name, email and feedback (`hall_of_fame`).
 - The API was tested end to end against it from this laptop.
 - The API is live on Render (free plan) and was tested end to end from outside: wrong codes rejected and rewards served.

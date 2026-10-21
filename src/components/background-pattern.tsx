@@ -230,7 +230,7 @@ function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind;
       return (
         <>
           <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: height * 0.35, backgroundColor: colors.accent, opacity: 0.3 }} />
-          {many(34).map((i) => (
+          {many(24).map((i) => (
             <Drop key={i} i={i} height={height} left={noise(i) * width} color={i % 3 ? colors.line : (colors.accent ?? colors.line)} />
           ))}
         </>
@@ -240,7 +240,7 @@ function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind;
     case "stars":
       return (
         <>
-          {many(45).map((i) => (
+          {many(30).map((i) => (
             <Star key={i} i={i} left={noise(i, 9) * width} top={noise(i, 10) * height} color={colors.line} />
           ))}
           <Svg width={42} height={42} style={{ position: "absolute", right: width * 0.12, top: height * 0.12 }}>
@@ -262,7 +262,7 @@ function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind;
       return (
         <>
           <View style={{ position: "absolute", left: 0, right: 0, top: 0, height: height * 0.45, backgroundColor: colors.accent, opacity: 0.35 }} />
-          {many(22).map((i) => (
+          {many(16).map((i) => (
             <Faller key={i} i={i} width={width} height={height} image={i % 3 ? SPRITES.petal : SPRITES.petal2} px={14 + noise(i, 25) * 10} wind={0.8} spin />
           ))}
         </>
@@ -272,7 +272,7 @@ function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind;
         <>
           <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: height * 0.22, backgroundColor: colors.line }} />
           <View style={{ position: "absolute", left: 0, right: 0, bottom: height * 0.22, height: height * 0.06, backgroundColor: colors.accent }} />
-          {many(18).map((i) => (
+          {many(14).map((i) => (
             <Firefly key={i} i={i} width={width} height={height} />
           ))}
         </>
@@ -281,7 +281,7 @@ function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind;
       return (
         <>
           <View style={{ position: "absolute", left: -20, right: -20, bottom: -height * 0.05, height: height * 0.16, borderTopLeftRadius: height * 0.2, borderTopRightRadius: height * 0.3, backgroundColor: colors.line, opacity: 0.85 }} />
-          {many(30).map((i) => (
+          {many(22).map((i) => (
             <Faller key={i} i={i} width={width} height={height} image={SPRITES.snow} px={10 + noise(i, 26) * 10} wind={-0.3} spin={false} />
           ))}
         </>
@@ -292,7 +292,7 @@ function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind;
           {many(3).map((i) => (
             <AuroraBand key={i} i={i} width={width} height={height} color={i === 1 ? (colors.accent ?? colors.line) : colors.line} />
           ))}
-          {many(30).map((i) => (
+          {many(20).map((i) => (
             <Star key={i} i={i} left={noise(i, 9) * width} top={noise(i, 10) * height} color={colors.line} />
           ))}
         </>

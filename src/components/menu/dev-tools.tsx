@@ -22,7 +22,7 @@ export function DevTools() {
     ["+20 Care Coins", () => dispatch({ type: "devAddCoins", count: 20 })],
     ["Call a patient", () => dispatch({ type: "patientArrives", id: SICK_PATIENTS[Math.floor(Math.random() * SICK_PATIENTS.length)].id, next: Date.now() + 60_000 })],
     ["+1 rebirth", () => dispatch({ type: "devRebirth" })],
-    ["+10 Natal Gems", () => dispatch({ type: "claimPromo", hash: `dev-${Date.now()}`, kind: "gems", amount: 10 })],
+    ["+10 Natal Gems", () => dispatch({ type: "claimPromo", hash: `dev-${Date.now()}`, rewards: [{ kind: "gems", amount: 10 }] })],
   ];
   // One button per minigame (the first patient that plays it).
   const games = SICK_PATIENTS.filter((p, i, all) => all.findIndex((q) => q.game === p.game) === i);

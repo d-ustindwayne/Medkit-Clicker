@@ -6,7 +6,7 @@ import { gemBalance } from "@/constants/gems";
 import { MEDKIT_IMAGE } from "@/constants/items";
 import { GEM } from "@/constants/rebirth";
 import { useGameSelector } from "@/hooks/use-game";
-import { formatShort } from "@/lib/format";
+import { formatShort, formatWhole } from "@/lib/format";
 import { coinBalance } from "@/lib/game";
 
 function Chip({ image, value, label }: { image: number; value: string; label: string }) {
@@ -20,7 +20,8 @@ function Chip({ image, value, label }: { image: number; value: string; label: st
 
 /** The three currencies, stacked at the top-right: patients (medkits), Care Coins and Natal Gems. */
 export function CurrencyBar() {
-  const state = useGameSelector((s) => ({ healed: formatShort(s.healed), healedFull: Math.floor(s.healed / 1000), coins: coinBalance(s), gems: gemBalance(s) }));
+  // Medkits are shown in full (not rounded to 1.2K) so every patient counts.
+  const state = useGameSelector((s) => ({ healed: formatWhole(s.healed), coins: coinBalance(s), gems: gemBalance(s) }));
   const coins = state.coins;
   return (
     <View className="gap-1" pointerEvents="none">

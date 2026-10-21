@@ -23,6 +23,7 @@ Committed and pushed to GitHub (`main`). Next up: the sprite polish in [ART_PLAN
 These are placeholders I invented so the game works. Each one is yours to keep, change or remove.
 
 - [x] Tap bonus (`TAP_RATE_BONUS`): each tap heals 1 + 2% of per-second (kept 2026-10-20)
+- [ ] **A bit more generous (2026-10-21, picked by Claude for the demo):** tap bonus 2% → 2.5% of per-second; prices grow 14% per purchase instead of 15%; every 25 of an item adds 30% instead of 25%; a ward win pays 150 s of production instead of 120 s
 - [x] Offline earnings: up to 4 hours at the full rate (`MAX_AWAY_S` in `src/hooks/use-game.tsx`; decided 2026-10-20)
 - [ ] Locked shop items show as a "???" silhouette until you've earned half their price.
 - [ ] Achievement names, descriptions and thresholds (`src/constants/achievements.ts`), 111 in total, including names for the 8 new items' achievements.
@@ -52,14 +53,25 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [x] The website code lives in `website/` in this repo and is served at /Medkit-Clicker/ (moved from `Medkit-Clicker-Website` on 2026-10-21)
 - [x] Care Coins: each achievement pays half its listed amount, rounded up (1–3 coins; decided 2026-10-20). Boost and background prices may need lowering to match
 - [ ] The 13 boosts in `src/constants/boosts.ts`: names, effects and durations (prices kept 2026-10-20)
+- [ ] **Boost icons (2026-10-21, by Claude):** each boost has its own icon in `src/imgs/boosts/` (sources in `src/media/photos/sprites/boosts/`, rebuilt by `scripts/boost-icons.lua`): an existing sprite recoloured, with a corner badge for its kind: orange bolt = per tap, blue arrow = per second, red plus = instant patients, green star = lucky taps, pink % = sale
+- [ ] **My Room no-place areas (2026-10-21, by Claude):** items can't go on the rooms' signs, windows, doors, shelves, desk, bed or counter (`blocked` in `src/constants/room.ts`); a drop there snaps to the nearest free spot. Wall items now start a little lower (30% down instead of 24%) so they stay inside the room art
+- [x] **Promo codes (2026-10-21):** codes can now pay a bundle (Care Coins, patients, gems, seconds of healing and paid backgrounds together). Three were added to the database with `bun run add-promo`; the codes themselves are only in the database (hashed)
+- [ ] **Asset inspection:** planned in [ASSET_INSPECTION.md](ASSET_INSPECTION.md), not started
 - [x] Ward patients (`src/constants/patients.ts`; frequency decided 2026-10-20):
   - a patient arrives every 1–3 minutes and waits 3 minutes
-  - a win pays 2 minutes of production plus 1 Care Coin
+  - a win pays 2.5 minutes of production plus 1 Care Coin (was 2 minutes; changed 2026-10-21)
   - a loss pays 10 seconds of production
-- [x] Minigames get slightly harder over time (decided 2026-10-20; `minigameTuning` in `src/constants/patients.ts`), reaching the hardest at 100 patients treated:
-  - Injection: 2 of 3 shots in the vein; the needle speeds up to 1.2x and the vein narrows from 18% to 15%
-  - Rhythm: 7 of 10 beats, 110 bpm rising to 120 bpm, with a tighter timing window
-  - Bandage: 25 wraps rising to 30, in 5 seconds
+- [ ] **Minigames get harder with progress (2026-10-21, numbers picked by Claude):** `minigameLevel` in `src/constants/patients.ts` goes from 0 to 1, 35% from patients treated (full at 60) and 65% from healing per second (log scale, full at 100 million/s). `minigameTuning` turns it into each game's numbers (easiest → hardest):
+  - Injection: needle 1x → 1.6x speed, vein 18% → 10% wide
+  - Rhythm: 100 → 128 bpm, timing window 230 → 140 ms, 6 → 8 of 10 beats needed
+  - Bandage: 25 → 38 wraps in 5 seconds
+  - Pulse Check: 5–7 → 9–11 beats, 620 → 380 ms apart (always at least 0.1 s of rest between beats, and a 1.2 s "get ready" before the first)
+  - Sort the Meds: 6 → 3.5 seconds
+  - Spot the Fracture: 6 → 9 → 12 bones, 5 → 3.5 seconds, a finer crack
+  - Germ Buster: germs show 950 → 520 ms, 7 → 8 of 10 needed
+  - Deep Breaths: 1.7 → 1.15 s breath, a narrower "full" band
+  - Match the Meds: 3 pairs, then 4 pairs from halfway; 15 → 11 seconds (+3 s with 4 pairs)
+  - The games wobble less: the whole panel no longer bounces on each hit, and pills, germs and cards move more calmly
 - [x] Six more minigames (2026-10-20), each with a new ward patient: Pulse Check (count the beats), Sort the Meds (tap one colour of pill), Spot the Fracture (X-ray), Germ Buster (tap 7 of 10 germs), Deep Breaths (hold and release at the top, 2 of 3), Match the Meds (3 pairs)
 - [x] Nine more My Room items (2026-10-20): Wall Clock, Heart Poster, Teddy Bear, Armchair, Toy Box, Floor Lamp, Flower Vase, Bookshelf, String Lights (bonuses and unlocks picked by Claude)
   - the intro lines for each patient

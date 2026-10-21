@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
-import { Pressable, ScrollView, Text, View, type GestureResponderEvent } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
+import { Pressable, ScrollView, Text, View, type GestureResponderEvent, type ImageSourcePropType } from "react-native";
+import Animated, { Easing, type SharedValue, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 
 import { ScenePage } from "@/components/scene-page";
 import { HardShadow } from "@/components/ui/hard-shadow";
@@ -15,41 +15,49 @@ import { useGameActions, useGameSelector } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 
 const ART_W = 320;
+/** Room buttons and the item tray draw above every placed item (DRAG_DEPTH included). */
+const CONTROLS_DEPTH = DRAG_DEPTH + 10;
 type Box = { x: number; y: number; w: number; h: number };
 
+/** One frame of a walk cycle: visible only on its steps (animated on the UI thread, no re-renders). */
+function WalkFrame({ step, index, image, size }: { step: SharedValue<number>; index: number; image: ImageSourcePropType; size: number }) {
+  const style = useAnimatedStyle(() => ({ opacity: WALK_SEQUENCE[Math.min(WALK_SEQUENCE.length - 1, Math.floor(step.get()))] === index ? 1 : 0 }));
+  return (
+    <Animated.View style={[{ position: "absolute", width: size, height: size }, style]}>
+      <Image source={image} style={{ width: size, height: size }} contentFit="contain" />
+    </Animated.View>
+  );
+}
+
 /** One staff member pacing the floor with a 3-frame walk cycle. */
-const Walker = memo(function Walker({ id, width, height, lane, frame }: { id: string; width: number; height: number; lane: number; frame: number }) {
+const Walker = memo(function Walker({ id, width, height, lane }: { id: string; width: number; height: number; lane: number }) {
   const reduceMotion = useReducedMotion();
   const size = width * (CHARACTER_PX / ART_W);
   const x = useSharedValue(0);
+  const step = useSharedValue(0);
   useEffect(() => {
     if (reduceMotion) return;
     // Each lane walks a different stretch at a different pace so they don't march in step.
     x.set(withRepeat(withTiming(1, { duration: 9000 + lane * 2600, easing: Easing.inOut(Easing.quad) }), -1, true));
-  }, [x, lane, reduceMotion]);
+    step.set(withRepeat(withTiming(WALK_SEQUENCE.length, { duration: WALK_SEQUENCE.length * WALK_FRAME_MS, easing: Easing.linear }), -1, false));
+  }, [x, step, lane, reduceMotion]);
   const span = width - size * 1.2;
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: (lane % 2 ? 1 - x.get() : x.get()) * span }] }));
   const frames = STAFF_FRAMES[id];
-  const shown = reduceMotion ? 0 : WALK_SEQUENCE[frame % WALK_SEQUENCE.length];
   const footY = 0.97 - lane * 0.035;
   return (
     // Sorted with the furniture by where their feet are: a nurse walks behind a bed that stands lower
     // on screen and in front of one that stands higher.
     <Animated.View pointerEvents="none" style={[{ position: "absolute", left: size * 0.1, top: height * footY - size, width: size, height: size, zIndex: depth(footY) }, style]}>
       {frames.map((src, i) => (
-        <Image key={i} source={src} style={{ position: "absolute", width: size, height: size, opacity: i === shown ? 1 : 0 }} contentFit="contain" />
+        <WalkFrame key={i} step={step} index={i} image={src} size={size} />
       ))}
     </Animated.View>
   );
 });
 
 function Staff({ ids, width, height }: { ids: string[]; width: number; height: number }) {
-  const [frame, setFrame] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setFrame((f) => f + 1), WALK_FRAME_MS);
-    return () => clearInterval(id);
-  }, []);
-  return ids.map((s, i) => <Walker key={s} id={s} width={width} height={height} lane={i} frame={frame} />);
+  return ids.map((s, i) => <Walker key={s} id={s} width={width} height={height} lane={i} />);
 }
 
 /** A placed item; draggable (and removable) in edit mode. */
@@ -229,8 +237,45 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
   };
 
   const placedSorted = [...placed].sort((a, b) => a.y - b.y);
+  const toggle = (
+    <HardShadow offset={3}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={editing ? "Done decorating" : "Decorate room"}
+        onPress={() => {
+          unlock();
+          playSfx("click");
+          onEditingChange(!editing);
+        }}
+        className={`h-10 w-10 items-center justify-center border-2 border-outline ${editing ? "bg-success" : "bg-surface"}`}
+      >
+        <PixelIcon name={editing ? "check" : "edit"} size={16} />
+      </Pressable>
+    </HardShadow>
+  );
   return (
     <View ref={rootRef} className="flex-1">
+      {/* Decorating: the room switcher and Done button sit in a row above the room, never over it. */}
+      {editing && (
+        <View className="flex-row items-center justify-between gap-2 px-3 pb-2" style={{ zIndex: CONTROLS_DEPTH }}>
+          <View className="flex-1 flex-row items-center self-stretch border-2 border-outline bg-surface">
+            <Pressable accessibilityRole="button" accessibilityLabel="Previous room" onPress={() => cycleRoom(-1)} className="h-9 w-8 items-center justify-center">
+              <PixelIcon name="left" size={12} />
+            </Pressable>
+            <View className="flex-1 items-center px-1">
+              <Text className="font-pixel text-[10px] tracking-[1px] text-ink">{room.title.toUpperCase()}</Text>
+              <Text className="font-number text-xs text-ink" numberOfLines={1}>
+                {placed.length}/{room.limit} items · +{Math.round(rate * 100)}%/s +{Math.round(tap * 100)}%/tap
+              </Text>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Next room" onPress={() => cycleRoom(1)} className="h-9 w-8 items-center justify-center">
+              <PixelIcon name="right" size={12} />
+            </Pressable>
+          </View>
+          {toggle}
+        </View>
+      )}
+
       {/* While decorating, the room sits at the top so the item tray fits in the space below it. */}
       <ScenePage scene={editing ? { ...room, anchor: 0 } : room} width={width} contentRef={sceneRef}>
         {placedSorted.map((p) => {
@@ -253,52 +298,24 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
         {!editing && <WardPatient width={width} height={height} />}
       </ScenePage>
 
-      {/* Edit toggle */}
-      <View className="absolute right-3 top-2">
-        <HardShadow offset={3}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={editing ? "Done decorating" : "Decorate room"}
-            onPress={() => {
-              unlock();
-              playSfx("click");
-              onEditingChange(!editing);
-            }}
-            className={`h-10 w-10 items-center justify-center border-2 border-outline ${editing ? "bg-success" : "bg-surface"}`}
-          >
-            <PixelIcon name={editing ? "check" : "edit"} size={16} />
-          </Pressable>
-        </HardShadow>
-      </View>
+      {/* Decorate button, drawn above everything in the room. */}
+      {!editing && (
+        <View className="absolute right-3 top-2" style={{ zIndex: CONTROLS_DEPTH }}>
+          {toggle}
+        </View>
+      )}
 
+      {/* Item tray: a swipe row under the room. Drag a tile up into the room, or tap it. */}
       {editing && (
-        <>
-          {/* Room switcher */}
-          <View className="absolute left-3 top-2 flex-row items-center border-2 border-outline bg-surface">
-            <Pressable accessibilityRole="button" accessibilityLabel="Previous room" onPress={() => cycleRoom(-1)} className="h-9 w-8 items-center justify-center">
-              <PixelIcon name="left" size={12} />
-            </Pressable>
-            <View className="items-center px-1">
-              <Text className="font-pixel text-[10px] tracking-[1px] text-ink">{room.title.toUpperCase()}</Text>
-              <Text className="font-number text-xs text-ink">
-                {placed.length}/{room.limit} items · +{Math.round(rate * 100)}%/s +{Math.round(tap * 100)}%/tap
-              </Text>
-            </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Next room" onPress={() => cycleRoom(1)} className="h-9 w-8 items-center justify-center">
-              <PixelIcon name="right" size={12} />
-            </Pressable>
-          </View>
-
-          {/* Item tray */}
-          <View className="absolute inset-x-0 bottom-0 border-t-2 border-outline bg-surface/95 py-1.5" accessibilityHint={`Drag placed items to move them. Bonuses are capped at +${Math.round(ROOM_BONUS_CAP * 100)}% each.`}>
-            <ScrollView horizontal scrollEnabled={!dragging} showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-3">
-              {ROOM_ITEMS.map((item) => {
-                const open = isUnlocked(item.unlock, state);
-                const here = placed.some((p) => p.item === item.id);
-                const elsewhere = !here && Object.entries(state.room.placed).some(([rid, list]) => rid !== room.id && list.some((p) => p.item === item.id));
-                const bonus = item.bonus.rate ? `+${Math.round(item.bonus.rate * 100)}%/s` : `+${Math.round((item.bonus.tap ?? 0) * 100)}%/tap`;
-                return (
-                  <View key={item.id} {...dragHandlers(item)}>
+        <View className="border-t-2 border-outline bg-surface py-1.5" style={{ zIndex: CONTROLS_DEPTH }} accessibilityHint={`Drag placed items to move them. Bonuses are capped at +${Math.round(ROOM_BONUS_CAP * 100)}% each.`}>
+          <ScrollView horizontal scrollEnabled={!dragging} showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-3">
+            {ROOM_ITEMS.map((item) => {
+              const open = isUnlocked(item.unlock, state);
+              const here = placed.some((p) => p.item === item.id);
+              const elsewhere = !here && Object.entries(state.room.placed).some(([rid, list]) => rid !== room.id && list.some((p) => p.item === item.id));
+              const bonus = item.bonus.rate ? `+${Math.round(item.bonus.rate * 100)}%/s` : `+${Math.round((item.bonus.tap ?? 0) * 100)}%/tap`;
+              return (
+                <View key={item.id} {...dragHandlers(item)}>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={open ? `${item.name}, ${bonus}${here ? ", placed" : ""}` : `${item.name}, locked: ${unlockHint(item.unlock)}`}
@@ -313,12 +330,11 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
                     {elsewhere && <Text className="absolute left-0.5 top-0.5 font-pixel text-[7px] text-ink">IN USE</Text>}
                     {!open && <View className="absolute right-0.5 top-0.5"><PixelIcon name="lock" size={8} /></View>}
                   </Pressable>
-                  </View>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </>
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
       )}
 
       {ghost && (

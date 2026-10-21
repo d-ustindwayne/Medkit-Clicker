@@ -20,8 +20,8 @@ import { hardness, shuffle, useDone, useJuice, type GameProps } from "@/componen
 import { useAudio } from "@/hooks/use-audio";
 import { useHaptics } from "@/hooks/use-haptics";
 
-// Six more quick ward minigames, each a few seconds long, with a bit of life: things bob, pop,
-// flip and shake. They get a little harder as you treat more patients (see minigameTuning).
+// Six more quick ward minigames, each a few seconds long, with a bit of life: things bob, pop
+// and flip. They get harder with progress (see minigameLevel and minigameTuning).
 
 /** A countdown in seconds that calls `onEnd` once at zero. */
 function useCountdown(ms: number, onEnd: () => void) {
@@ -67,25 +67,29 @@ function Ripple({ beat }: { beat: number }) {
   const style = useAnimatedStyle(() => ({ opacity: 0.6 * (1 - t.get()), transform: [{ scale: 0.8 + t.get() * 0.9 }] }));
   return <Animated.View pointerEvents="none" style={[{ position: "absolute", width: 120, height: 120, borderRadius: 60, borderWidth: 4, borderColor: "#e2372b" }, style]} />;
 }
+/** Quiet time before the first beat, so the count starts cleanly. */
+const PULSE_LEAD_MS = 1200;
 function PulseGame({ onDone, tuning }: GameProps) {
   const done = useDone(onDone);
   const { playSfx } = useAudio();
   const haptic = useHaptics();
   const juice = useJuice();
-  const [beats] = useState(() => 5 + Math.floor(Math.random() * 4));
+  // 5-7 beats for a new player, up to 9-11 later on.
+  const [beats] = useState(() => tuning.pulseBeats + Math.floor(Math.random() * 3));
   const [options] = useState(() => shuffle([beats - 1, beats, beats + 1]));
   const [asking, setAsking] = useState(false);
   const [beat, setBeat] = useState(0);
   const pulse = useSharedValue(1);
   useEffect(() => {
-    const gap = 620 - hardness(tuning) * 120;
+    const gap = tuning.pulseGapMs;
+    // A "get ready" pause before the first beat, and each beat (240 ms) leaves a clear rest before the next.
     const timers = Array.from({ length: beats }, (_, k) =>
       setTimeout(() => {
-        pulse.set(withSequence(withTiming(1.3, { duration: 90 }), withTiming(1, { duration: 250 })));
+        pulse.set(withSequence(withTiming(1.18, { duration: 70, easing: Easing.out(Easing.quad) }), withTiming(1, { duration: 170, easing: Easing.in(Easing.quad) })));
         setBeat(k + 1);
-      }, 900 + k * gap),
+      }, PULSE_LEAD_MS + k * gap),
     );
-    timers.push(setTimeout(() => setAsking(true), 900 + beats * gap + 400));
+    timers.push(setTimeout(() => setAsking(true), PULSE_LEAD_MS + beats * gap + 400));
     return () => timers.forEach(clearTimeout);
   }, [beats, pulse, tuning]);
   const heart = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }));
@@ -116,7 +120,7 @@ function PulseGame({ onDone, tuning }: GameProps) {
             </View>
           </>
         ) : (
-          <Hint>Count the heartbeats...</Hint>
+          <Hint>{beat === 0 ? "Get ready..." : "Count the heartbeats..."}</Hint>
         )}
       </View>
     </Animated.View>
@@ -129,19 +133,19 @@ const PILL_COLORS = [
   { name: "BLUE", a: "#3a8fe0", b: "#ffffff" },
   { name: "YELLOW", a: "#f2c14e", b: "#ffffff" },
 ];
-/** A pill that wobbles gently and pops away when taken. */
+/** A pill that sways slightly and pops away when taken. */
 const Pill = memo(function Pill({ color, i, taken }: { color: (typeof PILL_COLORS)[number]; i: number; taken: boolean }) {
   const wobble = useSharedValue(0);
   const gone = useSharedValue(0);
   useEffect(() => {
-    wobble.set(withDelay(i * 90, withRepeat(withSequence(withTiming(1, { duration: 500 }), withTiming(-1, { duration: 500 })), -1, true)));
+    wobble.set(withDelay(i * 90, withRepeat(withSequence(withTiming(1, { duration: 900, easing: Easing.inOut(Easing.sin) }), withTiming(-1, { duration: 900, easing: Easing.inOut(Easing.sin) })), -1, true)));
   }, [wobble, i]);
   useEffect(() => {
-    if (taken) gone.set(withTiming(1, { duration: 220, easing: Easing.out(Easing.back(3)) }));
+    if (taken) gone.set(withTiming(1, { duration: 200, easing: Easing.out(Easing.quad) }));
   }, [taken, gone]);
   const style = useAnimatedStyle(() => ({
     opacity: 1 - gone.get(),
-    transform: [{ rotate: `${wobble.get() * 8}deg` }, { translateY: wobble.get() * 2 }, { scale: 1 + gone.get() * 0.6 }],
+    transform: [{ rotate: `${wobble.get() * 3}deg` }, { scale: 1 + gone.get() * 0.4 }],
   }));
   return (
     <Animated.View style={style}>
@@ -157,7 +161,7 @@ function PillsGame({ onDone, tuning }: GameProps) {
   const { playSfx } = useAudio();
   const haptic = useHaptics();
   const juice = useJuice();
-  const total = 6000 - hardness(tuning) * 1000;
+  const total = tuning.pillsMs;
   const [pills] = useState(() => {
     const target = Math.floor(Math.random() * 3);
     const colors = shuffle([target, target, target, target, (target + 1) % 3, (target + 1) % 3, (target + 2) % 3, (target + 2) % 3, (target + 1) % 3]);
@@ -208,10 +212,13 @@ function XrayGame({ onDone, tuning }: GameProps) {
   const { playSfx } = useAudio();
   const haptic = useHaptics();
   const juice = useJuice();
-  const count = hardness(tuning) > 0.5 ? 9 : 6;
+  const count = tuning.bones;
+  const total = tuning.xrayMs;
+  // The crack gets finer as the game gets harder.
+  const crackW = Math.round(16 - hardness(tuning) * 6);
   const [cracked] = useState(() => Math.floor(Math.random() * count));
   const [picked, setPicked] = useState<number | null>(null);
-  const left = useCountdown(5000, () => done(false));
+  const left = useCountdown(total, () => done(false));
   // A scan line sweeps down the film, like a light box.
   const scan = useSharedValue(0);
   useEffect(() => {
@@ -233,7 +240,7 @@ function XrayGame({ onDone, tuning }: GameProps) {
     <Animated.View style={juice.style}>
       <View className="items-center gap-3">
         <Text className="font-number text-base text-ink">Find the fracture</Text>
-        <TimeBar left={left} total={5000} />
+        <TimeBar left={left} total={total} />
         <View onLayout={(e) => setFilmH(e.nativeEvent.layout.height)} className="w-60 flex-row flex-wrap justify-between gap-y-2 overflow-hidden border-2 border-outline bg-[#0d1a2c] p-2">
           {Array.from({ length: count }, (_, i) => {
             const glow = picked === i ? (i === cracked ? "bg-success/30" : "bg-danger/30") : "";
@@ -246,7 +253,7 @@ function XrayGame({ onDone, tuning }: GameProps) {
                     <View className="h-3 w-3 rounded-full bg-[#e8f2ff]" />
                   </View>
                   <View className="h-8 w-3 bg-[#e8f2ff]">
-                    {i === cracked && <View className="absolute left-[-2px] top-3 h-[3px] w-[16px] bg-[#0d1a2c]" style={{ transform: [{ rotate: "-25deg" }] }} />}
+                    {i === cracked && <View className="absolute top-3 h-[3px] bg-[#0d1a2c]" style={{ left: (12 - crackW) / 2, width: crackW, transform: [{ rotate: "-25deg" }] }} />}
                   </View>
                   <View className="flex-row gap-1">
                     <View className="h-3 w-3 rounded-full bg-[#e8f2ff]" />
@@ -272,15 +279,15 @@ function Germ({ busted }: { busted: boolean }) {
   const wiggle = useSharedValue(0);
   const burst = useSharedValue(0);
   useEffect(() => {
-    t.set(withSpring(1, { damping: 7, stiffness: 260 }));
-    wiggle.set(withRepeat(withSequence(withTiming(1, { duration: 120 }), withTiming(-1, { duration: 120 })), -1, true));
+    t.set(withSpring(1, { damping: 14, stiffness: 260 }));
+    wiggle.set(withRepeat(withSequence(withTiming(1, { duration: 260 }), withTiming(-1, { duration: 260 })), -1, true));
   }, [t, wiggle]);
   useEffect(() => {
     if (busted) burst.set(withTiming(1, { duration: 200 }));
   }, [busted, burst]);
   const style = useAnimatedStyle(() => ({
     opacity: 1 - burst.get(),
-    transform: [{ scale: t.get() * (1 + burst.get() * 0.8) }, { rotate: `${wiggle.get() * 10}deg` }],
+    transform: [{ scale: t.get() * (1 + burst.get() * 0.5) }, { rotate: `${wiggle.get() * 4}deg` }],
   }));
   return (
     <Animated.View style={style}>
@@ -296,13 +303,14 @@ function GermGame({ onDone, tuning }: GameProps) {
   const [germ, setGerm] = useState<{ n: number; cell: number; busted: boolean } | null>(null);
   const [busted, setBusted] = useState(0);
   const hits = useRef(0);
+  const need = tuning.germsNeeded;
   useEffect(() => {
-    const show = 950 - hardness(tuning) * 250;
+    const show = tuning.germShowMs;
     const timers: ReturnType<typeof setTimeout>[] = [];
     for (let n = 0; n < GERMS; n++) {
       timers.push(setTimeout(() => setGerm({ n, cell: Math.floor(Math.random() * 9), busted: false }), 700 + n * show));
     }
-    timers.push(setTimeout(() => done(hits.current >= 7), 700 + GERMS * show));
+    timers.push(setTimeout(() => done(hits.current >= need), 700 + GERMS * show));
     return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per game
   }, []);
@@ -321,7 +329,9 @@ function GermGame({ onDone, tuning }: GameProps) {
   return (
     <Animated.View style={juice.style}>
       <View className="items-center gap-3">
-        <Text className="font-number text-base text-ink">Busted {busted} (need 7 of {GERMS})</Text>
+        <Text className="font-number text-base text-ink">
+          Busted {busted} (need {need} of {GERMS})
+        </Text>
         <View className="w-56 flex-row flex-wrap justify-between gap-y-2">
           {Array.from({ length: 9 }, (_, i) => (
             <Pressable key={i} accessibilityRole="button" accessibilityLabel={germ?.cell === i && !germ.busted ? "Germ" : "Empty"} onPress={() => bust(i)} className="h-16 w-16 items-center justify-center border-2 border-outline bg-surface">
@@ -348,7 +358,8 @@ function BreathGame({ onDone, tuning }: GameProps) {
   const [round, setRound] = useState(0);
   const [good, setGood] = useState(0);
   const [note, setNote] = useState("Hold to breathe in...");
-  const ms = 1700 - hardness(tuning) * 300;
+  const ms = tuning.breathMs;
+  const low = tuning.breathLow, high = tuning.breathHigh;
   useEffect(() => {
     ring.set(withRepeat(withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.sin) }), -1, true));
   }, [ring]);
@@ -368,13 +379,13 @@ function BreathGame({ onDone, tuning }: GameProps) {
     cancelAnimation(fill);
     const k = (Date.now() - start.current) / ms;
     start.current = 0;
-    const ok = k >= 0.82 && k <= 1.08;
+    const ok = k >= low && k <= high;
     const total = good + (ok ? 1 : 0);
     if (ok) juice.pop();
     else juice.shake();
     haptic[ok ? "buy" : "denied"]();
     playSfx(ok ? "buy" : "invalid");
-    setNote(ok ? "Perfect breath!" : k < 0.82 ? "Too short, breathe deeper." : "Too long, let go sooner.");
+    setNote(ok ? "Perfect breath!" : k < low ? "Too short, breathe deeper." : "Too long, let go sooner.");
     fill.set(withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }));
     setGood(total);
     if (round + 1 >= BREATHS) return setTimeout(() => done(total >= 2), 450);
@@ -397,7 +408,7 @@ function BreathGame({ onDone, tuning }: GameProps) {
 }
 
 // ---------- Match the Meds: flip cards to find the three pairs ----------
-const MEDS: ImageSourcePropType[] = [require("@/imgs/shop/syringe.png"), require("@/imgs/shop/bandage_roll.png"), require("@/imgs/shop/medicines.png")];
+const MEDS: ImageSourcePropType[] = [require("@/imgs/shop/syringe.png"), require("@/imgs/shop/bandage_roll.png"), require("@/imgs/shop/medicines.png"), require("@/imgs/shop/thermometer.png")];
 /** A card that flips over in 3D: the red back with a cross, or the medicine on the front. */
 const FlipCard = memo(function FlipCard({ image, faceUp, matched, onPress }: { image: ImageSourcePropType; faceUp: boolean; matched: boolean; onPress: () => void }) {
   const flip = useSharedValue(0);
@@ -406,7 +417,7 @@ const FlipCard = memo(function FlipCard({ image, faceUp, matched, onPress }: { i
     flip.set(withTiming(faceUp ? 1 : 0, { duration: 260, easing: Easing.inOut(Easing.cubic) }));
   }, [faceUp, flip]);
   useEffect(() => {
-    if (matched) bounce.set(withDelay(200, withSequence(withTiming(1.15, { duration: 120 }), withSpring(1, { damping: 6, stiffness: 260 }))));
+    if (matched) bounce.set(withDelay(200, withSequence(withTiming(1.06, { duration: 100 }), withTiming(1, { duration: 140 }))));
   }, [matched, bounce]);
   const back = useAnimatedStyle(() => ({ opacity: flip.get() < 0.5 ? 1 : 0, transform: [{ perspective: 400 }, { rotateY: `${flip.get() * 180}deg` }, { scale: bounce.get() }] }));
   const front = useAnimatedStyle(() => ({ opacity: flip.get() >= 0.5 ? 1 : 0, transform: [{ perspective: 400 }, { rotateY: `${flip.get() * 180 - 180}deg` }, { scale: bounce.get() }] }));
@@ -430,8 +441,9 @@ function MemoryGame({ onDone, tuning }: GameProps) {
   const { playSfx } = useAudio();
   const haptic = useHaptics();
   const juice = useJuice();
-  const total = 15000 - hardness(tuning) * 3000;
-  const [cards] = useState(() => shuffle([0, 0, 1, 1, 2, 2]));
+  const total = tuning.memoryMs;
+  // Three pairs, or four later on.
+  const [cards] = useState(() => shuffle(Array.from({ length: tuning.pairs * 2 }, (_, i) => i >> 1)));
   const [open, setOpen] = useState<number[]>([]);
   const [matched, setMatched] = useState<number[]>([]);
   // Picks live in a ref too, so two quick taps can't both count as "the second card", and nothing
@@ -476,7 +488,7 @@ function MemoryGame({ onDone, tuning }: GameProps) {
       <View className="items-center gap-3">
         <Text className="font-number text-base text-ink">Find the pairs</Text>
         <TimeBar left={left} total={total} />
-        <View className="w-56 flex-row flex-wrap justify-between gap-y-2">
+        <View className={`${cards.length > 6 ? "w-72" : "w-56"} flex-row flex-wrap justify-between gap-y-2`}>
           {cards.map((c, i) => (
             <FlipCard key={i} image={MEDS[c]} faceUp={open.includes(i) || matched.includes(i)} matched={matched.includes(i)} onPress={() => flip(i)} />
           ))}

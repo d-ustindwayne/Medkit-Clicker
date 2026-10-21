@@ -15,16 +15,61 @@ export type Unlock =
   | { item: ItemId; owned: number }
   | { gem: string };
 
-export type Room = Scene & { unlock: Unlock; /** How many items fit. */ limit: number; /** Staff who walk around in it (character file numbers). */ staff: string[] };
+/** A box in the room art as fractions: [left, top, right, bottom]. */
+export type Rect = [number, number, number, number];
+
+export type Room = Scene & {
+  unlock: Unlock;
+  /** How many items fit. */
+  limit: number;
+  /** Staff who walk around in it (character file numbers). */
+  staff: string[];
+  /**
+   * Where items can't go because the art already has something there: `wall` boxes (signs, windows,
+   * doors, furniture) keep wall items off them; `floor` boxes are where furniture stands, so floor
+   * items can't stand inside it. An item dropped on one snaps to the nearest free spot.
+   */
+  blocked: { wall: Rect[]; floor: Rect[] };
+};
 
 const shell = { aspect: 16 / 9, fillTop: "#eef1f5", anchor: 0.55 };
 
 export const ROOMS: Room[] = [
-  { id: "empty", title: "Empty Room", image: require("@/imgs/scenes/room_empty.png"), ...shell, fillBottom: "#e9dcc8", unlock: null, limit: 6, staff: ["11_nurse_teal", "15_male_nurse"] },
-  { id: "reception", title: "Reception", image: require("@/imgs/scenes/hospital_inside.png"), ...shell, fillBottom: "#dfe6ee", unlock: { achievements: 15 }, limit: 4, staff: ["12_nurse_pink", "16_doctor"] },
-  { id: "lab", title: "Lab", image: require("@/imgs/scenes/room_lab.png"), ...shell, fillBottom: "#cfe3ee", unlock: { rebirths: 1 }, limit: 6, staff: ["16_doctor", "14_nurse_lavender"] },
-  { id: "pharmacy", title: "Pharmacy", image: require("@/imgs/scenes/room_pharmacy.png"), ...shell, fillBottom: "#efe4cf", unlock: { treated: 10 }, limit: 7, staff: ["13_nurse_navy", "11_nurse_teal"] },
-  { id: "kids", title: "Children's Ward", image: require("@/imgs/scenes/room_kids.png"), ...shell, fillBottom: "#fde7ef", unlock: { achievements: 40 }, limit: 8, staff: ["12_nurse_pink", "15_male_nurse", "14_nurse_lavender"] },
+  {
+    id: "empty", title: "Empty Room", image: require("@/imgs/scenes/room_empty.png"), ...shell, fillBottom: "#e9dcc8", unlock: null, limit: 6, staff: ["11_nurse_teal", "15_male_nurse"],
+    blocked: { wall: [[0.06, 0.22, 0.17, 0.66] /* door */, [0.72, 0.15, 0.93, 0.45] /* window */], floor: [] },
+  },
+  {
+    id: "reception", title: "Reception", image: require("@/imgs/scenes/hospital_inside.png"), ...shell, fillBottom: "#dfe6ee", unlock: { achievements: 15 }, limit: 4, staff: ["12_nurse_pink", "16_doctor"],
+    blocked: {
+      wall: [
+        [0.05, 0.13, 0.28, 0.21], // RECEPTION sign
+        [0, 0.44, 0.34, 0.8], // desk, monitor and plant
+        [0.43, 0.11, 0.58, 0.17], // WARD 1 sign
+        [0.4, 0.17, 0.61, 0.66], // corridor doors
+        [0.33, 0.22, 0.39, 0.42], // small frames
+        [0.62, 0.09, 0.67, 0.18], // clock
+        [0.62, 0.2, 0.75, 0.45], // Nightingale painting
+        [0.75, 0.2, 0.8, 0.34], // heart monitor
+        [0.8, 0.1, 1, 0.45], // window and curtain
+        [0.79, 0.45, 1, 0.8], // bed and IV stand
+        [0.57, 0.49, 0.77, 0.66], // waiting chairs and plant
+      ],
+      floor: [[0, 0.6, 0.34, 0.84] /* desk */, [0.79, 0.6, 1, 0.82] /* bed and IV stand */],
+    },
+  },
+  {
+    id: "lab", title: "Lab", image: require("@/imgs/scenes/room_lab.png"), ...shell, fillBottom: "#cfe3ee", unlock: { rebirths: 1 }, limit: 6, staff: ["16_doctor", "14_nurse_lavender"],
+    blocked: { wall: [[0.12, 0.14, 0.29, 0.31] /* LAB board */, [0.33, 0.13, 0.45, 0.36] /* window */, [0.47, 0.36, 0.98, 0.66] /* counter */], floor: [] },
+  },
+  {
+    id: "pharmacy", title: "Pharmacy", image: require("@/imgs/scenes/room_pharmacy.png"), ...shell, fillBottom: "#efe4cf", unlock: { treated: 10 }, limit: 7, staff: ["13_nurse_navy", "11_nurse_teal"],
+    blocked: { wall: [[0.03, 0.12, 0.35, 0.5] /* shelves */, [0.65, 0.12, 0.97, 0.5] /* shelves */, [0.45, 0.13, 0.56, 0.38] /* PHARMACY sign */], floor: [] },
+  },
+  {
+    id: "kids", title: "Children's Ward", image: require("@/imgs/scenes/room_kids.png"), ...shell, fillBottom: "#fde7ef", unlock: { achievements: 40 }, limit: 8, staff: ["12_nurse_pink", "15_male_nurse", "14_nurse_lavender"],
+    blocked: { wall: [[0.13, 0.28, 0.64, 0.62] /* rainbow */, [0.76, 0.14, 0.97, 0.46] /* window */], floor: [] },
+  },
 ];
 
 export type RoomItem = {
@@ -84,7 +129,41 @@ export const depth = (footY: number) => Math.round(footY * 1000);
 /** Above everything in the room, for an item being dragged. */
 export const DRAG_DEPTH = 5000;
 
-export const ZONES = { floor: { minY: 0.72, maxY: 0.98 }, wall: { minY: 0.24, maxY: 0.58 } } as const;
+// Wall items start low enough that their tops stay inside the room art (and clear of its buttons).
+export const ZONES = { floor: { minY: 0.72, maxY: 0.98 }, wall: { minY: 0.3, maxY: 0.58 } } as const;
+
+/** An item's hitbox around its placement point (x centre, y feet), as fractions of the room art. */
+const hitbox = (place: "floor" | "wall", x: number, y: number): Rect =>
+  // Wall items: the middle of the sprite. Floor items: just where they stand.
+  place === "wall" ? [x - 0.04, y - 0.21, x + 0.04, y - 0.04] : [x - 0.04, y - 0.05, x + 0.04, y];
+const overlaps = (a: Rect, b: Rect) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
+
+/** Whether an item may stand at x, y in a room (inside its zone and clear of the room's blocked areas). */
+export const canPlace = (room: Room, place: "floor" | "wall", x: number, y: number) => {
+  const zone = ZONES[place];
+  if (x < 0.05 || x > 0.95 || y < zone.minY || y > zone.maxY) return false;
+  const box = hitbox(place, x, y);
+  return !room.blocked[place].some((r) => overlaps(box, r));
+};
+
+/** The allowed spot nearest to x, y (on screen distance), so a drop on a sign or desk slides just clear of it. */
+export function snapPlacement(room: Room, place: "floor" | "wall", x: number, y: number) {
+  const zone = ZONES[place];
+  const cx = Math.min(0.95, Math.max(0.05, x)), cy = Math.min(zone.maxY, Math.max(zone.minY, y));
+  if (canPlace(room, place, cx, cy)) return { x: cx, y: cy };
+  let best = { x: cx, y: cy }, bestD = Infinity;
+  for (let gx = 0.05; gx <= 0.951; gx += 0.01) {
+    for (let gy = zone.minY; gy <= zone.maxY + 0.001; gy += 0.01) {
+      if (!canPlace(room, place, gx, gy)) continue;
+      const d = ((gx - cx) * room.aspect) ** 2 + (gy - cy) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = { x: Math.round(gx * 100) / 100, y: Math.round(gy * 100) / 100 };
+      }
+    }
+  }
+  return best;
+}
 
 export const unlockHint = (u: Unlock) => {
   if (!u) return "Available from the start";

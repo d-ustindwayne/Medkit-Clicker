@@ -18,7 +18,7 @@ import { APP_INFO } from "@/constants/app";
 import { REWARD_SECTIONS } from "@/constants/rewards";
 import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
+import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
 
 type Page = "menu" | "achievements" | "settings" | "about" | "redeem" | `rewards:${string}`;
 
@@ -54,7 +54,8 @@ function MenuLink({ label, detail, onPress }: { label: string; detail?: string; 
 export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const [page, setPage] = useState<Page>("menu");
   const { theme } = useSettings();
-  const { achievements, unlockedSections, rebirths, fame } = useGameState();
+  // A slice, not the whole state: the drawer is always mounted and shouldn't redraw on every tick.
+  const { achievements, unlockedSections, rebirths, fame } = useGameSelector((s) => ({ achievements: s.achievements, unlockedSections: s.unlockedSections, rebirths: s.rebirths, fame: s.fame }));
   const shownAch = visibleAchievements(unlockedSections);
   const { dispatch } = useGameActions();
   const insets = useSafeAreaInsets();

@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
-import { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
+import { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from "react-native-reanimated";
 
 import type { MinigameTuning } from "@/constants/patients";
 
 export type GameProps = { onDone: (won: boolean) => void; tuning: MinigameTuning };
 
-/** 0 for a new player, rising to 1 after 100 patients treated (from the shared tuning). */
-export const hardness = (t: MinigameTuning) => (t.wraps - 25) / 5;
+/** 0 for a new player, rising to 1 with progress (see minigameLevel). */
+export const hardness = (t: MinigameTuning) => t.level;
 
 /** Keeps the latest onDone without re-running timers when the parent re-renders. */
 export function useDone(onDone: (won: boolean) => void) {
@@ -32,14 +32,17 @@ export function shuffle<T>(items: T[]) {
   return a;
 }
 
-/** Game feel: a little pop when something goes right and a shake when it doesn't. */
+/**
+ * Game feel: a small pop when something goes right and a short nudge when it doesn't. Kept subtle
+ * (no springy overshoot) because it moves the whole game panel.
+ */
 export function useJuice() {
   const scale = useSharedValue(1);
   const shakeX = useSharedValue(0);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }, { translateX: shakeX.get() }] }));
   return {
     style,
-    pop: () => scale.set(withSequence(withTiming(1.12, { duration: 80 }), withSpring(1, { damping: 6, stiffness: 260 }))),
-    shake: () => shakeX.set(withSequence(withTiming(-8, { duration: 45 }), withTiming(8, { duration: 70 }), withTiming(-5, { duration: 60 }), withTiming(0, { duration: 45 }))),
+    pop: () => scale.set(withSequence(withTiming(1.025, { duration: 70, easing: Easing.out(Easing.quad) }), withTiming(1, { duration: 120, easing: Easing.out(Easing.quad) }))),
+    shake: () => shakeX.set(withSequence(withTiming(-3, { duration: 40 }), withTiming(3, { duration: 60 }), withTiming(0, { duration: 40 }))),
   };
 }

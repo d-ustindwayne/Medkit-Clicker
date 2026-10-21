@@ -90,7 +90,7 @@ function Counter({ compact }: { compact: boolean }) {
   const shadow = { textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 };
   return (
     // Side padding clears the menu button (left) and the currency chips (right).
-    <View className={`items-center ${compact ? "px-20" : "px-24"}`} accessibilityLiveRegion="none">
+    <View className={`items-center ${compact ? "px-24" : "px-28"}`} accessibilityLiveRegion="none">
       {compact ? (
         <View accessibilityRole="header" className="items-center">
           <Text className="text-center font-display text-5xl text-ink" style={shadow} adjustsFontSizeToFit numberOfLines={1}>
@@ -123,21 +123,27 @@ function Backdrop({ width, height }: { width: number; height: number }) {
   return <BackgroundPattern index={index} theme={settings.theme} width={width} height={height} />;
 }
 
-/** Swipeable stage: the medkit, then My Room. */
-function Clicker({ width, height, compact }: { width: number; height: number; compact: boolean }) {
+/** Swipeable stage: the medkit, then My Room. `onEditing` hears when decorating starts or stops. */
+function Clicker({ width, height, compact, onEditing }: { width: number; height: number; compact: boolean; onEditing: (on: boolean) => void }) {
   // Only what the medkit area shows, so it doesn't redraw on every tick.
   const { owned, rebirths, boosts, luckyTaps, waiting, room, gemUpgrades, medkitSkin, tapEffect } = useGameSelector((s) => ({
     owned: s.owned, rebirths: s.rebirths, boosts: s.boosts, luckyTaps: s.luckyTaps, waiting: s.patients.length, room: s.room,
     gemUpgrades: s.gemUpgrades, medkitSkin: s.medkitSkin, tapEffect: s.tapEffect,
   }));
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditingState] = useState(false);
+  const setEditing = (on: boolean) => {
+    setEditingState(on);
+    onEditing(on);
+  };
   // Leave room for the orbiting supplies around the medkit.
   const size = Math.min((width * (compact ? 0.72 : 0.55)) / ORBIT_SCALE, (height * (compact ? 0.52 : 0.58)) / ORBIT_SCALE, 420);
 
   return (
-    <View className={`flex-1 items-center ${compact ? "pt-12" : "justify-center pt-4"}`}>
-      {/* The counter stays while you swipe between the medkit and My Room, so progress is always in view. */}
-      <Counter compact={compact} />
+    // Decorating: start below the menu button and currency chips, since the counter is hidden.
+    <View className={`flex-1 items-center ${editing ? "pt-[92px]" : compact ? "pt-12" : "justify-center pt-4"}`}>
+      {/* The counter stays while you swipe between the medkit and My Room, so progress is always in view.
+          It steps aside while decorating, so the room, its buttons and the item tray all fit. */}
+      {!editing && <Counter compact={compact} />}
       <Pager
         width={width}
         dots="overlay"
@@ -254,7 +260,8 @@ export default function GameScreen() {
         <View className="absolute right-3 z-10" style={{ top: insets.top + 12 }}>
           <CurrencyBar />
         </View>
-        <Clicker width={clickerWidth} height={clickerHeight - insets.top} compact={!wide} />
+        {/* Decorating needs the space: the shop folds down while the room is edited. */}
+        <Clicker width={clickerWidth} height={clickerHeight - insets.top} compact={!wide} onEditing={(on) => on && setShopUp(false)} />
       </Animated.View>
 
       <View

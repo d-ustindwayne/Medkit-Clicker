@@ -6,7 +6,7 @@ import { LOSE_SECONDS, WIN_COINS, WIN_SECONDS } from "@/constants/patients";
 import { GEM_ITEMS, GEM_LEVEL_COSTS, GEM_UPGRADES, gemBalance, gemLevel, type GemUpgradeId } from "@/constants/gems";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS } from "@/constants/hospital";
 import { REWARD_SECTIONS } from "@/constants/rewards";
-import { ROOMS, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, type RoomState } from "@/constants/room";
+import { ROOMS, ROOM_ITEMS, isUnlocked, roomBonus, snapPlacement, type RoomState } from "@/constants/room";
 import { SHOP_ITEMS, TAP_RATE_BONUS, itemCost, perSecond, type ItemId } from "@/constants/items";
 
 export type GameState = {
@@ -103,7 +103,7 @@ export type GameAction =
   | { type: "unlockDevTools" }
   | { type: "unlockCodeEntry" }
   | { type: "revealAboutMedkit" }
-  | { type: "claimPromo"; hash: string; kind: "medkits" | "coins" | "gems"; amount: number }
+  | { type: "claimPromo"; hash: string; rewards: PromoItem[] }
   | { type: "devRebirth" }
   | { type: "setFame"; fame: "none" | "sent" | "declined" }
   | { type: "minigameWon"; game: string }
@@ -119,6 +119,12 @@ export type GameAction =
   | { type: "devAddItems"; count: number }
   | { type: "devUnlockAll" }
   | { type: "devAddCoins"; count: number };
+
+/**
+ * One part of a promo code's reward (codes are set up with scripts/add-promo.ts): patients, Care
+ * Coins or Natal Gems; a paid background unlocked for free; or `seconds` of healing at the current rate.
+ */
+export type PromoItem = { kind: "medkits" | "coins" | "gems" | "seconds"; amount: number } | { kind: "background"; id: string };
 
 export const emptyOwned = (): Record<ItemId, number> =>
   Object.fromEntries(SHOP_ITEMS.map((i) => [i.id, 0])) as Record<ItemId, number>;
@@ -215,10 +221,11 @@ export const maxAwaySeconds = (s: { gemUpgrades?: Record<string, number> }) => (
 export const priceOf = (s: Pick<GameState, "owned" | "boosts"> & { gemUpgrades?: Record<string, number> }, item: (typeof SHOP_ITEMS)[number]) =>
   Math.ceil(itemCost(item, s.owned[item.id]) * boostMultiplier(s.boosts, "price") * gemMult(s, "bulk_orders", -0.02));
 
-/** What the next `count` units of an item cost together (each one priced as it would be when bought). */
+/** What the next `count` units of an item cost together (each one priced as priceOf would when bought). */
 export const bulkCost = (s: Pick<GameState, "owned" | "boosts"> & { gemUpgrades?: Record<string, number> }, item: (typeof SHOP_ITEMS)[number], count: number) => {
+  const mult = boostMultiplier(s.boosts, "price") * gemMult(s, "bulk_orders", -0.02);
   let total = 0;
-  for (let k = 0; k < count; k++) total += priceOf({ ...s, owned: { ...s.owned, [item.id]: s.owned[item.id] + k } }, item);
+  for (let k = 0; k < count; k++) total += Math.ceil(itemCost(item, s.owned[item.id] + k) * mult);
   return total;
 };
 
@@ -384,11 +391,24 @@ const apply = (state: GameState, action: GameAction): GameState => {
     case "revealAboutMedkit":
       return state.aboutMedkit ? state : { ...state, aboutMedkit: true };
     case "claimPromo": {
-      if (state.promoClaims.includes(action.hash) || !(action.amount > 0)) return state;
-      const claimed = { ...state, promoClaims: [...state.promoClaims, action.hash] };
-      if (action.kind === "coins") return { ...claimed, bonusCoins: state.bonusCoins + action.amount };
-      if (action.kind === "gems") return { ...claimed, bonusGems: state.bonusGems + action.amount };
-      return earn(claimed, action.amount);
+      if (state.promoClaims.includes(action.hash) || action.rewards.length === 0) return state;
+      let next: GameState = { ...state, promoClaims: [...state.promoClaims, action.hash] };
+      for (const r of action.rewards) {
+        if (r.kind === "background") {
+          if (BACKGROUNDS.some((b) => b.id === r.id) && !next.ownedBackgrounds.includes(r.id)) next = { ...next, ownedBackgrounds: [...next.ownedBackgrounds, r.id] };
+          continue;
+        }
+        if (!(r.amount > 0)) continue;
+        if (r.kind === "coins") next = { ...next, bonusCoins: next.bonusCoins + r.amount };
+        else if (r.kind === "gems") next = { ...next, bonusGems: next.bonusGems + r.amount };
+        else if (r.kind === "medkits") next = earn(next, r.amount);
+        else {
+          // Seconds of healing, like Emergency Funding: the unboosted rate, and never less than 10 taps.
+          const base = { owned: next.owned, rebirths: next.rebirths };
+          next = earn(next, Math.max(healingRate(base) * r.amount, tapValue(base) * 10));
+        }
+      }
+      return next;
     }
     case "setPendingIcon":
       return { ...state, pendingIcon: action.icon };
@@ -412,9 +432,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
       const placed = Object.fromEntries(Object.entries(state.room.placed).map(([k, v]) => [k, v.filter((p) => p.item !== item.id)]));
       const here = placed[room.id] ?? [];
       if (here.length >= room.limit) return state;
-      const zone = ZONES[item.place];
-      const x = Math.min(0.95, Math.max(0.05, action.x));
-      const y = Math.min(zone.maxY, Math.max(zone.minY, action.y));
+      // Kept inside its zone and off the room's signs, windows and furniture (snaps to the nearest free spot).
+      const { x, y } = snapPlacement(room, item.place, action.x, action.y);
       return { ...state, room: { ...state.room, placed: { ...placed, [room.id]: [...here, { item: item.id, x, y }] } } };
     }
     case "removeItem": {

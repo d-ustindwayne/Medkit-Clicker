@@ -3,10 +3,10 @@ import { describe, expect, test } from "bun:test";
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { BOOSTS, boostMultiplier } from "@/constants/boosts";
 import { SHOP_ITEMS, itemCost, perSecond } from "@/constants/items";
-import { SICK_PATIENTS, minigameTuning } from "@/constants/patients";
+import { SICK_PATIENTS, minigameLevel, minigameTuning } from "@/constants/patients";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, dayPhase, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
-import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, roomBonus } from "@/constants/room";
+import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, canPlace, roomBonus, snapPlacement } from "@/constants/room";
 import { formatCount, formatShort } from "@/lib/format";
 import { bulkCost, cooldownLeft, coinBalance, coinsEarned, emergencyReward, maxAwaySeconds, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
 
@@ -231,11 +231,11 @@ describe("server sync", () => {
 });
 
 describe("item milestones", () => {
-  test("every 25 of an item makes it heal 25% more", () => {
+  test("every 25 of an item makes it heal 30% more", () => {
     const owned = (n: number) => ({ ...newGame().owned, gloves: n });
     expect(perSecond(owned(24))).toBeCloseTo(24 * SHOP_ITEMS[1].rate);
-    expect(perSecond(owned(25))).toBeCloseTo(25 * SHOP_ITEMS[1].rate * 1.25);
-    expect(perSecond(owned(100))).toBeCloseTo(100 * SHOP_ITEMS[1].rate * 2);
+    expect(perSecond(owned(25))).toBeCloseTo(25 * SHOP_ITEMS[1].rate * 1.3);
+    expect(perSecond(owned(100))).toBeCloseTo(100 * SHOP_ITEMS[1].rate * 2.2);
   });
 });
 
@@ -303,11 +303,32 @@ describe("gem shop", () => {
 });
 
 describe("minigame difficulty", () => {
-  test("starts at the original settings and is slightly harder after 100 patients", () => {
-    expect(minigameTuning(0)).toEqual({ needleSpeed: 1, veinWidth: 0.18, beatMs: 600, beatWindowMs: 230, wraps: 25 });
-    expect(minigameTuning(100)).toEqual(minigameTuning(500));
-    expect(minigameTuning(100).wraps).toBe(30);
-    expect(minigameTuning(50).beatMs).toBeLessThan(600);
+  test("a new player gets the original settings", () => {
+    expect(minigameLevel(0, 0)).toBe(0);
+    const t = minigameTuning(0);
+    expect([t.needleSpeed, t.veinWidth, t.beatMs, t.beatWindowMs, t.beatsNeeded, t.wraps]).toEqual([1, 0.18, 600, 230, 6, 25]);
+    expect([t.bones, t.pairs, t.germsNeeded]).toEqual([6, 3, 7]);
+  });
+  test("rises with patients treated and with healing per second, and tops out at 1", () => {
+    expect(minigameLevel(30, 0)).toBeGreaterThan(0);
+    expect(minigameLevel(0, 1000)).toBeGreaterThan(minigameLevel(0, 10));
+    expect(minigameLevel(60, 1e8)).toBe(1);
+    expect(minigameLevel(1000, 1e30)).toBe(1);
+  });
+  test("every game is harder at the top level", () => {
+    const easy = minigameTuning(0), hard = minigameTuning(1);
+    expect(hard.needleSpeed).toBeGreaterThan(easy.needleSpeed);
+    expect(hard.veinWidth).toBeLessThan(easy.veinWidth);
+    expect(hard.beatMs).toBeLessThan(easy.beatMs);
+    expect(hard.wraps).toBeGreaterThan(easy.wraps);
+    expect(hard.pulseBeats).toBeGreaterThan(easy.pulseBeats);
+    expect(hard.pillsMs).toBeLessThan(easy.pillsMs);
+    expect(hard.bones).toBe(12);
+    expect(hard.germShowMs).toBeLessThan(easy.germShowMs);
+    expect(hard.breathHigh - hard.breathLow).toBeLessThan(easy.breathHigh - easy.breathLow);
+    expect(hard.pairs).toBe(4);
+    // Pulse beats still leave at least 0.1 s of rest between them (each beat animates for 240 ms).
+    expect(hard.pulseGapMs - 240).toBeGreaterThanOrEqual(100);
   });
 });
 
@@ -345,5 +366,49 @@ describe("hospital", () => {
     expect(emergencyReward(fresh)).toBe(tapValue(fresh) * EMERGENCY_TAPS);
     const later = { ...fresh, owned: { ...fresh.owned, stethoscope: 50 } };
     expect(emergencyReward(later)).toBe(healingRate(later) * EMERGENCY_SECONDS);
+  });
+});
+
+describe("promo codes", () => {
+  test("a bundle pays every part once", () => {
+    const rewards = [{ kind: "coins", amount: 20 }, { kind: "background", id: "purple_rain" }] as const;
+    const s = run(newGame(), { type: "claimPromo", hash: "a", rewards: [...rewards] });
+    expect(s.bonusCoins).toBe(20);
+    expect(s.ownedBackgrounds).toEqual(["purple_rain"]);
+    const again = run(s, { type: "claimPromo", hash: "a", rewards: [...rewards] });
+    expect(again.bonusCoins).toBe(20);
+  });
+  test("coins plus patients, and seconds of healing with a 10-tap floor", () => {
+    const s = run(newGame(), { type: "claimPromo", hash: "b", rewards: [{ kind: "coins", amount: 5 }, { kind: "medkits", amount: 1000 }] });
+    expect(s.bonusCoins).toBe(5);
+    expect(s.healed).toBe(1000);
+    const t = run(newGame(), { type: "claimPromo", hash: "c", rewards: [{ kind: "background", id: "night_sky" }, { kind: "seconds", amount: 20 }] });
+    expect(t.ownedBackgrounds).toEqual(["night_sky"]);
+    expect(t.healed).toBe(tapValue(t) * 10);
+  });
+  test("unknown backgrounds are ignored", () => {
+    const s = run(newGame(), { type: "claimPromo", hash: "d", rewards: [{ kind: "background", id: "nope" }] });
+    expect(s.ownedBackgrounds).toEqual([]);
+  });
+});
+
+describe("room placement rules", () => {
+  test("every room has free spots on the wall and the floor", () => {
+    for (const room of ROOMS) {
+      for (const place of ["wall", "floor"] as const) {
+        const spot = snapPlacement(room, place, 0.5, ZONES[place].minY);
+        expect(canPlace(room, place, spot.x, spot.y)).toBe(true);
+      }
+    }
+  });
+  test("an item dropped on the reception sign or desk snaps to the nearest free spot", () => {
+    const reception = ROOMS.find((r) => r.id === "reception")!;
+    expect(canPlace(reception, "wall", 0.16, 0.4)).toBe(false); // over the RECEPTION sign
+    const s = run(newGame(), { type: "devUnlockAll" }, { type: "placeItem", room: "reception", item: "sanitizer", x: 0.16, y: 0.4 });
+    const p = s.room.placed.reception[0];
+    expect(canPlace(reception, "wall", p.x, p.y)).toBe(true);
+    expect(Math.abs(p.x - 0.16) + Math.abs(p.y - 0.4)).toBeLessThan(0.2);
+    const floor = run(s, { type: "placeItem", room: "reception", item: "potted_plant", x: 0.15, y: 0.75 }).room.placed.reception.find((q) => q.item === "potted_plant")!;
+    expect(canPlace(reception, "floor", floor.x, floor.y)).toBe(true);
   });
 });

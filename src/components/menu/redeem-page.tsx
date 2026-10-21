@@ -8,7 +8,19 @@ import { usePalette } from "@/hooks/use-palette";
 import { claimPromoOnline, cloudEnabled, unlockOnline, wakeServer } from "@/lib/cloud";
 import { formatCount } from "@/lib/format";
 import { codeHash, isDevCode, sectionForCode } from "@/lib/codes";
+import { BACKGROUNDS } from "@/constants/backgrounds";
 import { REWARD_SECTIONS } from "@/constants/rewards";
+import type { PromoItem } from "@/lib/game";
+
+/** "+20 Care Coins, Purple Rain background" */
+const describe = (rewards: PromoItem[]) =>
+  rewards
+    .map((r) => {
+      if (r.kind === "background") return `${BACKGROUNDS.find((b) => b.id === r.id)?.name ?? "A new"} background`;
+      if (r.kind === "seconds") return `${r.amount} seconds of patients`;
+      return `+${formatCount(r.amount)} ${r.kind === "medkits" ? "patients" : r.kind === "coins" ? "Care Coins" : "Natal Gems"}`;
+    })
+    .join(", ");
 
 /** Enter a code to unlock a hidden section. Codes are checked by hash; see src/constants/rewards.ts. */
 export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => void }) {
@@ -59,7 +71,7 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
       }
       section ??= await sectionForCode(code);
       if (!section) {
-        // 3. A promo code released later: medkits, Care Coins or gems, once per phone.
+        // 3. A promo code released later: patients, Care Coins, gems, backgrounds or a mix, once per phone.
         const hash = await codeHash(code);
         if (promoClaims.includes(hash)) return setError("You've already used that code on this phone.");
         const reward = cloudEnabled ? await claimPromoOnline(code).catch(() => null) : null;
@@ -67,9 +79,10 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
           setError("That code didn't match anything. Check the spelling and try again.");
           return;
         }
-        dispatch({ type: "claimPromo", hash, kind: reward.kind, amount: reward.amount });
-        const what = reward.kind === "medkits" ? "patients" : reward.kind === "coins" ? "Care Coins" : "Natal Gems";
-        pushToast({ kind: "info", title: "Code redeemed", body: reward.message ?? `+${formatCount(reward.amount)} ${what}` });
+        const rewards: PromoItem[] = reward.rewards ?? (reward.kind === "bundle" ? [] : [{ kind: reward.kind, amount: reward.amount }]);
+        dispatch({ type: "claimPromo", hash, rewards });
+        const unlocked = rewards.some((r) => r.kind === "background") ? " Pick the background in Settings." : "";
+        pushToast({ kind: "info", title: "Code redeemed", body: `${reward.message ? `${reward.message} ` : ""}${describe(rewards)}.${unlocked}` });
         setCode("");
         return;
       }

@@ -12,7 +12,7 @@ import { HospitalPage } from "@/components/hospital/hospital-page";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { Pager } from "@/components/ui/pager";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameActions, useGameState } from "@/hooks/use-game";
+import { useGameActions, useGameSelector } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useNow } from "@/hooks/use-now";
 import { usePalette } from "@/hooks/use-palette";
@@ -107,26 +107,31 @@ const SHOP_PAGES = [
   { id: "gems", title: "GEMS", label: "Gem Shop" },
 ];
 
+/**
+ * One shop row. It subscribes to just its own numbers, so a game tick only redraws the rows whose
+ * price, affordability or progress (in 2% steps) actually changed, not the whole list.
+ */
+function ShopRow({ item, qty }: { item: ShopItem; qty: number }) {
+  const card = useGameSelector((s) => {
+    const cost = qty === 1 ? priceOf(s, item) : bulkCost(s, item, qty);
+    const owned = s.owned[item.id];
+    return {
+      owned,
+      cost,
+      affordable: s.healed >= cost,
+      progress: Math.min(1, Math.floor((s.healed / cost) * 50) / 50),
+      hidden: owned === 0 && s.totalHealed < itemCost(item, owned) * 0.5,
+    };
+  });
+  return <ShopCard qty={qty} item={item} {...card} />;
+}
+
 function SuppliesList({ qty }: { qty: number }) {
-  const state = useGameState();
-  const { healed, totalHealed, owned } = state;
   return (
     <>
-      {SHOP_ITEMS.map((item) => {
-        const cost = qty === 1 ? priceOf(state, item) : bulkCost(state, item, qty);
-        return (
-          <ShopCard
-            qty={qty}
-            key={item.id}
-            item={item}
-            owned={owned[item.id]}
-            cost={cost}
-            affordable={healed >= cost}
-            progress={Math.min(1, Math.floor((healed / cost) * 50) / 50)}
-            hidden={owned[item.id] === 0 && totalHealed < itemCost(item, owned[item.id]) * 0.5}
-          />
-        );
-      })}
+      {SHOP_ITEMS.map((item) => (
+        <ShopRow key={item.id} item={item} qty={qty} />
+      ))}
     </>
   );
 }
@@ -193,8 +198,7 @@ const BoostCard = memo(function BoostCard({ boost, affordable, activeMs }: { boo
 });
 
 function BoostsList() {
-  const state = useGameState();
-  const coins = coinBalance(state);
+  const { coins, boosts } = useGameSelector((s) => ({ coins: coinBalance(s), boosts: s.boosts }));
   const now = useNow();
   return (
     <>
@@ -207,7 +211,7 @@ function BoostsList() {
         <Text className="flex-1 pl-3 text-right font-body text-xs text-ink opacity-70">Earn them from achievements</Text>
       </View>
       {BOOSTS.map((b) => {
-        const left = b.effect.kind === "timed" ? Math.max(0, (state.boosts[b.id] ?? 0) - now) : 0;
+        const left = b.effect.kind === "timed" ? Math.max(0, (boosts[b.id] ?? 0) - now) : 0;
         // Round to whole seconds so cards only re-render once a second while active.
         return <BoostCard key={b.id} boost={b} affordable={coins >= b.cost} activeMs={Math.ceil(left / 1000) * 1000} />;
       })}

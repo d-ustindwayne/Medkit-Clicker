@@ -23,7 +23,7 @@ import { useHaptics } from "@/hooks/use-haptics";
 import { usePalette } from "@/hooks/use-palette";
 import { formatShort } from "@/lib/format";
 
-const MAX_BURSTS = 10;
+const MAX_BURSTS = 6;
 /** The orbit ring and sunburst extend past the medkit by these factors. */
 export const ORBIT_SCALE = 1.32;
 const SUNBURST_SCALE = 2.1;
@@ -111,7 +111,7 @@ export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned,
           <Animated.View style={[{ width: size, height: size }, scaleStyle]}>
             <View
               style={{ width: size, height: size }}
-              className="items-center justify-center rounded-full border-[6px] border-b-[12px] border-outline border-b-shadow bg-surface"
+              className="items-center justify-center rounded-full border-[6px] border-b-[12px] border-outline bg-surface"
             >
               <Image source={image} style={{ width: art, height: art }} contentFit="contain" />
             </View>

@@ -54,6 +54,12 @@ CREATE TABLE IF NOT EXISTS promo_codes (
   expires_at   TIMESTAMPTZ,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Bundles: several rewards in one code, e.g. [{"kind":"coins","amount":20},{"kind":"background","id":"purple_rain"}].
+-- Kinds: medkits, coins, gems (amounts), seconds (of healing), background (an id). kind is then 'bundle'.
+ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS rewards JSONB;
+ALTER TABLE promo_codes DROP CONSTRAINT IF EXISTS promo_codes_kind_check;
+ALTER TABLE promo_codes ADD CONSTRAINT promo_codes_kind_check CHECK (kind IN ('medkits', 'coins', 'gems', 'bundle'));
+
 -- One claim per phone per code.
 CREATE TABLE IF NOT EXISTS promo_claims (
   code_sha256  TEXT NOT NULL REFERENCES promo_codes(code_sha256) ON DELETE CASCADE,

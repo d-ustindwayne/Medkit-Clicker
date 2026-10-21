@@ -18,8 +18,15 @@ function stickerBytes(id: string) {
   return bytes;
 }
 
+/**
+ * Android 11+ lets an app add its own pictures to the gallery without any permission, and asking for
+ * one there is pointless: the storage permission is retired, so the system denies it without asking.
+ */
+const needsPermission = Platform.OS !== "android" || Number(Platform.Version) < 30;
+
 /** Asks for permission to add photos once, the first time the app opens, so saving a sticker just works later. */
 export async function askPhotosOnce() {
+  if (!needsPermission) return;
   try {
     if (await AsyncStorage.getItem(ASKED_KEY)) return;
     await AsyncStorage.setItem(ASKED_KEY, "1");
@@ -32,7 +39,8 @@ export async function askPhotosOnce() {
 
 /**
  * Saves a sticker PNG (`id` is its file name in src/imgs/stickers).
- * 1. To the phone's photos, when the photo permission is given.
+ * 1. To the phone's photos (Pictures on Android): no permission needed on Android 11+, otherwise
+ *    when the photo permission is given.
  * 2. Otherwise (Android), into a folder the player picks once (Pictures, Downloads...), written
  *    directly, so no photo permission is needed. The folder is remembered for next time.
  * Returns where it went, or "cancelled" if no folder was picked.
@@ -40,19 +48,24 @@ export async function askPhotosOnce() {
 export async function saveSticker(id: string, name: string): Promise<"photos" | "folder" | "cancelled"> {
   const bytes = stickerBytes(id);
   const fileName = `medkit-clicker-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  let problem: unknown = null;
   try {
-    const permission = await requestPermissionsAsync(true, ["photo"]);
-    if (permission.granted) {
+    const allowed = !needsPermission || (await requestPermissionsAsync(true, ["photo"])).granted;
+    if (allowed) {
       const file = new File(Paths.cache, `${fileName}.png`);
       file.create({ overwrite: true });
       file.write(bytes);
-      await MediaAsset.create(file.uri);
+      try {
+        await MediaAsset.create(file.uri);
+      } finally {
+        file.delete();
+      }
       return "photos";
     }
-  } catch {
-    // fall back to a folder below
+  } catch (e) {
+    problem = e; // fall back to a folder below
   }
-  if (Platform.OS !== "android") throw new Error("Photos access is needed to save stickers.");
+  if (Platform.OS !== "android") throw problem instanceof Error ? problem : new Error("Photos access is needed to save stickers.");
 
   const write = (dir: Directory) => dir.createFile(fileName, "image/png").write(bytes);
   const saved = await AsyncStorage.getItem(FOLDER_KEY);

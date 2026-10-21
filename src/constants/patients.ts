@@ -32,25 +32,55 @@ export const SICK_PATIENTS: SickPatient[] = [
 export const nextPatientDelay = () => (60 + Math.random() * 120) * 1000;
 
 /**
- * Minigames get slightly harder as you treat more patients, reaching the hardest setting at 100.
- * Injection: the needle speeds up to 1.2x and the vein narrows; Rhythm: 100 to 110 bpm with a
- * tighter window; Bandage: 25 to 30 wraps in the same 5 seconds.
+ * How hard the minigames are, 0 (new player) to 1. It follows both progress measures: patients
+ * treated (all the way at 60) and healing per second (all the way at 100 million per second, on a
+ * log scale, so it keeps rising through the whole game). Speed counts for more than treatments.
  */
-export const minigameTuning = (treated: number) => {
-  const d = Math.min(1, Math.max(0, treated) / 100);
+export const minigameLevel = (treated: number, perSecond: number) => {
+  const byTreated = Math.min(1, Math.max(0, treated) / 60);
+  const byRate = Math.min(1, Math.log10(1 + Math.max(0, perSecond)) / 8);
+  return Math.min(1, 0.35 * byTreated + 0.65 * byRate);
+};
+
+/** Minigame settings for a level from minigameLevel(); every game reads its numbers from here. */
+export const minigameTuning = (level: number) => {
+  const d = Math.min(1, Math.max(0, level));
   const mix = (a: number, b: number) => a + (b - a) * d;
   return {
-    needleSpeed: mix(1, 1.2),
-    veinWidth: mix(0.18, 0.15),
-    beatMs: Math.round(mix(600, 545)), // 100 bpm, up to 110
-    beatWindowMs: Math.round(mix(230, 190)),
-    wraps: Math.round(mix(25, 30)),
+    level: d,
+    // Injection: faster needle, narrower vein.
+    needleSpeed: mix(1, 1.6),
+    veinWidth: mix(0.18, 0.1),
+    // Rhythm: 100 bpm up to 128, a tighter window and more beats needed.
+    beatMs: Math.round(mix(600, 470)),
+    beatWindowMs: Math.round(mix(230, 140)),
+    beatsNeeded: Math.round(mix(6, 8)),
+    // Bandage: more wraps in the same 5 seconds.
+    wraps: Math.round(mix(25, 38)),
+    // Pulse Check: more beats, closer together.
+    pulseBeats: 5 + Math.round(d * 4),
+    pulseGapMs: Math.round(mix(620, 380)),
+    // Sort the Meds: less time.
+    pillsMs: Math.round(mix(6000, 3500)),
+    // Spot the Fracture: 6, 9 or 12 bones, less time.
+    bones: d < 0.34 ? 6 : d < 0.67 ? 9 : 12,
+    xrayMs: Math.round(mix(5000, 3500)),
+    // Germ Buster: germs vanish sooner and more must be caught.
+    germShowMs: Math.round(mix(950, 520)),
+    germsNeeded: Math.round(mix(7, 8)),
+    // Deep Breaths: a quicker breath with a narrower "full" band.
+    breathMs: Math.round(mix(1700, 1150)),
+    breathLow: mix(0.82, 0.88),
+    breathHigh: mix(1.08, 1.03),
+    // Match the Meds: a fourth pair from halfway, and less time.
+    pairs: d < 0.5 ? 3 : 4,
+    memoryMs: Math.round(mix(15000, 11000)) + (d < 0.5 ? 0 : 3000),
   };
 };
 export type MinigameTuning = ReturnType<typeof minigameTuning>;
 /** How long a patient waits before being transferred elsewhere (no penalty). */
 export const PATIENT_WAIT_MS = 3 * 60 * 1000;
 /** Rewards: a win pays this many seconds of production (at least 50 taps) and Care Coins. */
-export const WIN_SECONDS = 120;
+export const WIN_SECONDS = 150;
 export const WIN_COINS = 1;
 export const LOSE_SECONDS = 10;

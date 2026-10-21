@@ -25,10 +25,10 @@ export type ShopItem = {
 };
 
 /** Each purchase multiplies the next price by this. */
-export const COST_GROWTH = 1.15;
+export const COST_GROWTH = 1.14;
 
 /** Share of the per-second rate added to every medkit tap. */
-export const TAP_RATE_BONUS = 0.02;
+export const TAP_RATE_BONUS = 0.025;
 
 // Ordered from everyday bedside care to specialist diagnostics: first aid and infection control,
 // then vital signs, then treatment, then the lab. Each tier costs ~10x the last and pays back slower,
@@ -55,9 +55,9 @@ export const HOSPITAL_IMAGE: ImageSourcePropType = require("@/imgs/hospital.png"
 export const itemCost = (item: ShopItem, owned: number) =>
   Math.ceil(item.baseCost * COST_GROWTH ** owned);
 
-/** Every 25 of one item makes that item heal 25% more: x1.25 at 25, x1.5 at 50, x2 at 100. */
+/** Every 25 of one item makes that item heal 30% more: x1.3 at 25, x1.6 at 50, x2.2 at 100. */
 export const MILESTONE_EVERY = 25;
-export const MILESTONE_BONUS = 0.25;
+export const MILESTONE_BONUS = 0.3;
 export const itemMultiplier = (count: number) => 1 + MILESTONE_BONUS * Math.floor(count / MILESTONE_EVERY);
 
 export const perSecond = (owned: Record<ItemId, number>) =>
