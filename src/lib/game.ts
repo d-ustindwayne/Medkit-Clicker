@@ -6,7 +6,7 @@ import { LOSE_SECONDS, WIN_COINS, WIN_SECONDS } from "@/constants/patients";
 import { GEM_ITEMS, GEM_LEVEL_COSTS, GEM_UPGRADES, gemBalance, gemLevel, type GemUpgradeId } from "@/constants/gems";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS } from "@/constants/hospital";
 import { REWARD_SECTIONS } from "@/constants/rewards";
-import { ROOMS, ROOM_ITEMS, isUnlocked, roomBonus, snapPlacement, type RoomState } from "@/constants/room";
+import { ROOMS, ROOM_ITEMS, fromOldArt, isUnlocked, roomBonus, snapPlacement, type RoomState } from "@/constants/room";
 import { SHOP_ITEMS, TAP_RATE_BONUS, itemCost, perSecond, type ItemId } from "@/constants/items";
 
 export type GameState = {
@@ -152,7 +152,7 @@ export const newGame = (): GameState => ({
   treated: 0,
   patients: [],
   nextPatientAt: Date.now() + 60_000,
-  room: { current: ROOMS[0].id, placed: {} },
+  room: { current: ROOMS[0].id, placed: {}, layout: 2 },
   ownedBackgrounds: [],
   gemsSpent: 0,
   gemUpgrades: {},
@@ -488,6 +488,22 @@ export const gameReducer = (state: GameState, action: GameAction): GameState => 
   return action.type === "rebirth" || action.type === "devRebirth" || action.type === "load" ? putAwayLocked(next) : next;
 };
 
+/** Saves from the 320x180 rooms: each placed item moves with the art, then onto a free spot. */
+function upgradeRoom(room: RoomState): RoomState {
+  if (room.layout === 2) return room;
+  const placed = Object.fromEntries(
+    Object.entries(room.placed).map(([id, list]) => {
+      const r = ROOMS.find((x) => x.id === id);
+      return [id, list.map((p) => {
+        const item = ROOM_ITEMS.find((i) => i.id === p.item);
+        const y = fromOldArt(p.y);
+        return r && item ? { ...p, ...snapPlacement(r, item.place, p.x, y) } : { ...p, y };
+      })];
+    }),
+  );
+  return { ...room, placed, layout: 2 };
+}
+
 /** Fills in fields missing from older or hand-edited saves. */
 export const normalizeSave = (raw: unknown): GameState | null => {
   if (!raw || typeof raw !== "object") return null;
@@ -528,6 +544,6 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     fame: s.fame === "sent" || s.fame === "declined" ? s.fame : "none",
     minigameWins: { ...(s.minigameWins ?? {}) },
     pendingIcon: typeof s.pendingIcon === "string" ? s.pendingIcon : null,
-    room: s.room && typeof s.room.current === "string" ? { current: s.room.current, placed: { ...(s.room.placed ?? {}) } } : base.room,
+    room: s.room && typeof s.room.current === "string" ? upgradeRoom({ current: s.room.current, placed: { ...(s.room.placed ?? {}) }, layout: s.room.layout }) : base.room,
   };
 };

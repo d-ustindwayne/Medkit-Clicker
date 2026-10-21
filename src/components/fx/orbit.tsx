@@ -41,10 +41,10 @@ export const Orbit = memo(function Orbit({ size, owned }: { size: number; owned:
             contentFit="contain"
             style={{
               position: "absolute",
-              width: SPRITE,
-              height: SPRITE,
-              left: radius + radius * Math.cos(a) - SPRITE / 2,
-              top: radius + radius * Math.sin(a) - SPRITE / 2,
+              width: SPRITE * (item.iconScale ?? 1),
+              height: SPRITE * (item.iconScale ?? 1),
+              left: radius + radius * Math.cos(a) - (SPRITE * (item.iconScale ?? 1)) / 2,
+              top: radius + radius * Math.sin(a) - (SPRITE * (item.iconScale ?? 1)) / 2,
               // Point each sprite at the medkit.
               transform: [{ rotate: `${(a * 180) / Math.PI + 90}deg` }],
             }}

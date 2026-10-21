@@ -15,7 +15,7 @@ Your idea: the second page next to the medkit becomes **your own room**. It star
 
 ## Room
 
-- **Background:** an empty room, 320 × 180 drawn and exported at 1280 × 720 like the scenes. White walls (your rule for interiors), a wooden floor and one window. Nothing else, so your items are the decoration.
+- **Background:** an empty room, 320 × 240 drawn and exported at 1280 × 960 like the scenes (320 × 180 until 2026-10-21). White walls (your rule for interiors), a wooden floor and one window. Nothing else, so your items are the decoration.
 - **Placement:** a coarse grid, with floor tiles in the bottom half and wall slots in the top half. That keeps arrangements neat and pixel-aligned, and makes drag-and-drop easy on a phone.
 - **Layering:** items lower on the floor draw in front, so a chair can stand in front of a desk.
 

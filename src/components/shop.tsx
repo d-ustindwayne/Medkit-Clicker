@@ -65,7 +65,7 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
         <View className="flex-row items-center gap-3 px-3 py-2">
           <Image
             source={item.image}
-            style={{ width: 48, height: 48, opacity: hidden ? 0.45 : 1 }}
+            style={{ width: 48 * (item.iconScale ?? 1), height: 48 * (item.iconScale ?? 1), margin: 24 * (1 - (item.iconScale ?? 1)), opacity: hidden ? 0.45 : 1 }}
             contentFit="contain"
             tintColor={hidden ? palette.ink : undefined}
           />

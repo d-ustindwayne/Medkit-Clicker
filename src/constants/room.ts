@@ -32,16 +32,27 @@ export type Room = Scene & {
   blocked: { wall: Rect[]; floor: Rect[] };
 };
 
-const shell = { aspect: 16 / 9, fillTop: "#eef1f5", anchor: 0.55 };
+/** The rooms are 320x240 (4:3), exported at 1280x960. */
+const shell = { aspect: 4 / 3, fillTop: "#eef1f5", anchor: 0.55 };
+
+/**
+ * The blocked areas were measured on the earlier 320x180 art. The art then gained 30 rows of wall
+ * under the ceiling and 30 rows of floor, so a height measured then sits at 0.75 y + 0.125 now.
+ */
+export const fromOldArt = (y: number) => 0.75 * y + 0.125;
+const measured = (b: { wall: Rect[]; floor: Rect[] }) => {
+  const move = (r: Rect): Rect => [r[0], fromOldArt(r[1]), r[2], fromOldArt(r[3])];
+  return { wall: b.wall.map(move), floor: b.floor.map(move) };
+};
 
 export const ROOMS: Room[] = [
   {
     id: "empty", title: "Empty Room", image: require("@/imgs/scenes/room_empty.png"), ...shell, fillBottom: "#e9dcc8", unlock: null, limit: 6, staff: ["11_nurse_teal", "15_male_nurse"],
-    blocked: { wall: [[0.06, 0.22, 0.17, 0.66] /* door */, [0.72, 0.15, 0.93, 0.45] /* window */], floor: [] },
+    blocked: measured({ wall: [[0.06, 0.22, 0.17, 0.66] /* door */, [0.72, 0.15, 0.93, 0.45] /* window */], floor: [] }),
   },
   {
     id: "reception", title: "Reception", image: require("@/imgs/scenes/hospital_inside.png"), ...shell, fillBottom: "#dfe6ee", unlock: { achievements: 15 }, limit: 4, staff: ["12_nurse_pink", "16_doctor"],
-    blocked: {
+    blocked: measured({
       wall: [
         [0.05, 0.13, 0.28, 0.21], // RECEPTION sign
         [0, 0.44, 0.34, 0.8], // desk, monitor and plant
@@ -56,19 +67,19 @@ export const ROOMS: Room[] = [
         [0.57, 0.49, 0.77, 0.66], // waiting chairs and plant
       ],
       floor: [[0, 0.6, 0.34, 0.84] /* desk */, [0.79, 0.6, 1, 0.82] /* bed and IV stand */],
-    },
+    }),
   },
   {
     id: "lab", title: "Lab", image: require("@/imgs/scenes/room_lab.png"), ...shell, fillBottom: "#cfe3ee", unlock: { rebirths: 1 }, limit: 6, staff: ["16_doctor", "14_nurse_lavender"],
-    blocked: { wall: [[0.12, 0.14, 0.29, 0.31] /* LAB board */, [0.33, 0.13, 0.45, 0.36] /* window */, [0.47, 0.36, 0.98, 0.66] /* counter */], floor: [] },
+    blocked: measured({ wall: [[0.12, 0.14, 0.29, 0.31] /* LAB board */, [0.33, 0.13, 0.45, 0.36] /* window */, [0.47, 0.36, 0.98, 0.66] /* counter */], floor: [] }),
   },
   {
     id: "pharmacy", title: "Pharmacy", image: require("@/imgs/scenes/room_pharmacy.png"), ...shell, fillBottom: "#efe4cf", unlock: { treated: 10 }, limit: 7, staff: ["13_nurse_navy", "11_nurse_teal"],
-    blocked: { wall: [[0.03, 0.12, 0.35, 0.5] /* shelves */, [0.65, 0.12, 0.97, 0.5] /* shelves */, [0.45, 0.13, 0.56, 0.38] /* PHARMACY sign */], floor: [] },
+    blocked: measured({ wall: [[0.03, 0.12, 0.35, 0.5] /* shelves */, [0.65, 0.12, 0.97, 0.5] /* shelves */, [0.45, 0.13, 0.56, 0.38] /* PHARMACY sign */], floor: [] }),
   },
   {
     id: "kids", title: "Children's Ward", image: require("@/imgs/scenes/room_kids.png"), ...shell, fillBottom: "#fde7ef", unlock: { achievements: 40 }, limit: 8, staff: ["12_nurse_pink", "15_male_nurse", "14_nurse_lavender"],
-    blocked: { wall: [[0.13, 0.28, 0.64, 0.62] /* rainbow */, [0.76, 0.14, 0.97, 0.46] /* window */], floor: [] },
+    blocked: measured({ wall: [[0.11, 0.28, 0.66, 0.62] /* rainbow and its clouds */, [0.76, 0.14, 0.97, 0.46] /* window */], floor: [] }),
   },
 ];
 
@@ -120,7 +131,6 @@ export const ROOM_BONUS_CAP = 0.75;
 /** Items are drawn at their native 32px in the room's 320px-wide pixel scale. */
 export const ITEM_PX = 32;
 export const CHARACTER_PX = 64;
-/** Where things can go, as fractions of the room art (floor starts at y = 119/180). */
 /**
  * Draw order in a room from where something touches the floor (0 top, 1 bottom of the room):
  * whatever stands lower on screen is nearer the viewer, so it's drawn in front.
@@ -129,13 +139,15 @@ export const depth = (footY: number) => Math.round(footY * 1000);
 /** Above everything in the room, for an item being dragged. */
 export const DRAG_DEPTH = 5000;
 
-// Wall items start low enough that their tops stay inside the room art (and clear of its buttons).
-export const ZONES = { floor: { minY: 0.72, maxY: 0.98 }, wall: { minY: 0.3, maxY: 0.58 } } as const;
+// Fractions of the 320x240 art. The floor starts at 149/240; wall items start low enough that
+// their tops stay inside the room art (and clear of its buttons).
+export const ZONES = { floor: { minY: 0.665, maxY: 0.98 }, wall: { minY: 0.35, maxY: 0.56 } } as const;
 
 /** An item's hitbox around its placement point (x centre, y feet), as fractions of the room art. */
 const hitbox = (place: "floor" | "wall", x: number, y: number): Rect =>
   // Wall items: the middle of the sprite. Floor items: just where they stand.
-  place === "wall" ? [x - 0.04, y - 0.21, x + 0.04, y - 0.04] : [x - 0.04, y - 0.05, x + 0.04, y];
+  // (An item is 48/320 of the width wide, so 0.2 of the 4:3 room's height tall.)
+  place === "wall" ? [x - 0.04, y - 0.16, x + 0.04, y - 0.03] : [x - 0.04, y - 0.04, x + 0.04, y];
 const overlaps = (a: Rect, b: Rect) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
 
 /** Whether an item may stand at x, y in a room (inside its zone and clear of the room's blocked areas). */
@@ -185,7 +197,8 @@ export const isUnlocked = (u: Unlock, s: Progress) => {
 };
 
 export type Placement = { item: string; x: number; y: number };
-export type RoomState = { current: string; placed: Record<string, Placement[]> };
+/** `layout` 2 = positions on the 320x240 rooms; saves without it are from the 320x180 ones. */
+export type RoomState = { current: string; placed: Record<string, Placement[]>; layout?: 2 };
 
 /** Sum of bonuses from every placed item (any room), capped. */
 export function roomBonus(room: RoomState | undefined, stat: "rate" | "tap") {

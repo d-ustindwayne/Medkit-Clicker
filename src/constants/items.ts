@@ -22,6 +22,8 @@ export type ShopItem = {
   baseCost: number;
   /** Patients healed per second, per unit owned. */
   rate: number;
+  /** Drawn smaller than the others where the art fills its whole canvas, so all supplies look the same size. */
+  iconScale?: number;
 };
 
 /** Each purchase multiplies the next price by this. */
@@ -35,13 +37,13 @@ export const TAP_RATE_BONUS = 0.025;
 // the classic clicker curve. Ids are what saves store, so reordering never touches progress.
 export const SHOP_ITEMS: ShopItem[] = [
   { id: "bandage", name: "Bandage", image: require("@/imgs/shop/bandage_roll.png"), baseCost: 15, rate: 0.1 },
-  { id: "gloves", name: "Gloves", image: require("@/imgs/shop/gloves.png"), baseCost: 100, rate: 1 },
-  { id: "facemask", name: "Facemask", image: require("@/imgs/shop/facemask.png"), baseCost: 1_100, rate: 8 },
+  { id: "gloves", name: "Gloves", image: require("@/imgs/shop/gloves.png"), baseCost: 100, rate: 1, iconScale: 0.9 },
+  { id: "facemask", name: "Facemask", image: require("@/imgs/shop/facemask.png"), baseCost: 1_100, rate: 8, iconScale: 0.9 },
   { id: "thermometer", name: "Thermometer", image: require("@/imgs/shop/thermometer.png"), baseCost: 12_000, rate: 47 },
   { id: "stethoscope", name: "Stethoscope", image: require("@/imgs/shop/stethoscope.png"), baseCost: 130_000, rate: 260 },
   { id: "bp_cuff", name: "BP Cuff", image: require("@/imgs/shop/bp_tester.png"), baseCost: 1.4e6, rate: 1_400 },
-  { id: "syringe", name: "Syringe", image: require("@/imgs/shop/syringe.png"), baseCost: 2e7, rate: 7_800 },
-  { id: "medicine", name: "Medicine", image: require("@/imgs/shop/medicines.png"), baseCost: 3.3e8, rate: 44_000 },
+  { id: "syringe", name: "Syringe", image: require("@/imgs/shop/syringe.png"), baseCost: 2e7, rate: 7_800, iconScale: 0.9 },
+  { id: "medicine", name: "Medicine", image: require("@/imgs/shop/medicines.png"), baseCost: 3.3e8, rate: 44_000, iconScale: 0.9 },
   { id: "iv_bag", name: "IV Bag", image: require("@/imgs/shop/iv_bag.png"), baseCost: 5.1e9, rate: 260_000 },
   { id: "blood_vial", name: "Blood Sample", image: require("@/imgs/shop/blood_vial.png"), baseCost: 7.5e10, rate: 1.6e6 },
   { id: "covid_test", name: "COVID Test", image: require("@/imgs/shop/covid_test.png"), baseCost: 1e12, rate: 1e7 },

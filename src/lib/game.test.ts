@@ -412,3 +412,18 @@ describe("room placement rules", () => {
     expect(canPlace(reception, "floor", floor.x, floor.y)).toBe(true);
   });
 });
+
+describe("taller rooms", () => {
+  test("items placed on the old 320x180 rooms move with the art, once", () => {
+    const old = { ...newGame(), room: { current: "empty", placed: { empty: [{ item: "potted_plant", x: 0.5, y: 0.9 }, { item: "sanitizer", x: 0.4, y: 0.4 }] } } };
+    const s = normalizeSave(JSON.parse(JSON.stringify(old)))!;
+    expect(s.room.layout).toBe(2);
+    const empty = ROOMS.find((r) => r.id === "empty")!;
+    const [plant, sanitizer] = s.room.placed.empty;
+    expect(plant.y).toBeCloseTo(0.75 * 0.9 + 0.125);
+    expect(canPlace(empty, "floor", plant.x, plant.y)).toBe(true);
+    expect(canPlace(empty, "wall", sanitizer.x, sanitizer.y)).toBe(true);
+    // Saving and loading again doesn't move them a second time.
+    expect(normalizeSave(JSON.parse(JSON.stringify(s)))!.room.placed.empty).toEqual(s.room.placed.empty);
+  });
+});

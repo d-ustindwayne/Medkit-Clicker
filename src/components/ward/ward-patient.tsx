@@ -11,9 +11,9 @@ import { useGameSelector } from "@/hooks/use-game";
 
 /** Where waiting patients stand (fractions of the room art), first to arrive on the right. */
 const SPOTS = [
-  { x: 0.66, y: 0.79 },
-  { x: 0.46, y: 0.81 },
-  { x: 0.84, y: 0.77 },
+  { x: 0.66, y: 0.76 },
+  { x: 0.46, y: 0.79 },
+  { x: 0.84, y: 0.73 },
 ];
 
 /** Sick patients waiting in My Room (up to three), drawn over the room. Tap one to treat them. */

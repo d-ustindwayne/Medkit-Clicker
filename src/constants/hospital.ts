@@ -2,9 +2,9 @@ import type { ImageSourcePropType } from "react-native";
 
 import { CAR_SPRITES } from "@/constants/cars";
 
-// The Hospital page (shop, page 2). Everything here is drawn on the scene's 320x180 art-pixel grid.
+// The Hospital page (shop, page 2). Everything here is drawn on the scene's 320x240 art-pixel grid.
 
-/** The hospital grows with rebirths. Each look is a 320x180 scene with a transparent sky. */
+/** The hospital grows with rebirths. Each look is a 320x240 scene with a transparent sky. */
 export type HospitalTier = { rebirths: number; name: string; image: ImageSourcePropType };
 export const HOSPITAL_TIERS: HospitalTier[] = [
   { rebirths: 0, name: "Little Clinic", image: require("@/imgs/scenes/hospital_0.png") },
@@ -24,10 +24,11 @@ export const HOSPITAL_SKY: ImageSourcePropType = require("@/imgs/scenes/hospital
 /** The sky follows the phone's clock. `tint` darkens or warms the buildings to match. */
 export type DayPhase = "sunrise" | "day" | "sunset" | "night";
 export const SKIES: Record<DayPhase, { image: ImageSourcePropType; tint: string | null; clouds: number; fill: string }> = {
-  sunrise: { image: require("@/imgs/scenes/hospital_sky_sunrise.png"), tint: "rgba(255,170,150,0.12)", clouds: 0.9, fill: "#7f9fd8" },
-  day: { image: HOSPITAL_SKY, tint: null, clouds: 1, fill: "#8fcff5" },
-  sunset: { image: require("@/imgs/scenes/hospital_sky_sunset.png"), tint: "rgba(255,120,60,0.16)", clouds: 0.8, fill: "#4a4f9a" },
-  night: { image: require("@/imgs/scenes/hospital_sky_night.png"), tint: "rgba(10,16,48,0.42)", clouds: 0.25, fill: "#0b1030" },
+  // `fill` is the sky image's top colour, so the sky carries on above the art without a seam.
+  sunrise: { image: require("@/imgs/scenes/hospital_sky_sunrise.png"), tint: "rgba(255,170,150,0.12)", clouds: 0.9, fill: "#008ed8" },
+  day: { image: HOSPITAL_SKY, tint: null, clouds: 1, fill: "#58b5ee" },
+  sunset: { image: require("@/imgs/scenes/hospital_sky_sunset.png"), tint: "rgba(255,120,60,0.16)", clouds: 0.8, fill: "#002978" },
+  night: { image: require("@/imgs/scenes/hospital_sky_night.png"), tint: "rgba(10,16,48,0.42)", clouds: 0.25, fill: "#080c28" },
 };
 /** Sunrise 5-7, day 7-17, sunset 17-19, night 19-5. */
 export const dayPhase = (hour: number): DayPhase => (hour >= 5 && hour < 7 ? "sunrise" : hour >= 7 && hour < 17 ? "day" : hour >= 17 && hour < 19 ? "sunset" : "night");
@@ -40,9 +41,11 @@ export const hospitalTier = (rebirths: number) => {
 
 /** Clouds drift left to right behind the buildings. `y` is the cloud's top, `seconds` one full crossing. */
 export const CLOUDS = [
-  { image: require("@/imgs/hospital/cloud_big.png") as ImageSourcePropType, w: 60, y: 8, seconds: 140, start: 0.1 },
-  { image: require("@/imgs/hospital/cloud_mid.png") as ImageSourcePropType, w: 46, y: 28, seconds: 110, start: 0.7 },
-  { image: require("@/imgs/hospital/cloud_small.png") as ImageSourcePropType, w: 35, y: 44, seconds: 90, start: 0.4 },
+  { image: require("@/imgs/hospital/cloud_mid.png") as ImageSourcePropType, w: 46, y: 14, seconds: 160, start: 0.35 },
+  { image: require("@/imgs/hospital/cloud_small.png") as ImageSourcePropType, w: 35, y: 40, seconds: 120, start: 0.85 },
+  { image: require("@/imgs/hospital/cloud_big.png") as ImageSourcePropType, w: 60, y: 68, seconds: 140, start: 0.1 },
+  { image: require("@/imgs/hospital/cloud_mid.png") as ImageSourcePropType, w: 46, y: 88, seconds: 110, start: 0.7 },
+  { image: require("@/imgs/hospital/cloud_small.png") as ImageSourcePropType, w: 35, y: 104, seconds: 90, start: 0.4 },
 ];
 export const CLOUD_H = 14;
 
@@ -52,8 +55,8 @@ export const AMBULANCE: ImageSourcePropType = require("@/imgs/hospital/ambulance
 
 /** Two lanes: the far one drives left, the near one right. `y` is where the wheels touch. */
 export const LANES = [
-  { y: 158, dir: -1 },
-  { y: 165, dir: 1 },
+  { y: 218, dir: -1 },
+  { y: 225, dir: 1 },
 ] as const;
 /** Every look keeps its entrance centred here. */
 export const DOOR_X = 160;
@@ -76,7 +79,7 @@ export const VISITORS: [ImageSourcePropType, ImageSourcePropType][] = [
   [require("@/imgs/hospital/visitor_kid_1.png"), require("@/imgs/hospital/visitor_kid_2.png")],
   [require("@/imgs/hospital/visitor_elder_1.png"), require("@/imgs/hospital/visitor_elder_2.png")],
 ];
-export const VISITOR_FEET_Y = 151;
+export const VISITOR_FEET_Y = 211;
 /** Art pixels per second. */
 export const VISITOR_SPEED = 14;
 export const MAX_VISITORS = 6;

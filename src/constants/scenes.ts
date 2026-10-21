@@ -19,8 +19,8 @@ export const HOSPITAL_SCENE: Scene = {
   title: "Hospital",
   // The sky only: the building on top depends on rebirths (HOSPITAL_TIERS in hospital.ts).
   image: require("@/imgs/scenes/hospital_sky.png"),
-  aspect: 16 / 9,
-  fillTop: "#8fcff5",
+  aspect: 4 / 3,
+  fillTop: "#58b5ee",
   fillBottom: "#45963a",
   anchor: 0.85,
 };

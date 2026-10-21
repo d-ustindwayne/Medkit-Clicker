@@ -24,6 +24,7 @@ import {
   dayPhase,
   hospitalTier,
   visitorGap,
+  type DayPhase,
 } from "@/constants/hospital";
 import { SICK_PATIENTS } from "@/constants/patients";
 import { healingRate } from "@/constants/rebirth";
@@ -36,7 +37,7 @@ import { formatCount } from "@/lib/format";
 import { emergencyReward } from "@/lib/game";
 
 const ART_W = 320;
-const ART_H = 180;
+const ART_H = 240;
 const CAR_PX = 32;
 /** The lowest row of the wheels in the 32px car art. */
 const WHEEL_BOTTOM = 29;
@@ -275,18 +276,50 @@ function Street({ width, active }: { width: number; active: boolean }) {
   );
 }
 
+/** Deterministic 0-1 noise, so the sky above keeps its layout between renders. */
+const noise = (i: number, salt: number) => {
+  const v = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
+  return v - Math.floor(v);
+};
+
+/**
+ * The sky above the art when the page is taller than it (the shop pulled up): stars at night,
+ * scattered clouds otherwise, laid out from the art's top edge upwards.
+ */
+const SkyAbove = memo(function SkyAbove({ phase, width }: { phase: DayPhase; width: number }) {
+  const px = width / ART_W;
+  if (phase === "night") {
+    return Array.from({ length: 40 }, (_, i) => {
+      const s = (noise(i, 3) > 0.85 ? 2 : 1) * px;
+      return <View key={i} pointerEvents="none" style={{ position: "absolute", left: noise(i, 1) * width, bottom: noise(i, 2) * 140 * px, width: s, height: s, backgroundColor: noise(i, 4) > 0.7 ? "#fff3b8" : "#ffffff", opacity: 0.5 + noise(i, 5) * 0.5 }} />;
+    });
+  }
+  return Array.from({ length: 6 }, (_, i) => {
+    const c = CLOUDS[i % CLOUDS.length];
+    return (
+      <Image
+        key={i}
+        source={c.image}
+        style={{ position: "absolute", left: noise(i, 6) * width - c.w * px * 0.3, bottom: (10 + i * 22 + noise(i, 7) * 10) * px, width: c.w * px, height: CLOUD_H * px, opacity: phase === "day" ? 0.9 : 0.6 }}
+        contentFit="fill"
+      />
+    );
+  });
+});
+
 /** Second page of the shop area: the hospital from outside. It grows with rebirths. */
 export function HospitalPage({ width, active }: { width: number; active: boolean }) {
   const rebirths = useGameSelector((s) => s.rebirths);
   const { tier } = hospitalTier(rebirths);
   // Re-checked every minute, so the sky turns with the clock while the page is open.
   const now = useNow(60_000);
-  const sky = SKIES[dayPhase(new Date(now).getHours())];
+  const phase = dayPhase(new Date(now).getHours());
+  const sky = SKIES[phase];
   const height = width * (ART_H / ART_W);
   return (
     // Clip: clouds and cars start off the page's edges and would otherwise show over the next page.
     <View className="flex-1 overflow-hidden">
-      <ScenePage scene={{ ...HOSPITAL_SCENE, image: sky.image, fillTop: sky.fill, anchor: 1 }} width={width}>
+      <ScenePage scene={{ ...HOSPITAL_SCENE, image: sky.image, fillTop: sky.fill, anchor: 1 }} width={width} above={<SkyAbove phase={phase} width={width} />}>
         <View pointerEvents="none" style={{ position: "absolute", width, height, opacity: sky.clouds }}>
           {CLOUDS.map((c) => (
             <Cloud key={c.y} cloud={c} width={width} />

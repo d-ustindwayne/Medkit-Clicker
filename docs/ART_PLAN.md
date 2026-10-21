@@ -36,7 +36,7 @@ Sprites are grouped by what they're used for. Sources live in `src/media/photos/
 | `misc/` | Purpose not decided yet | apple (source `Apple.aseprite`), coin, bandage (the plaster), heart |
 | `art/` | Large art | nightingale (512 × 512 painting) |
 | `characters/` | People (256 × 256) | 01–16, see the table below; staff 11–16 also have `_walk1` / `_walk2` frames |
-| `scenes/` | Backgrounds (1280 × 720) | hospital_0 to hospital_9 (the outside, one look per rebirth tier, transparent sky) and hospital_sky (shop page 2); hospital_inside, room_empty, room_lab, room_pharmacy, room_kids (My Room) |
+| `scenes/` | Backgrounds (1280 × 960) | hospital_0 to hospital_9 (the outside, one look per rebirth tier, transparent sky) and hospital_sky (shop page 2); hospital_inside, room_empty, room_lab, room_pharmacy, room_kids (My Room) |
 | `hospital/` | Hospital page extras | cars at 32 × 32 (car_red, car_blue, taxi, van_green, ambulance; facing right); visitors at 16 × 16 with 2 walk frames (visitor_woman, visitor_man, visitor_kid, visitor_elder); clouds (cloud_big, cloud_mid, cloud_small), all exported ×4 |
 | `rewards/` | Icons for a private, code-locked reward section (32 × 32, exported ×4) | not listed |
 | `skins/` | Gem Shop medkit skins | skin_gold, skin_candy, skin_night, skin_crystal (recolours of medkit.png, 1024) |
@@ -102,8 +102,8 @@ Every trophy must differ in shape or structure, not just colour. Show the set fo
 
 | Piece | Exported canvas | Drawn at | Scale |
 | --- | --- | --- | --- |
-| Hospital, outside | 1280 × 720 | 320 × 180 | ×4 |
-| Hospital, inside | 1280 × 720 | 320 × 180 | ×4 |
+| Hospital, outside | 1280 × 960 | 320 × 240 | ×4 |
+| Hospital, inside | 1280 × 960 | 320 × 240 | ×4 |
 | Florence Nightingale painting | 512 × 512 | 256 × 256 (for detail) | ×2 |
 | Each character | 256 × 256 | 64 × 64 | ×4 |
 

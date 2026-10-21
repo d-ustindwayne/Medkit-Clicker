@@ -16,7 +16,7 @@ A plan for checking every game image in one pass. **Status (2026-10-21): first p
 | `skins/`, `gems/` | medkit skins, tap-effect particles, background particles | |
 | `stickers/` | 18 stickers | saved copies come from `src/constants/sticker-data.ts` |
 | `characters/` | patients and staff, with walk frames | |
-| `scenes/`, `hospital/` | rooms, hospital tiers, skies, cars, visitors | large art (320 × 180) |
+| `scenes/`, `hospital/` | rooms, hospital tiers, skies, cars, visitors | large art (320 × 240 since 2026-10-21) |
 | `medkit.png`, `hospital.png` | the main medkit and the menu hospital | |
 
 ## The rules each asset is checked against
@@ -76,3 +76,13 @@ The automatic checks found no export problems: every PNG that has a source is an
 | 11 | `shop/bandage_roll` | Consistency | Pale grey on the white card, with little contrast; it reads weaker than the other supplies. | Your call: a warmer gauze colour or a stronger outline. |
 | 12 | `room/sanitizer` | Effect particles | A detached drip below the nozzle. | Your call: keep (it's part of the object) or remove. |
 | 13 | `gems/p_firefly` | Consistency | 24 × 24 while the other particles are 32 × 32. | Pad to 32 × 32 (no visual change). |
+
+## Applied (2026-10-21)
+
+Approved and applied, together with your own edits to the floor lamp, flower vase, armchair, microscope, question-mark bulb and reception:
+- **Scenes** are 320 × 240 (1280 × 960). Rooms gained 30 rows of wall under the ceiling and 30 rows of floor; the hospital gained 60 rows of sky. Room positions and the no-place areas moved with the art, and items placed in older saves are moved on load. The sky above the hospital art continues the sky's top colour, with clouds by day and stars at night.
+- **#1** floor items on one baseline; **#2** floor lamp; **#3-5** sparkles removed; **#6** re-centred; **#8** gold trophy redrawn from the bronze one; **#9-10** sources added and moved; **#11** stronger bandage outline; **#12** sanitizer drip removed; **#13** firefly padded.
+- **#7** the four full-canvas supplies are drawn at 90% in the shop and orbit (`iconScale` in `src/constants/items.ts`) rather than redrawn.
+- Also: IV bag with two ports (blue lid), even microscope tube, thinner thermometer cap, light bulb without the Z and side bumps, the Children's Ward rainbow standing on fuller clouds.
+
+After applying, the automatic checks pass for every asset with a source (exact exports, no black pixels); the only detached pixels left are the moon's tip and the coffee steam, which belong to their drawings.

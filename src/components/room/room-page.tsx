@@ -44,7 +44,8 @@ const Walker = memo(function Walker({ id, width, height, lane }: { id: string; w
   const span = width - size * 1.2;
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: (lane % 2 ? 1 - x.get() : x.get()) * span }] }));
   const frames = STAFF_FRAMES[id];
-  const footY = 0.97 - lane * 0.035;
+  // Lanes across the front of the (4:3) floor, a little apart.
+  const footY = 0.95 - lane * 0.05;
   return (
     // Sorted with the furniture by where their feet are: a nurse walks behind a bed that stands lower
     // on screen and in front of one that stands higher.
@@ -158,7 +159,7 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
     }
     // Spread new items out so they don't all land in one spot.
     const x = 0.15 + ((placed.length * 0.37) % 0.7);
-    const y = item.place === "floor" ? ZONES.floor.maxY - 0.03 : (ZONES.wall.minY + ZONES.wall.maxY) / 2 + 0.08;
+    const y = item.place === "floor" ? ZONES.floor.maxY - 0.03 : (ZONES.wall.minY + ZONES.wall.maxY) / 2 + 0.06;
     dispatch({ type: "placeItem", room: room.id, item: item.id, x, y });
     haptic.buy();
     playSfx("buy");
@@ -230,7 +231,7 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
     if (!placed.some((p) => p.item === item.id) && placed.length >= room.limit) return tapItem(item); // "room is full"
     // Items stand on their feet, so the drop point is the bottom of the item.
     const fx = Math.min(0.95, Math.max(0.05, (pageX - b.x) / b.w));
-    const fy = Math.min(1, Math.max(0, (pageY - b.y) / b.h + 0.06));
+    const fy = Math.min(1, Math.max(0, (pageY - b.y) / b.h + 0.045));
     dispatch({ type: "placeItem", room: room.id, item: item.id, x: fx, y: fy });
     haptic.buy();
     playSfx("buy");
