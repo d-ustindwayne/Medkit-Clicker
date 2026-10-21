@@ -110,8 +110,24 @@ export async function unlockOnline(code: string) {
 export const fetchRewards = (token: string) => call<CloudReward[]>("/rewards", { token });
 
 /** Redeems on the server, which checks the limit and alerts Dustin. `note` is the answer to the reward's question, if any. */
-export const redeemOnline = async (token: string, rewardId: string, note?: string) =>
-  call<{ ok: true; at: number; used: number; limit: number | null; notified: boolean }>("/redeem", { method: "POST", token, body: JSON.stringify({ rewardId, deviceId: await deviceId(), note }) });
+export const redeemOnline = async (token: string, rewardId: string, note?: string) => {
+  const res = await call<{ ok: true; at: number; used: number; limit: number | null; notified: boolean; alert?: { url: string; title: string; text: string; id: number } }>("/redeem", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ rewardId, deviceId: await deviceId(), note }),
+  });
+  // The server's alert was refused (its host shares IPs, so ntfy rate-limits it): send it from the
+  // phone instead, then tell the server so it doesn't retry.
+  if (!res.notified && res.alert) {
+    const { url, title, text, id } = res.alert;
+    const sent = await fetch(url, { method: "POST", body: text, headers: { Title: title, Tags: "gift" } }).then((r) => r.ok).catch(() => false);
+    if (sent) {
+      await call("/alerted", { method: "POST", token, body: JSON.stringify({ id }) }).catch(() => {});
+      return { ...res, notified: true };
+    }
+  }
+  return res;
+};
 
 const musicDir = () => new Directory(Paths.document, "music");
 

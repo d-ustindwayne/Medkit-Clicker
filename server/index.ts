@@ -68,8 +68,10 @@ async function notify(text: string) {
   }
   try {
     const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, { method: "POST", body: text, headers: { Title: "Medkit Clicker", Tags: "gift", ...(NTFY_TOKEN ? { Authorization: `Bearer ${NTFY_TOKEN}` } : {}) }, signal: AbortSignal.timeout(10_000) });
-    lastAlert = { at: new Date().toISOString(), ok: res.ok, detail: `HTTP ${res.status}` };
-    if (!res.ok) console.error(`Alert not sent: ntfy answered ${res.status} ${await res.text().catch(() => "")}`);
+    // ntfy's own error text (e.g. "limit reached: too many requests") is safe to show; the topic isn't in it.
+    const why = res.ok ? "" : (await res.text().catch(() => "")).replace(NTFY_TOPIC, "***").slice(0, 200);
+    lastAlert = { at: new Date().toISOString(), ok: res.ok, detail: `HTTP ${res.status}${why ? ` ${why}` : ""}` };
+    if (!res.ok) console.error(`Alert not sent: ntfy answered ${res.status} ${why}`);
     return res.ok;
   } catch (e) {
     lastAlert = { at: new Date().toISOString(), ok: false, detail: e instanceof Error ? e.message : "request failed" };
@@ -87,7 +89,8 @@ async function retryAlerts() {
     SELECT d.id, d.note, r.name, r.max_uses, a.title,
       (SELECT count(*)::int FROM redemptions e WHERE e.reward_id = d.reward_id AND e.redeemed_at <= d.redeemed_at) AS nth
     FROM redemptions d JOIN rewards r ON r.id = d.reward_id JOIN access_codes a ON a.section = r.section
-    WHERE d.notified_at IS NULL AND d.redeemed_at > now() - interval '1 day'
+    -- The phone gets the first two minutes to send it itself (see /redeem).
+    WHERE d.notified_at IS NULL AND d.redeemed_at > now() - interval '1 day' AND d.redeemed_at < now() - interval '2 minutes'
     ORDER BY d.redeemed_at LIMIT 10`;
   for (const row of rows) {
     const count = row.max_uses === null ? `#${row.nth}` : `${row.nth}/${row.max_uses}`;
@@ -194,9 +197,20 @@ Bun.serve({
       });
       if (!result) return json({ error: "No redemptions left for this reward." }, 409);
       const count = reward.max_uses === null ? `#${result.used}` : `${result.used}/${reward.max_uses}`;
-      const sent = await notify(`${reward.title}: "${reward.name}" was redeemed (${count}).${answer ? ` Note: ${answer}` : ""}`);
+      const text = `${reward.title}: "${reward.name}" was redeemed (${count}).${answer ? ` Note: ${answer}` : ""}`;
+      const sent = await notify(text);
       if (sent) await sql`UPDATE redemptions SET notified_at = now() WHERE id = ${result.id}`;
-      return json({ ok: true, at: result.at, used: result.used, limit: reward.max_uses, notified: sent });
+      // ntfy can refuse the server (hosts share IPs, so the rate limit runs out); then the phone, which has
+      // the section's token, sends the same alert itself and confirms it with /alerted.
+      const alert = !sent && NTFY_TOPIC ? { url: `https://ntfy.sh/${NTFY_TOPIC}`, title: "Medkit Clicker", text, id: result.id } : undefined;
+      return json({ ok: true, at: result.at, used: result.used, limit: reward.max_uses, notified: sent, alert });
+    }
+
+    // The phone sent a redemption's alert itself: mark it, so the server's retries don't send it again.
+    if (path === "/alerted" && req.method === "POST") {
+      const { id } = (await req.json().catch(() => ({}))) as { id?: number };
+      await sql`UPDATE redemptions d SET notified_at = now() FROM rewards r WHERE d.id = ${Number(id) || 0} AND r.id = d.reward_id AND r.section = ${section} AND d.notified_at IS NULL`;
+      return json({ ok: true });
     }
 
     // Music manifest: playlists and track metadata (no audio).
