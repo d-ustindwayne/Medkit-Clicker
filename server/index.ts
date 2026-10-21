@@ -81,7 +81,7 @@ async function notify(text: string) {
 }
 
 /**
- * Alerts that didn't go out (ntfy down or busy) are tried again every minute for a day, so a
+ * Alerts that didn't go out (ntfy down or busy) are tried again every 10 minutes for a day, so a
  * redemption is never silently missed. Each one says it's late.
  */
 async function retryAlerts() {
@@ -99,7 +99,8 @@ async function retryAlerts() {
     await sql`UPDATE redemptions SET notified_at = now() WHERE id = ${row.id}`;
   }
 }
-setInterval(() => void retryAlerts().catch((e) => console.error("Alert retry failed:", e)), 60_000);
+// Every 10 minutes: ntfy counts refused attempts against the daily quota too, so retrying faster burns it.
+setInterval(() => void retryAlerts().catch((e) => console.error("Alert retry failed:", e)), 10 * 60_000);
 
 Bun.serve({
   port: Number(process.env.PORT ?? 8787),

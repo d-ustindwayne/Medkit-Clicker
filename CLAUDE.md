@@ -68,7 +68,7 @@ Medkit Clicker is a one-page React Native application built with Expo 57, React 
 
 ## 🌐 Server, alerts and website
 - API: `server/index.ts` on Render (free plan), Postgres on Aiven (free plan, few connection slots: the server pool is capped at 3). `/health` reports whether reward alerts are configured and how the last one went.
-- Reward alerts use ntfy.sh. ntfy rate-limits Render's shared IPs (HTTP 429) even with `NTFY_TOKEN`, so when the server is refused, `/redeem` returns the alert and the phone sends it, then confirms with `/alerted`. Failed alerts are retried for a day. Rewards with `rewards.silent = true` (set in the database) send no alert.
+- Reward alerts use ntfy.sh. ntfy rate-limits Render's shared IPs (HTTP 429) even with `NTFY_TOKEN`, so when the server is refused, `/redeem` returns the alert and the phone sends it, then confirms with `/alerted`. Failed alerts are retried every 10 minutes for a day (ntfy's free daily quota counts refused attempts too). Rewards with `rewards.silent = true` (set in the database) send no alert.
 - A code-locked section can end on a date: `bun run expire-section <section> <ISO date>` (app via `.env.local`, rebuild needed; server via the database).
 - Website: `website/` (Vue + Vite), deployed to GitHub Pages by `.github/workflows/website.yml` on every push. After changing game art, run `bun run sync-assets` in `website/`; game facts are mirrored in `website/src/lib/content.ts`.
 - iOS isn't built yet; the free AltStore/SideStore plan is in `docs/IOS.md`.
