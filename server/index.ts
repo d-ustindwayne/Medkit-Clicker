@@ -71,7 +71,8 @@ Bun.serve({
       if (!code || !deviceId || deviceId.length > 100) return json({ error: "Missing code" }, 400);
       const hash = sha256(normalize(code));
       const result = await sql.begin(async (tx) => {
-        const [promo] = await tx`SELECT code_sha256, kind, amount, rewards, max_claims, message, expires_at FROM promo_codes WHERE code_sha256 = ${hash} FOR UPDATE`;
+        // to_jsonb(...) -> 'rewards' reads the bundle column if the database has it (add-promo adds it), and null otherwise.
+        const [promo] = await tx`SELECT code_sha256, kind, amount, to_jsonb(p) -> 'rewards' AS rewards, max_claims, message, expires_at FROM promo_codes p WHERE code_sha256 = ${hash} FOR UPDATE`;
         if (!promo || (promo.expires_at && new Date(promo.expires_at) < new Date())) return { status: 404 } as const;
         const [{ used }] = await tx`SELECT count(*)::int AS used FROM promo_claims WHERE code_sha256 = ${hash}`;
         if (promo.max_claims !== null && used >= promo.max_claims) return { status: 409 } as const;
