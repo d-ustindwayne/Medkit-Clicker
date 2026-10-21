@@ -129,7 +129,7 @@ Still unused:
 - [ ] **Everything is on-device, so it isn't tamper-proof.** Someone could edit an exported save and import it to give themselves patients. The redeem code is stored only as a hash, so it can't be read from the code, but a determined person could still bypass the check. That's fine for a gift; it would need a server to be secure.
 - [ ] **Rewards survive Delete progress and imports on purpose,** so reward limits can't be reset. Reinstalling the app or clearing its data does reset it, because there's no server.
 - [ ] **Saving to Download:** Android 11+ won't let apps pick the root of Download. Export asks for a folder once (Documents by default, or a subfolder of Download) and then remembers it.
-- [ ] **iOS is untested.** It needs a Mac or a cloud build (`eas build`) to check.
+- [ ] **iOS is untested.** Plan for free iPhone installs (AltStore/SideStore, built on GitHub Actions) in [IOS.md](IOS.md).
 - [x] **Music is copyrighted:** retired. The app plays only its own BeepBox soundtrack; the code no longer unlocks music (2026-10-20).
 - [ ] **Old native build on the emulator:** `com.dust.dev.mc` is from before the audio and save libraries. Use Expo Go, or run `bunx expo prebuild --clean` then `bun run android` to replace it.
 - [x] **Unit tests:** `bun test` runs 35 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).

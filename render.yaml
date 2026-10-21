@@ -18,3 +18,6 @@ services:
         sync: false
       - key: NTFY_TOPIC
         sync: false
+      # Optional ntfy.sh access token: without it, alerts can be refused (HTTP 429) on shared IPs.
+      - key: NTFY_TOKEN
+        sync: false

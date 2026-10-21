@@ -5,7 +5,8 @@
 //
 // Env: DATABASE_URL (Postgres), DATABASE_CA (Aiven's CA certificate text, or a path to it),
 // SERVER_SECRET (any long random string), NTFY_TOPIC (optional: ntfy.sh topic Dustin subscribes
-// to), PORT (default 8787).
+// to), NTFY_TOKEN (optional: an ntfy.sh access token, so alerts aren't rate-limited by shared IPs),
+// PORT (default 8787).
 import { SQL } from "bun";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -25,6 +26,9 @@ function connect() {
 const sql = connect();
 const SECRET = process.env.SERVER_SECRET ?? "";
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
+// An ntfy.sh access token (optional, recommended): without one, ntfy limits by IP, and hosts like
+// Render share their IPs with other apps, so alerts get refused (HTTP 429).
+const NTFY_TOKEN = process.env.NTFY_TOKEN;
 if (!process.env.DATABASE_URL || SECRET.length < 16) throw new Error("Set DATABASE_URL and SERVER_SECRET (16+ chars).");
 
 /** Same normalisation as the app (src/lib/codes.ts) and scripts/add-code.ts: trim and lowercase. */
@@ -63,7 +67,7 @@ async function notify(text: string) {
     return false;
   }
   try {
-    const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, { method: "POST", body: text, headers: { Title: "Medkit Clicker", Tags: "gift" }, signal: AbortSignal.timeout(10_000) });
+    const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, { method: "POST", body: text, headers: { Title: "Medkit Clicker", Tags: "gift", ...(NTFY_TOKEN ? { Authorization: `Bearer ${NTFY_TOKEN}` } : {}) }, signal: AbortSignal.timeout(10_000) });
     lastAlert = { at: new Date().toISOString(), ok: res.ok, detail: `HTTP ${res.status}` };
     if (!res.ok) console.error(`Alert not sent: ntfy answered ${res.status} ${await res.text().catch(() => "")}`);
     return res.ok;
@@ -101,7 +105,7 @@ Bun.serve({
     const path = url.pathname;
 
     // Also says whether reward alerts are set up and how the last one went.
-    if (path === "/health") return json({ ok: true, alerts: { configured: !!NTFY_TOPIC, last: lastAlert } });
+    if (path === "/health") return json({ ok: true, alerts: { configured: !!NTFY_TOPIC, token: !!NTFY_TOKEN, last: lastAlert } });
 
     // Trade a redeem code for a token. Rate-limiting is left to the host (codes are long enough).
     if (path === "/unlock" && req.method === "POST") {

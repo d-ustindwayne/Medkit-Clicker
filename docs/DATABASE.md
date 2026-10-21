@@ -84,6 +84,7 @@ The free plan sleeps after 15 minutes without requests. The first request after 
    - `DATABASE_URL`
    - `SERVER_SECRET`: a long random string
    - `NTFY_TOPIC`: a hard-to-guess topic name; install the ntfy app on your phone and subscribe to it
+   - `NTFY_TOKEN` (recommended): an access token from a free ntfy.sh account (ntfy.sh → Account → Access tokens). Without it, ntfy rate-limits by IP, and Render shares IPs with other apps, so alerts get refused with HTTP 429 (seen 2026-10-22). Check `/health`: `alerts.last` shows how the last alert went. Failed alerts are retried every minute for a day.
 3. `bun run db:setup` creates the tables and uploads the code hash and the rewards. It's safe to run again.
 4. **Host the API:** build `server/Dockerfile`, or run `bun run server`, using the same `.env` values.
 5. In `.env.local`, add `EXPO_PUBLIC_API_URL=https://your-api-host` and rebuild the app.
