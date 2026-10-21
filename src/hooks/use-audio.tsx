@@ -1,10 +1,10 @@
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, type AudioPlayer } from "expo-audio";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import { SFX, SOUNDTRACK, type Playlist, type SfxName } from "@/constants/playlists";
 import { useGameActions, useSettings } from "@/hooks/use-game";
-import { cloudEnabled, downloadMusic, getToken, loadCachedPlaylists, wakeServer, type CachedPlaylist } from "@/lib/cloud";
+import { OFFLINE_MESSAGE, cloudEnabled, downloadMusic, ensureToken, hasPendingCode, isOffline, loadCachedPlaylists, wakeServer, type CachedPlaylist } from "@/lib/cloud";
 import { VOLUME_STEPS } from "@/lib/storage";
 
 type AudioControls = {
@@ -16,7 +16,7 @@ type AudioControls = {
 export type MusicState = {
   /** Playlists that can play on this phone (downloaded, or bundled for testing). Empty = no music. */
   library: { id: string; name: string }[];
-  /** True when a code token is saved and the server is configured, so songs can download. */
+  /** True when the code was entered (online or not) and the server is configured, so songs can download. */
   canDownload: boolean;
   /** Songs downloaded so far, while a download runs. */
   download: { done: number; total: number } | null;
@@ -66,15 +66,25 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   // The music library: the game's soundtrack, then the playlists downloaded after Jasmine's code.
   const [cached, setCached] = useState<CachedPlaylist[]>([]);
   const [token, setToken] = useState<string | null>(null);
+  /** The code was entered offline and still waits for the server. */
+  const [pending, setPending] = useState(false);
   const [download, setDownload] = useState<{ done: number; total: number } | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   useEffect(() => {
     loadCachedPlaylists().then(setCached);
-    getToken().then((saved) => {
-      setToken(saved);
-      // Code holders use the server (rewards, new songs): wake it early.
-      if (saved) wakeServer();
+    // Fetches the token now if the code was entered offline; tried again whenever the app comes back.
+    const check = () =>
+      ensureToken().then(async (saved) => {
+        setToken(saved);
+        setPending(!saved && (await hasPendingCode()));
+        // Code holders use the server (rewards, new songs): wake it early.
+        if (saved) wakeServer();
+      });
+    check();
+    const sub = AppState.addEventListener("change", (s) => {
+      if (s === "active") check();
     });
+    return () => sub.remove();
   }, []);
   const library: Playlist[] = useMemo(() => {
     const downloaded = cached.map((p) => ({ id: p.id, name: p.name, tracks: p.tracks.map((uri) => ({ uri })) }));
@@ -136,14 +146,22 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const controls = useMemo(() => ({ playSfx, unlock }), [playSfx, unlock]);
 
   const fetchMusic = useCallback(async () => {
-    const saved = await getToken();
-    setToken(saved);
-    if (!saved || !cloudEnabled) return;
+    if (!cloudEnabled) return;
     setDownloadError(null);
+    const saved = await ensureToken();
+    setToken(saved);
+    if (!saved) {
+      const waiting = await hasPendingCode();
+      setPending(waiting);
+      if (waiting) setDownloadError(OFFLINE_MESSAGE);
+      return;
+    }
+    setPending(false);
     try {
       setCached(await downloadMusic(saved, (done, total) => setDownload({ done, total })));
     } catch (e) {
-      setDownloadError(e instanceof Error ? e.message : "Download failed. Check the connection and try again.");
+      setDownloadError(isOffline(e) ? OFFLINE_MESSAGE : "The download stopped. Check the connection and tap the button again; songs already saved are kept.");
+      loadCachedPlaylists().then(setCached);
     } finally {
       setDownload(null);
     }
@@ -152,7 +170,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const musicState = useMemo<MusicState>(
     () => ({
       library: library.map(({ id, name }) => ({ id, name })),
-      canDownload: cloudEnabled && !!token,
+      canDownload: cloudEnabled && (!!token || pending),
       download,
       downloadError,
       fetchMusic,
@@ -177,7 +195,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         music.seekTo(seconds).catch(() => {});
       },
     }),
-    [library, token, download, downloadError, fetchMusic, playlist, trackIndex, trackCount, musicOn, paused, status.currentTime, status.duration, music],
+    [library, token, pending, download, downloadError, fetchMusic, playlist, trackIndex, trackCount, musicOn, paused, status.currentTime, status.duration, music],
   );
 
   return (

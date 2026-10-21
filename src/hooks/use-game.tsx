@@ -12,6 +12,8 @@ import { DEFAULT_SETTINGS, clearGame, loadGame, loadSettings, saveGame, saveSett
 
 // 5 updates a second: smooth enough for the counter, and half the work of 10.
 const TICK_MS = 200;
+/** In focus mode (a minigame is open) the game behind it updates only this often; the time still all counts. */
+const FOCUS_TICK_MS = 1000;
 /** Achievements unlocked in the first minute after launch wait, so their toasts aren't missed on start-up. */
 const ACHIEVEMENT_QUIET_MS = 60_000;
 const AUTOSAVE_MS = 10_000;
@@ -30,6 +32,8 @@ type GameActions = {
   dismissToast: (id: number) => void;
   /** Developer tools: pretend the app was closed for this long. */
   simulateAway: (seconds: number) => void;
+  /** While a minigame is played, the game ticks once a second instead of 5 times, so it runs smoothly. */
+  setFocusMode: (on: boolean) => void;
 };
 
 const StateContext = createContext<GameState | null>(null);
@@ -51,6 +55,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
   const lastTick = useRef(0);
   const seenAchievements = useRef<Set<string> | null>(null);
   const toastId = useRef(0);
+  const focus = useRef(false);
 
   const pushToast = useCallback((toast: Omit<Toast, "id">) => {
     const id = ++toastId.current;
@@ -122,6 +127,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
     if (!ready) return;
     const id = setInterval(() => {
       const now = Date.now();
+      if (focus.current && now - lastTick.current < FOCUS_TICK_MS) return;
       const seconds = (now - lastTick.current) / 1000;
       lastTick.current = now;
       if (seconds > AWAY_THRESHOLD_S) grantAway(seconds);
@@ -202,6 +208,9 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       pushToast,
       dismissToast,
       simulateAway: grantAway,
+      setFocusMode: (on) => {
+        focus.current = on;
+      },
     };
   }, [pushToast, dismissToast, grantAway]);
 

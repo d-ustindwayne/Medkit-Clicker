@@ -5,7 +5,7 @@ import { PixelButton } from "@/components/ui/pixel-button";
 import { useMusic } from "@/hooks/use-audio";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
-import { claimPromoOnline, cloudEnabled, unlockOnline, wakeServer } from "@/lib/cloud";
+import { OFFLINE_MESSAGE, claimPromoOnline, cloudEnabled, isOffline, savePendingCode, unlockOnline, wakeServer } from "@/lib/cloud";
 import { formatCount } from "@/lib/format";
 import { codeHash, isDevCode, sectionForCode } from "@/lib/codes";
 import { BACKGROUNDS } from "@/constants/backgrounds";
@@ -60,6 +60,7 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
       // offline and server-less builds.
       let section = null;
       let online = false;
+      let unreachable = false;
       if (cloudEnabled) {
         try {
           const res = await unlockOnline(code);
@@ -67,6 +68,7 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
           online = !!res;
         } catch {
           // offline or server down: fall through to the local check
+          unreachable = true;
         }
       }
       section ??= await sectionForCode(code);
@@ -74,7 +76,14 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
         // 3. A promo code released later: patients, Care Coins, gems, backgrounds or a mix, once per phone.
         const hash = await codeHash(code);
         if (promoClaims.includes(hash)) return setError("You've already used that code on this phone.");
-        const reward = cloudEnabled ? await claimPromoOnline(code).catch(() => null) : null;
+        // Promo codes are only checked online.
+        if (unreachable) return setError(OFFLINE_MESSAGE);
+        let reward = null;
+        try {
+          reward = cloudEnabled ? await claimPromoOnline(code) : null;
+        } catch (e) {
+          return setError(isOffline(e) ? OFFLINE_MESSAGE : e instanceof Error ? e.message : "Couldn't check the code. Try again in a minute.");
+        }
         if (!reward) {
           setError("That code didn't match anything. Check the spelling and try again.");
           return;
@@ -91,6 +100,11 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
         pushToast({ kind: "info", title: "Unlocked", body: `${section.title} is now in the menu.` });
       }
       setCode("");
+      if (cloudEnabled && unreachable) {
+        // Unlocked from the local check: the server part (music, synced rewards) finishes once online.
+        await savePendingCode(code);
+        pushToast({ kind: "info", title: "Unlocked offline", body: "Your music and rewards will finish setting up the next time you're online." });
+      }
       if (online) {
         // Her playlists download in the background and show up in Settings.
         pushToast({ kind: "info", title: "Downloading your music", body: "Your playlists are on their way. They'll show up in Settings." });

@@ -12,11 +12,13 @@ type Props = {
   onPageChange?: (index: number) => void;
   /** Turn swiping off, e.g. while dragging things around on a page. */
   scrollEnabled?: boolean;
+  /** Let page content draw past the pager's edges (the area around it must clip instead). */
+  overflowVisible?: boolean;
   className?: string;
 };
 
 /** Horizontal swipe pages with tappable pixel dots. */
-export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabled = true, className = "" }: Props) {
+export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabled = true, overflowVisible = false, className = "" }: Props) {
   const { playSfx } = useAudio();
   const scroller = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
@@ -55,7 +57,7 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
         pagingEnabled
         scrollEnabled={scrollEnabled}
         showsHorizontalScrollIndicator={false}
-        style={{ width, flexGrow: 1 }}
+        style={{ width, flexGrow: 1, overflow: overflowVisible ? "visible" : undefined }}
         onMomentumScrollEnd={(e) => {
           const next = Math.round(e.nativeEvent.contentOffset.x / width);
           if (next === page) return;

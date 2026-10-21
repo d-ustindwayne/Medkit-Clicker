@@ -195,7 +195,7 @@ function PillsGame({ onDone, tuning }: GameProps) {
         <TimeBar left={left} total={total} />
         <View className="w-56 flex-row flex-wrap justify-between gap-y-2">
           {pills.colors.map((c, i) => (
-            <Pressable key={i} accessibilityRole="button" accessibilityLabel={`${PILL_COLORS[c].name.toLowerCase()} pill`} onPress={() => tap(i)} className="h-16 w-16 items-center justify-center border-2 border-outline bg-surface">
+            <Pressable key={i} accessibilityRole="button" accessibilityLabel={`${PILL_COLORS[c].name.toLowerCase()} pill`} onPressIn={() => tap(i)} className="h-16 w-16 items-center justify-center border-2 border-outline bg-surface">
               <Pill color={PILL_COLORS[c]} i={i} taken={taken.includes(i)} />
             </Pressable>
           ))}
@@ -245,7 +245,7 @@ function XrayGame({ onDone, tuning }: GameProps) {
           {Array.from({ length: count }, (_, i) => {
             const glow = picked === i ? (i === cracked ? "bg-success/30" : "bg-danger/30") : "";
             return (
-              <Pressable key={i} accessibilityRole="button" accessibilityLabel={`Bone ${i + 1}`} onPress={() => pick(i)} className={`h-16 w-[30%] items-center justify-center ${glow}`}>
+              <Pressable key={i} accessibilityRole="button" accessibilityLabel={`Bone ${i + 1}`} onPressIn={() => pick(i)} className={`h-16 w-[30%] items-center justify-center ${glow}`}>
                 {/* A pixel bone: two knobs and a shaft; the cracked one has a dark break across it. */}
                 <View className="items-center" style={{ transform: [{ rotate: `${(i % 3) * 20 - 20}deg` }] }}>
                   <View className="flex-row gap-1">
@@ -295,53 +295,85 @@ function Germ({ busted }: { busted: boolean }) {
     </Animated.View>
   );
 }
+/** A tap this soon after a germ moves on still counts for it, so a busy phone doesn't cost a hit. */
+const GERM_GRACE_MS = 180;
+type GermState = { n: number; cell: number; busted: boolean };
 function GermGame({ onDone, tuning }: GameProps) {
   const done = useDone(onDone);
   const { playSfx } = useAudio();
   const haptic = useHaptics();
-  const juice = useJuice();
-  const [germ, setGerm] = useState<{ n: number; cell: number; busted: boolean } | null>(null);
+  const [germ, setGerm] = useState<GermState | null>(null);
   const [busted, setBusted] = useState(0);
   const hits = useRef(0);
+  // The live germ and the one before it, read by taps straight away (state can lag a frame behind).
+  const current = useRef<GermState | null>(null);
+  const previous = useRef<GermState | null>(null);
+  /** Numbers of the germs already busted. */
+  const gone = useRef(new Set<number>());
   const need = tuning.germsNeeded;
   useEffect(() => {
     const show = tuning.germShowMs;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let n = 0; n < GERMS; n++) {
-      timers.push(setTimeout(() => setGerm({ n, cell: Math.floor(Math.random() * 9), busted: false }), 700 + n * show));
-    }
-    timers.push(setTimeout(() => done(hits.current >= need), 700 + GERMS * show));
-    return () => timers.forEach(clearTimeout);
+    let timer: ReturnType<typeof setTimeout>;
+    // Each germ is scheduled after the last one has had its full time on screen, so a slow phone
+    // stretches the game instead of skipping germs.
+    const next = (n: number) => {
+      const last = current.current;
+      if (last) {
+        previous.current = last;
+        setTimeout(() => {
+          if (previous.current === last) previous.current = null;
+        }, GERM_GRACE_MS);
+      }
+      if (n >= GERMS) {
+        current.current = null;
+        setGerm(null);
+        timer = setTimeout(() => done(hits.current >= need), GERM_GRACE_MS);
+        return;
+      }
+      // Never the same hole twice in a row.
+      const cell = (((last?.cell ?? -1) + 1 + Math.floor(Math.random() * 8)) % 9 + 9) % 9;
+      const g = { n, cell, busted: false };
+      current.current = g;
+      setGerm(g);
+      timer = setTimeout(() => next(n + 1), show);
+    };
+    timer = setTimeout(() => next(0), 700);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per game
   }, []);
   const bust = (cell: number) => {
-    if (!germ || germ.cell !== cell || germ.busted) {
-      juice.shake();
-      return;
-    }
+    const live = current.current;
+    const late = previous.current;
+    const free = (g: GermState | null) => !!g && g.cell === cell && !gone.current.has(g.n);
+    const target = free(live) ? live : free(late) ? late : null;
+    if (!target) return haptic.denied();
+    gone.current.add(target.n);
     hits.current += 1;
     setBusted(hits.current);
-    setGerm({ ...germ, busted: true });
-    juice.pop();
+    if (target === live) {
+      const popped = { ...target, busted: true };
+      current.current = popped;
+      setGerm(popped);
+    }
     haptic.tap();
     playSfx("medkit");
   };
   return (
-    <Animated.View style={juice.style}>
+    <View>
       <View className="items-center gap-3">
         <Text className="font-number text-base text-ink">
           Busted {busted} (need {need} of {GERMS})
         </Text>
         <View className="w-56 flex-row flex-wrap justify-between gap-y-2">
           {Array.from({ length: 9 }, (_, i) => (
-            <Pressable key={i} accessibilityRole="button" accessibilityLabel={germ?.cell === i && !germ.busted ? "Germ" : "Empty"} onPress={() => bust(i)} className="h-16 w-16 items-center justify-center border-2 border-outline bg-surface">
+            <Pressable key={i} accessibilityRole="button" accessibilityLabel={germ?.cell === i && !germ.busted ? "Germ" : "Empty"} onPressIn={() => bust(i)} className="h-16 w-16 items-center justify-center border-2 border-outline bg-surface">
               {germ?.cell === i && <Germ key={germ.n} busted={germ.busted} />}
             </Pressable>
           ))}
         </View>
         <Hint>Tap each germ before it slips away!</Hint>
       </View>
-    </Animated.View>
+    </View>
   );
 }
 
@@ -422,7 +454,7 @@ const FlipCard = memo(function FlipCard({ image, faceUp, matched, onPress }: { i
   const back = useAnimatedStyle(() => ({ opacity: flip.get() < 0.5 ? 1 : 0, transform: [{ perspective: 400 }, { rotateY: `${flip.get() * 180}deg` }, { scale: bounce.get() }] }));
   const front = useAnimatedStyle(() => ({ opacity: flip.get() >= 0.5 ? 1 : 0, transform: [{ perspective: 400 }, { rotateY: `${flip.get() * 180 - 180}deg` }, { scale: bounce.get() }] }));
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={faceUp ? "Card" : "Hidden card"} onPress={onPress} className="h-20 w-16">
+    <Pressable accessibilityRole="button" accessibilityLabel={faceUp ? "Card" : "Hidden card"} onPressIn={onPress} className="h-20 w-16">
       <Animated.View style={[{ position: "absolute", width: 64, height: 80 }, back]}>
         <View className="flex-1 items-center justify-center border-2 border-outline bg-primary">
           <Text className="font-pixel text-2xl text-surface">+</Text>

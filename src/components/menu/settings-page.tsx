@@ -12,6 +12,7 @@ import { useMusic } from "@/hooks/use-audio";
 import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
 import { COIN } from "@/constants/boosts";
 import { coinBalance } from "@/lib/game";
+import { cloudEnabled } from "@/lib/cloud";
 import { exportSave, importSave, type SaveFormat } from "@/lib/save-file";
 import { VOLUME_STEPS } from "@/lib/storage";
 
@@ -86,6 +87,10 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
             )}
             {music.downloadError && <Text className="font-body text-xs text-danger">{music.downloadError}</Text>}
           </View>
+        )}
+        {/* A section unlocked without the server (an older build, offline): the code has to be checked online once. */}
+        {cloudEnabled && !music.canDownload && state.unlockedSections.length > 0 && (
+          <Text className="font-body text-xs text-ink opacity-70">{"Missing your music? Enter your code again on the code page while you're online."}</Text>
         )}
         <Field label="Sound effects">
           <VolumeControl label="Sound effects volume" value={settings.sfxVolume} steps={VOLUME_STEPS} onChange={(v) => updateSettings({ sfxVolume: v })} />

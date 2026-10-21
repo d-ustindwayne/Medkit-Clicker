@@ -23,7 +23,7 @@ Committed and pushed to GitHub (`main`). Next up: the sprite polish in [ART_PLAN
 These are placeholders I invented so the game works. Each one is yours to keep, change or remove.
 
 - [x] Tap bonus (`TAP_RATE_BONUS`): each tap heals 1 + 2% of per-second (kept 2026-10-20)
-- [ ] **A bit more generous (2026-10-21, picked by Claude for the demo):** tap bonus 2% → 2.5% of per-second; prices grow 14% per purchase instead of 15%; every 25 of an item adds 30% instead of 25%; a ward win pays 150 s of production instead of 120 s
+- [x] **A bit more generous (2026-10-21, picked by Claude, kept):** tap bonus 2% → 2.5% of per-second; prices grow 14% per purchase instead of 15%; every 25 of an item adds 30% instead of 25%; a ward win pays 150 s of production instead of 120 s
 - [x] Offline earnings: up to 4 hours at the full rate (`MAX_AWAY_S` in `src/hooks/use-game.tsx`; decided 2026-10-20)
 - [ ] Locked shop items show as a "???" silhouette until you've earned half their price.
 - [ ] Achievement names, descriptions and thresholds (`src/constants/achievements.ts`), 111 in total, including names for the 8 new items' achievements.
@@ -53,15 +53,16 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
 - [x] The website code lives in `website/` in this repo and is served at /Medkit-Clicker/ (moved from `Medkit-Clicker-Website` on 2026-10-21)
 - [x] Care Coins: each achievement pays half its listed amount, rounded up (1–3 coins; decided 2026-10-20). Boost and background prices may need lowering to match
 - [ ] The 13 boosts in `src/constants/boosts.ts`: names, effects and durations (prices kept 2026-10-20)
-- [ ] **Boost icons (2026-10-21, by Claude):** each boost has its own icon in `src/imgs/boosts/` (sources in `src/media/photos/sprites/boosts/`, rebuilt by `scripts/boost-icons.lua`): an existing sprite recoloured, with a corner badge for its kind: orange bolt = per tap, blue arrow = per second, red plus = instant patients, green star = lucky taps, pink % = sale
-- [ ] **My Room no-place areas (2026-10-21, by Claude):** items can't go on the rooms' signs, windows, doors, shelves, desk, bed or counter (`blocked` in `src/constants/room.ts`); a drop there snaps to the nearest free spot. Wall items now start a little lower (30% down instead of 24%) so they stay inside the room art
+- [x] **Boost icons (2026-10-21, by Claude, kept):** each boost has its own icon in `src/imgs/boosts/` (sources in `src/media/photos/sprites/boosts/`, rebuilt by `scripts/boost-icons.lua`): an existing sprite recoloured, with a corner badge for its kind: orange bolt = per tap, blue arrow = per second, red plus = instant patients, green star = lucky taps, pink % = sale
+- [x] **My Room no-place areas (2026-10-21, by Claude, kept):** items can't go on the rooms' signs, windows, doors, shelves, desk, bed or counter (`blocked` in `src/constants/room.ts`); a drop there snaps to the nearest free spot. Wall items now start a little lower (30% down instead of 24%) so they stay inside the room art
 - [x] **Promo codes (2026-10-21):** codes can now pay a bundle (Care Coins, patients, gems, seconds of healing and paid backgrounds together). Three were added to the database with `bun run add-promo`; the codes themselves are only in the database (hashed)
-- [ ] **Asset inspection:** planned in [ASSET_INSPECTION.md](ASSET_INSPECTION.md), not started
+- [ ] **Asset inspection:** planned in [ASSET_INSPECTION.md](ASSET_INSPECTION.md); report first, fixes only after approval (decided 2026-10-21)
+- [x] **Demo feedback round (2026-10-21):** stickers save to an "mcstickers" album; the counter hides while the shop is pulled up; the backdrop always fills the medkit area while dragging the shop; Sakura Breeze and Purple Rain tints fade instead of ending in a line; the medkit's shine reaches up behind the counter; online features say when you're offline; a hall of fame entry sent offline is kept and sent later; minigames react on touch-down, and the game behind a minigame updates once a second while it's played; Germ Buster gives each germ its full time and forgives a tap just after a germ moves
 - [x] Ward patients (`src/constants/patients.ts`; frequency decided 2026-10-20):
   - a patient arrives every 1–3 minutes and waits 3 minutes
   - a win pays 2.5 minutes of production plus 1 Care Coin (was 2 minutes; changed 2026-10-21)
   - a loss pays 10 seconds of production
-- [ ] **Minigames get harder with progress (2026-10-21, numbers picked by Claude):** `minigameLevel` in `src/constants/patients.ts` goes from 0 to 1, 35% from patients treated (full at 60) and 65% from healing per second (log scale, full at 100 million/s). `minigameTuning` turns it into each game's numbers (easiest → hardest):
+- [x] **Minigames get harder with progress (2026-10-21, numbers picked by Claude, kept):** `minigameLevel` in `src/constants/patients.ts` goes from 0 to 1, 35% from patients treated (full at 60) and 65% from healing per second (log scale, full at 100 million/s). `minigameTuning` turns it into each game's numbers (easiest → hardest):
   - Injection: needle 1x → 1.6x speed, vein 18% → 10% wide
   - Rhythm: 100 → 128 bpm, timing window 230 → 140 ms, 6 → 8 of 10 beats needed
   - Bandage: 25 → 38 wraps in 5 seconds
@@ -81,7 +82,7 @@ These are placeholders I invented so the game works. Each one is yours to keep, 
   - each item's unlock and bonus
   - the bonus cap, now +75% (decided 2026-10-20)
 - [x] Create the Aiven PostgreSQL service, host the API and run `bun run db:setup` (see [DATABASE.md](DATABASE.md))
-- [ ] Natal Gem name and icon ("Natal" means "of birth"; alternatives: Cradle Gem, Bloom Gem)
+- [x] Natal Gem name and icon: kept (2026-10-21)
 - [x] Paid background prices: Purple Rain 15, Heart Monitor 15, Night Shift Sky 10, Blood Stream 10 Care Coins (kept 2026-10-20)
 
 ## Shop items (decided by Claude, 2026-10-20)
@@ -123,7 +124,7 @@ Still unused:
 ## Concerns to address
 
 - [ ] **The last achievements are still out of reach.** 13 items get to about a billion per second after weeks, so the 10^15 healed milestones are reachable but the tail (10^18 and up) needs upgrades or rebirth spending. That's intentional for a long game, but worth a look when rebirth points get a use.
-- [ ] **Reward notifications:** built into the server (ntfy.sh alert on every redemption), live once the API is deployed. Until then, redeeming opens the share sheet. Local reminders are still a plan ([NOTIFICATIONS.md](NOTIFICATIONS.md)).
+- [x] **Reward notifications:** the server sends an ntfy.sh alert on every redemption; redeeming needs a connection (the share-sheet fallback was removed 2026-10-21). Local reminders are still a plan ([NOTIFICATIONS.md](NOTIFICATIONS.md)).
 - [ ] **Everything is on-device, so it isn't tamper-proof.** Someone could edit an exported save and import it to give themselves patients. The redeem code is stored only as a hash, so it can't be read from the code, but a determined person could still bypass the check. That's fine for a gift; it would need a server to be secure.
 - [ ] **Rewards survive Delete progress and imports on purpose,** so reward limits can't be reset. Reinstalling the app or clearing its data does reset it, because there's no server.
 - [ ] **Saving to Download:** Android 11+ won't let apps pick the root of Download. Export asks for a folder once (Documents by default, or a subfolder of Download) and then remembers it.
@@ -132,7 +133,7 @@ Still unused:
 - [ ] **Old native build on the emulator:** `com.dust.dev.mc` is from before the audio and save libraries. Use Expo Go, or run `bunx expo prebuild --clean` then `bun run android` to replace it.
 - [x] **Unit tests:** `bun test` runs 35 tests for the shop, saves, Care Coins, boosts, patients, My Room and rebirth (`src/lib/game.test.ts`). The UI is still tested by hand ([TESTING.md](TESTING.md)).
 - [x] **Nothing is committed to git.** Done: pushed to https://github.com/d-ustindwayne/Medkit-Clicker (`main`).
-- [ ] **Achievement and welcome-back toasts briefly cover the counter.** Consider moving them or making them smaller.
+- [x] **Achievement and welcome-back toasts briefly cover the counter.** Kept as they are (2026-10-21).
 
 ## Roadmap
 

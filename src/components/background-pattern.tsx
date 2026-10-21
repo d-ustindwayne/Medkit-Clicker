@@ -2,7 +2,7 @@ import { memo, useEffect } from "react";
 import { Image } from "@/components/ui/image";
 import { StyleSheet, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from "react-native-reanimated";
-import Svg, { Circle, Defs, G, Path, Pattern, Rect } from "react-native-svg";
+import Svg, { Circle, Defs, G, LinearGradient, Path, Pattern, Rect, Stop } from "react-native-svg";
 
 import { pixelPath } from "@/components/ui/pixel-icon";
 import { BACKGROUNDS, type AnimatedKind, type Colors, type PatternKind } from "@/constants/backgrounds";
@@ -64,6 +64,22 @@ function Tile({ kind, color }: { kind: PatternKind; color: string }) {
     default:
       return null;
   }
+}
+
+/** A tint that fades out towards the middle of the screen, with no hard edge. `from` is the solid side. */
+function Wash({ width, height, color, opacity, from }: { width: number; height: number; color: string; opacity: number; from: "top" | "bottom" }) {
+  const id = `wash-${from}`;
+  return (
+    <Svg width={width} height={height} style={{ position: "absolute", left: 0, [from]: 0 }}>
+      <Defs>
+        <LinearGradient id={id} x1="0" y1={from === "top" ? "0" : "1"} x2="0" y2={from === "top" ? "1" : "0"}>
+          <Stop offset="0" stopColor={color} stopOpacity={opacity} />
+          <Stop offset="1" stopColor={color} stopOpacity={0} />
+        </LinearGradient>
+      </Defs>
+      <Rect width={width} height={height} fill={`url(#${id})`} />
+    </Svg>
+  );
 }
 
 /** Purple Rain: a streak falling at its own speed. */
@@ -229,7 +245,7 @@ function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind;
     case "rain":
       return (
         <>
-          <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: height * 0.35, backgroundColor: colors.accent, opacity: 0.3 }} />
+          <Wash width={width} height={height * 0.45} color={colors.accent ?? colors.line} opacity={0.35} from="bottom" />
           {many(24).map((i) => (
             <Drop key={i} i={i} height={height} left={noise(i) * width} color={i % 3 ? colors.line : (colors.accent ?? colors.line)} />
           ))}
@@ -261,7 +277,7 @@ function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind;
     case "sakura":
       return (
         <>
-          <View style={{ position: "absolute", left: 0, right: 0, top: 0, height: height * 0.45, backgroundColor: colors.accent, opacity: 0.35 }} />
+          <Wash width={width} height={height * 0.55} color={colors.accent ?? colors.line} opacity={0.4} from="top" />
           {many(16).map((i) => (
             <Faller key={i} i={i} width={width} height={height} image={i % 3 ? SPRITES.petal : SPRITES.petal2} px={14 + noise(i, 25) * 10} wind={0.8} spin />
           ))}

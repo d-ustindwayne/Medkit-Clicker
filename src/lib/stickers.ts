@@ -1,12 +1,27 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Directory, File, Paths } from "expo-file-system";
-import { Asset as MediaAsset, getPermissionsAsync, requestPermissionsAsync } from "expo-media-library";
+import { Album, Asset as MediaAsset, getPermissionsAsync, requestPermissionsAsync } from "expo-media-library";
 import { Platform } from "react-native";
 
 import { STICKER_PNG } from "@/constants/sticker-data";
 
 const FOLDER_KEY = "mc/stickers/folder/v1";
 const ASKED_KEY = "mc/stickers/asked/v1";
+/** Saved stickers go in their own album (Pictures/mcstickers on Android). */
+export const STICKER_ALBUM = "mcstickers";
+
+/** Adds a picture file to the sticker album, making the album the first time. */
+async function addToAlbum(uri: string) {
+  if (Platform.OS === "android") {
+    // Writes the file into Pictures/mcstickers; works whether or not the album exists yet.
+    await Album.create(STICKER_ALBUM, [uri]);
+    return;
+  }
+  const asset = await MediaAsset.create(uri);
+  const album = await Album.get(STICKER_ALBUM);
+  if (album) await album.add(asset);
+  else await Album.create(STICKER_ALBUM, [asset], false);
+}
 
 /** The sticker PNG's bytes, from the copy kept in code (bundled images can't be read as files in release builds). */
 function stickerBytes(id: string) {
@@ -39,7 +54,7 @@ export async function askPhotosOnce() {
 
 /**
  * Saves a sticker PNG (`id` is its file name in src/imgs/stickers).
- * 1. To the phone's photos (Pictures on Android): no permission needed on Android 11+, otherwise
+ * 1. To the phone's photos, in the "mcstickers" album: no permission needed on Android 11+, otherwise
  *    when the photo permission is given.
  * 2. Otherwise (Android), into a folder the player picks once (Pictures, Downloads...), written
  *    directly, so no photo permission is needed. The folder is remembered for next time.
@@ -56,7 +71,7 @@ export async function saveSticker(id: string, name: string): Promise<"photos" | 
       file.create({ overwrite: true });
       file.write(bytes);
       try {
-        await MediaAsset.create(file.uri);
+        await addToAlbum(file.uri);
       } finally {
         file.delete();
       }

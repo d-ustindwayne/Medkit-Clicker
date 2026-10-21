@@ -79,7 +79,9 @@ Bun.serve({
         const rows = await tx`INSERT INTO promo_claims (code_sha256, device_id) VALUES (${hash}, ${deviceId}) ON CONFLICT DO NOTHING RETURNING code_sha256`;
         if (rows.length === 0) return { status: 409 } as const;
         // `rewards` lists a bundle's parts (coins plus a background...); `kind`/`amount` stay for older app versions.
-        const rewards = promo.rewards ?? [{ kind: promo.kind, amount: Number(promo.amount) }];
+        // Rows saved as a JSON string (an early add-promo bug) are parsed too.
+        const saved = typeof promo.rewards === "string" ? JSON.parse(promo.rewards) : promo.rewards;
+        const rewards = Array.isArray(saved) ? saved : [{ kind: promo.kind, amount: Number(promo.amount) }];
         return { status: 200, body: { kind: promo.kind, amount: Number(promo.amount), message: promo.message, rewards } } as const;
       });
       if (result.status !== 200) return json({ error: result.status === 404 ? "That code didn't match anything." : "That code was already used." }, result.status);

@@ -14,6 +14,16 @@ export const cloudEnabled = !!API_URL;
 const TOKEN_KEY = "mc/cloud/token/v1";
 const DEVICE_KEY = "mc/device/v1";
 const LIBRARY_KEY = "mc/music/library/v1";
+/** A section code entered while offline, kept until the server can trade it for a token. */
+const PENDING_CODE_KEY = "mc/cloud/pending-code/v1";
+/** A hall of fame entry written while offline, sent when the connection is back. */
+const PENDING_FAME_KEY = "mc/fame/pending/v1";
+
+/** Shown whenever something online is used without a connection. */
+export const OFFLINE_MESSAGE = "You're offline. This needs an internet connection; try again once you're connected.";
+
+/** Whether an error from the server calls means there was no connection at all. */
+export const isOffline = (e: unknown) => (e as { offline?: boolean } | null)?.offline === true;
 
 export type CloudReward = { id: string; name: string; cost: number; limit: number | null; redeemed: number[] };
 export type CachedPlaylist = { id: string; name: string; tracks: string[] };
@@ -32,8 +42,10 @@ async function call<T>(path: string, init: RequestInit & { token?: string } = {}
     signal: abort.signal,
     headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}), ...rest.headers },
   })
-    .catch((e) => {
-      throw new Error(abort.signal.aborted ? "The server took too long to answer. Try again in a minute." : e instanceof Error ? e.message : "No connection.");
+    .catch(() => {
+      // No answer at all: a timeout (the server is waking up) or no connection.
+      if (abort.signal.aborted) throw new Error("The server took too long to answer. Try again in a minute.");
+      throw Object.assign(new Error(OFFLINE_MESSAGE), { offline: true });
     })
     .finally(() => clearTimeout(timer));
   const body = await res.json().catch(() => ({}));
@@ -42,6 +54,29 @@ async function call<T>(path: string, init: RequestInit & { token?: string } = {}
 }
 
 export const getToken = () => AsyncStorage.getItem(TOKEN_KEY);
+
+/** Keeps a section code that was unlocked offline, so ensureToken() can finish the job later. */
+export const savePendingCode = (code: string) => AsyncStorage.setItem(PENDING_CODE_KEY, code.trim());
+export const hasPendingCode = async () => !!(await AsyncStorage.getItem(PENDING_CODE_KEY));
+
+/**
+ * The section token, fetching it first if the code was entered while offline. Returns null when
+ * there is no code, or when the server still can't be reached (the code stays saved for next time).
+ */
+export async function ensureToken() {
+  const token = await getToken();
+  if (token || !API_URL) return token;
+  const pending = await AsyncStorage.getItem(PENDING_CODE_KEY);
+  if (!pending) return null;
+  try {
+    const res = await unlockOnline(pending);
+    // A code the server doesn't know (404) is dropped; it would never work.
+    await AsyncStorage.removeItem(PENDING_CODE_KEY);
+    return res?.token ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /** Pokes the server so it's awake by the time it's needed (the free plan sleeps when idle). */
 export function wakeServer() {
@@ -116,6 +151,8 @@ export async function downloadMusic(token: string, onProgress: (done: number, to
       onProgress(++done, total);
     }
     library.push({ id: p.id, name: p.name, tracks });
+    // Saved after every playlist, so a download cut off halfway keeps what it already got.
+    await AsyncStorage.setItem(LIBRARY_KEY, JSON.stringify([...library, ...(await loadCachedPlaylists()).filter((c) => !library.some((l) => l.id === c.id))]));
   }
   await AsyncStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
   return library;
@@ -138,7 +175,25 @@ export async function claimPromoOnline(code: string): Promise<PromoReward | null
   }
 }
 
+export type FameEntry = { name: string; email: string; feedback: string; rebirths: number };
+
 /** Rebirth 50: send the player's details and feedback (once per phone). */
-export async function sendHallOfFame(entry: { name: string; email: string; feedback: string; rebirths: number }) {
+export async function sendHallOfFame(entry: FameEntry) {
   return call<{ ok: true }>("/fame", { method: "POST", body: JSON.stringify({ ...entry, deviceId: await deviceId() }) });
+}
+
+/** Holds a hall of fame entry written offline; sendPendingFame() delivers it later. */
+export const holdFame = (entry: FameEntry) => AsyncStorage.setItem(PENDING_FAME_KEY, JSON.stringify(entry));
+
+/** Sends a held hall of fame entry. True once it's delivered (or the server already has one), false if still waiting. */
+export async function sendPendingFame() {
+  const raw = await AsyncStorage.getItem(PENDING_FAME_KEY);
+  if (!raw || !API_URL) return false;
+  try {
+    await sendHallOfFame(JSON.parse(raw) as FameEntry);
+  } catch (e) {
+    if ((e as { status?: number }).status !== 409) return false;
+  }
+  await AsyncStorage.removeItem(PENDING_FAME_KEY);
+  return true;
 }

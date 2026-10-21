@@ -10,22 +10,11 @@ import { MEDKIT_IMAGE } from "@/constants/items";
 import { REWARD_SECTIONS, type Reward, type RewardSection } from "@/constants/rewards";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
-import { cloudEnabled, fetchRewards, getToken, redeemOnline } from "@/lib/cloud";
+import { OFFLINE_MESSAGE, cloudEnabled, ensureToken, fetchRewards, isOffline, redeemOnline } from "@/lib/cloud";
 import { formatCount } from "@/lib/format";
 import { cooldownLeft, redeemedThisYear } from "@/lib/game";
 import { useNow } from "@/hooks/use-now";
 
-const countLabel = (reward: Reward, index: number) => (reward.limit === null ? `#${index + 1}` : `${index + 1} of ${reward.limit}`);
-
-const shareRedemption = (section: RewardSection, reward: Reward, index: number, at: number, note?: string) =>
-  Share.share({
-    message:
-      `Medkit Clicker reward redeemed!\n` +
-      `${reward.name} (${countLabel(reward, index)})\n` +
-      (note ? `${reward.input?.label} ${note}\n` : "") +
-      `Redeemed on ${new Date(at).toLocaleString()}.\n` +
-      `${section.notify}, time to deliver!`,
-  }).catch(() => {});
 
 const formatWhen = (d: Date) =>
   d.toLocaleString([], { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
@@ -128,24 +117,26 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
       }
       setFact(extra);
     }
-    // Online: the server checks the limit, records it and alerts the giver automatically.
-    const token = cloudEnabled ? await getToken() : null;
-    if (token) {
-      try {
-        const res = await redeemOnline(token, reward.id, extra);
-        dispatch({ type: "redeem", rewardId: reward.id });
-        pushToast({ kind: "info", title: "Redeemed", body: res.notified ? `${reward.name}. ${section.notify} has been told!` : `${reward.name}. Let ${section.notify} know!` });
-        return;
-      } catch (e) {
-        if ((e as { status?: number }).status === 409) {
-          pushToast({ kind: "info", title: "All redeemed", body: `There are no more "${reward.name}" to redeem.` });
-          return;
-        }
-        // offline: fall back to the share sheet below
-      }
+    // The server checks the limit, records it and sends the alert automatically, so redeeming needs a
+    // connection. Without one, nothing is spent.
+    if (!cloudEnabled) {
+      dispatch({ type: "redeem", rewardId: reward.id });
+      pushToast({ kind: "info", title: "Redeemed", body: reward.name });
+      return;
     }
-    dispatch({ type: "redeem", rewardId: reward.id });
-    pushToast({ kind: "info", title: "Redeemed", body: `${reward.name}. Tap "Tell ${section.notify}" to let him know.` });
+    const token = await ensureToken();
+    if (!token) {
+      pushToast({ kind: "info", title: "Can't redeem right now", body: `${OFFLINE_MESSAGE} Nothing was spent.` });
+      return;
+    }
+    try {
+      const res = await redeemOnline(token, reward.id, extra);
+      dispatch({ type: "redeem", rewardId: reward.id });
+      pushToast({ kind: "info", title: "Redeemed", body: res.notified ? `${reward.name}. ${section.notify} has been told!` : `${reward.name}. It's saved; the alert to ${section.notify} didn't go out this time.` });
+    } catch (e) {
+      if ((e as { status?: number }).status === 409) pushToast({ kind: "info", title: "All redeemed", body: `There are no more "${reward.name}" to redeem.` });
+      else pushToast({ kind: "info", title: "Can't redeem right now", body: `${isOffline(e) ? OFFLINE_MESSAGE : e instanceof Error ? e.message : "Something went wrong."} Nothing was spent.` });
+    }
   };
 
   return (
@@ -190,12 +181,9 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
             {history.slice(-3).map((at, k) => {
               const i = history.length - Math.min(3, history.length) + k;
               return (
-                <View key={at} className="flex-row items-center justify-between gap-2">
-                  <Text className="flex-1 font-body text-sm text-ink">
-                    #{i + 1} · {new Date(at).toLocaleDateString()}
-                  </Text>
-                  <PixelButton label={`Tell ${section.notify}`} onPress={() => shareRedemption(section, reward, i, at)} />
-                </View>
+                <Text key={at} className="font-body text-sm text-ink">
+                  #{i + 1} · {new Date(at).toLocaleDateString()}
+                </Text>
               );
             })}
           </View>
@@ -236,17 +224,23 @@ export function RewardsPage({ sectionId }: { sectionId: string }) {
   const { healed } = useGameState();
   const { dispatch } = useGameActions();
   const section = REWARD_SECTIONS.find((s) => s.id === sectionId);
+  const [offline, setOffline] = useState(false);
 
   // Pull the server's redemption history so a reinstall can't reset the limits.
   useEffect(() => {
     if (!cloudEnabled) return;
     let cancelled = false;
-    getToken()
-      .then((token) => (token ? fetchRewards(token) : []))
+    ensureToken()
+      .then((token) => {
+        if (!token) throw Object.assign(new Error(OFFLINE_MESSAGE), { offline: true });
+        return fetchRewards(token);
+      })
       .then((rewards) => {
         if (!cancelled && rewards.length) dispatch({ type: "syncRedemptions", history: Object.fromEntries(rewards.map((r) => [r.id, r.redeemed])) });
       })
-      .catch(() => {});
+      .catch((e) => {
+        if (!cancelled && isOffline(e)) setOffline(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -262,6 +256,9 @@ export function RewardsPage({ sectionId }: { sectionId: string }) {
       <Text className="font-body text-sm leading-5 text-ink">
         Spend patients on real rewards. {section.notify} gets told when you redeem one.
       </Text>
+      {offline && (
+        <Text className="border-2 border-danger bg-danger/10 px-3 py-2 font-body text-sm text-ink">{"You're offline. Redeeming needs a connection, so it'll work once you're back online."}</Text>
+      )}
       {section.rewards.map((r) => (
         <RewardCard key={r.id} section={section} reward={r} />
       ))}

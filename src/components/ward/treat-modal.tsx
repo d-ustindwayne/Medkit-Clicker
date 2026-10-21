@@ -66,7 +66,7 @@ function InjectionGame({ onDone, tuning }: GameProps) {
         {/* Style, not className: NativeWind classes don't apply to Animated.View on native. */}
         <Animated.View style={[{ position: "absolute", height: "100%", width: 10, backgroundColor: palette.ink }, marker]} />
       </View>
-      <PixelButton label="INJECT" tone="success" onPress={inject} />
+      <PixelButton label="INJECT" tone="success" instant onPress={inject} />
     </View>
     </Animated.View>
   );
@@ -142,7 +142,7 @@ function RhythmGame({ onDone, tuning }: GameProps) {
       <Text className="font-number text-base text-ink">
         {beat < 0 ? "Get ready..." : `Beat ${beat + 1} of ${BEATS}`} · {hitCount} on time (need {NEED_BEATS})
       </Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Tap with the heartbeat" onPress={press} className="h-36 w-36 items-center justify-center">
+      <Pressable accessibilityRole="button" accessibilityLabel="Tap with the heartbeat" onPressIn={press} className="h-36 w-36 items-center justify-center">
         {ripple > 0 && <HeartRipple key={ripple} />}
         <Animated.View style={heart}>
           <Image source={require("@/imgs/misc/heart.png")} style={{ width: 120, height: 120 }} contentFit="contain" />
@@ -196,7 +196,7 @@ function BandageGame({ onDone, tuning }: GameProps) {
       <View className="h-4 w-full border-2 border-outline bg-surface">
         <View className="h-full bg-success" style={{ width: `${Math.min(1, wraps / WRAPS) * 100}%` }} />
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="Wrap the bandage" onPress={wrap} className="h-32 w-32 items-center justify-center border-2 border-outline bg-accent active:scale-95">
+      <Pressable accessibilityRole="button" accessibilityLabel="Wrap the bandage" onPressIn={wrap} className="h-32 w-32 items-center justify-center border-2 border-outline bg-accent active:scale-95">
         <Animated.View style={rollStyle}>
           <Image source={require("@/imgs/shop/bandage_roll.png")} style={{ width: 96, height: 96 }} contentFit="contain" />
         </Animated.View>
@@ -214,8 +214,13 @@ export function TreatModal({ patient, arrivedAt, onClose }: { patient: SickPatie
   const { theme } = useSettings();
   // Read on demand, not subscribed: the game shouldn't re-render with every tick while it's played.
   const store = useGameStore();
-  const { dispatch } = useGameActions();
+  const { dispatch, setFocusMode } = useGameActions();
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
+  // The game behind the modal slows its updates while a minigame is played, so taps land on time.
+  useEffect(() => {
+    setFocusMode(phase === "play");
+    return () => setFocusMode(false);
+  }, [phase, setFocusMode]);
   const [result, setResult] = useState<{ won: boolean; amount: number } | null>(null);
   const Game = GAMES[patient.game];
   // Fixed for the whole game, so treating this patient doesn't change the rules mid-play. Harder as

@@ -102,7 +102,7 @@ function ItemTile({ item }: { item: GemItem }) {
   const save = () => {
     saveSticker(item.id.replace(/^sticker_/, ""), item.name)
       .then((where) => {
-        if (where === "photos") pushToast({ kind: "info", title: "Sticker saved", body: `${item.name} is in your photos.`, image: item.image });
+        if (where === "photos") pushToast({ kind: "info", title: "Sticker saved", body: `${item.name} is in your photos, in the mcstickers album.`, image: item.image });
         else if (where === "folder") pushToast({ kind: "info", title: "Sticker saved", body: `${item.name} is in the folder you picked.`, image: item.image });
       })
       .catch((e: unknown) => pushToast({ kind: "info", title: "Couldn't save", body: e instanceof Error ? e.message : "Something went wrong saving the sticker. Try again." }));
