@@ -134,7 +134,10 @@ Bun.serve({
       const [reward] = await sql`SELECT r.id, r.name, r.max_uses, r.per_year, r.cooldown_hours, a.title FROM rewards r JOIN access_codes a ON a.section = r.section WHERE r.id = ${rewardId ?? ""} AND r.section = ${section}`;
       if (!reward) return json({ error: "Unknown reward" }, 404);
       const result = await sql.begin(async (tx) => {
-        const [{ used }] = await tx`SELECT count(*)::int AS used FROM redemptions WHERE reward_id = ${reward.id} FOR UPDATE`;
+        // Lock the reward's row so two redemptions at once can't both slip under the limit. (Postgres
+        // can't lock an aggregate, so FOR UPDATE goes on the reward, and the count runs after it.)
+        await tx`SELECT id FROM rewards WHERE id = ${reward.id} FOR UPDATE`;
+        const [{ used }] = await tx`SELECT count(*)::int AS used FROM redemptions WHERE reward_id = ${reward.id}`;
         // max_uses NULL means no limit.
         if (reward.max_uses !== null && used >= reward.max_uses) return null;
         if (reward.cooldown_hours !== null) {

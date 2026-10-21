@@ -22,7 +22,7 @@ import { sectionOpen } from "@/constants/rewards";
 import { BOOSTS, LUCKY_MULT } from "@/constants/boosts";
 import { healingRate } from "@/constants/rebirth";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
+import { useGameActions, useGameReady, useGameSelector, useSettings } from "@/hooks/use-game";
 import { appIcon, iconFromPending, setAppIcon } from "@/lib/app-icon";
 import { askPhotosOnce } from "@/lib/stickers";
 import { useNow } from "@/hooks/use-now";
@@ -92,9 +92,9 @@ function Counter({ compact }: { compact: boolean }) {
   // Hard pixel drop shadow; NativeWind has no text-shadow utilities.
   const shadow = { textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 };
   return (
-    // Side padding clears the menu button (left) and the currency chips (right). Drawn above the
-    // pager, so the medkit's shine passes behind the text.
-    <View className={`items-center ${compact ? "px-24" : "px-28"}`} style={{ zIndex: 1 }} accessibilityLiveRegion="none">
+    // Side padding clears the menu button (left) and the currency chips (right). The medkit's shine
+    // (in the pager, drawn after this) passes over the text.
+    <View className={`items-center ${compact ? "px-24" : "px-28"}`} accessibilityLiveRegion="none">
       {compact ? (
         <View accessibilityRole="header" className="items-center">
           <Text className="text-center font-display text-5xl text-ink" style={shadow} adjustsFontSizeToFit numberOfLines={1}>
@@ -177,7 +177,7 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
           It steps aside while decorating, so the room, its buttons and the item tray all fit. */}
       {drag
         ? !editing && (
-            <Animated.View style={[{ zIndex: 1, overflow: "hidden", alignSelf: "stretch" }, counterFade]}>
+            <Animated.View style={[{ overflow: "hidden", alignSelf: "stretch" }, counterFade]}>
               {/* Measured once at full height, so the fold knows how far to go. */}
               <View onLayout={(e) => setCounterH((h) => h || e.nativeEvent.layout.height)}>
                 <Counter compact={compact} />
@@ -186,7 +186,7 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
           )
         : showCounter && <Counter compact={compact} />}
       <Pager
-        // The medkit's shine reaches up behind the counter instead of stopping at the page edge.
+        // The medkit's shine reaches up over the counter instead of stopping at the page edge.
         overflowVisible
         width={width}
         dots="overlay"
@@ -260,14 +260,20 @@ function ShopGrip({ expanded, onChange, height, low, high }: { expanded: boolean
 
 /** Applies an app icon chosen in the Gem Shop once the player leaves the app. */
 function PendingIcon() {
-  const pending = useGameSelector((s) => s.pendingIcon);
+  const { pending, gemItems } = useGameSelector((s) => ({ pending: s.pendingIcon, gemItems: s.gemItems }));
+  const ready = useGameReady();
   const { dispatch } = useGameActions();
-  // An icon from a code-locked section that has ended goes back to the original next time.
+  // The home-screen icon outlives the app's data (clearing it keeps the icon), so once the save has
+  // loaded, an icon this save doesn't own, or one from a code-locked section that has ended, goes back
+  // to the original the next time the app is left.
   useEffect(() => {
+    if (!ready) return;
     const current = appIcon();
+    if (!current) return;
     const item = GEM_ITEMS.find((i) => i.kind === "icon" && i.name === current);
-    if (item?.section && !sectionOpen(item.section)) dispatch({ type: "setPendingIcon", icon: "default" });
-  }, [dispatch]);
+    const keep = item && gemItems.includes(item.id) && (!item.section || sectionOpen(item.section));
+    if (!keep) dispatch({ type: "setPendingIcon", icon: "default" });
+  }, [ready, gemItems, dispatch]);
   useEffect(() => {
     if (!pending) return;
     const sub = AppState.addEventListener("change", (s) => {
