@@ -81,3 +81,6 @@ CREATE TABLE IF NOT EXISTS hall_of_fame (
 
 -- When a section ends (bun run expire-section): its code, rewards and music stop. NULL = never.
 ALTER TABLE access_codes ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+
+-- Rewards that are recorded without sending an alert (set per reward in the database).
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS silent BOOLEAN NOT NULL DEFAULT false;

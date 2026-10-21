@@ -130,10 +130,9 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
       return;
     }
     try {
-      const res = await redeemOnline(token, reward.id, extra);
+      await redeemOnline(token, reward.id, extra);
       dispatch({ type: "redeem", rewardId: reward.id });
-      // A delayed alert is retried by the server, so it still arrives; no need to say who it's for.
-      pushToast({ kind: "info", title: "Redeemed", body: res.notified ? `${reward.name}. ${section.notify} has been told!` : `${reward.name}. It's saved, and the alert is on its way.` });
+      pushToast({ kind: "info", title: "Redeemed", body: `${reward.name} redeemed.` });
     } catch (e) {
       if ((e as { status?: number }).status === 409) pushToast({ kind: "info", title: "All redeemed", body: `There are no more "${reward.name}" to redeem.` });
       else pushToast({ kind: "info", title: "Can't redeem right now", body: `${isOffline(e) ? OFFLINE_MESSAGE : e instanceof Error ? e.message : "Something went wrong."} Nothing was spent.` });
@@ -257,7 +256,7 @@ export function RewardsPage({ sectionId }: { sectionId: string }) {
         <Text className="font-number text-lg text-ink">{formatCount(healed)}</Text>
       </View>
       <Text className="font-body text-sm leading-5 text-ink">
-        Spend patients on real rewards. {section.notify} gets told when you redeem one.
+        Spend patients on real rewards.
       </Text>
       {offline && (
         <Text className="border-2 border-danger bg-danger/10 px-3 py-2 font-body text-sm text-ink">{"You're offline. Redeeming needs a connection, so it'll work once you're back online."}</Text>

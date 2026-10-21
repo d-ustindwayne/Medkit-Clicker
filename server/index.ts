@@ -94,7 +94,7 @@ async function retryAlerts() {
     ORDER BY d.redeemed_at LIMIT 10`;
   for (const row of rows) {
     const count = row.max_uses === null ? `#${row.nth}` : `${row.nth}/${row.max_uses}`;
-    const sent = await notify(`${row.title}: "${row.name}" was redeemed (${count}, alert delayed).${row.note ? ` Note: ${row.note}` : ""}`);
+    const sent = await notify(`${row.name} was redeemed (${count}, alert delayed).${row.note ? ` Note: ${row.note}` : ""}`);
     if (!sent) break;
     await sql`UPDATE redemptions SET notified_at = now() WHERE id = ${row.id}`;
   }
@@ -175,7 +175,8 @@ Bun.serve({
     if (path === "/redeem" && req.method === "POST") {
       const { rewardId, deviceId, note } = (await req.json().catch(() => ({}))) as { rewardId?: string; deviceId?: string; note?: string };
       const answer = typeof note === "string" ? note.trim().slice(0, 200) : "";
-      const [reward] = await sql`SELECT r.id, r.name, r.max_uses, r.per_year, r.cooldown_hours, a.title FROM rewards r JOIN access_codes a ON a.section = r.section WHERE r.id = ${rewardId ?? ""} AND r.section = ${section}`;
+      // `silent` rewards (rewards.silent, set in the database) are recorded but send no alert.
+      const [reward] = await sql`SELECT r.id, r.name, r.max_uses, r.per_year, r.cooldown_hours, a.title, (to_jsonb(r) ->> 'silent') = 'true' AS silent FROM rewards r JOIN access_codes a ON a.section = r.section WHERE r.id = ${rewardId ?? ""} AND r.section = ${section}`;
       if (!reward) return json({ error: "Unknown reward" }, 404);
       const result = await sql.begin(async (tx) => {
         // Lock the reward's row so two redemptions at once can't both slip under the limit. (Postgres
@@ -197,8 +198,8 @@ Bun.serve({
       });
       if (!result) return json({ error: "No redemptions left for this reward." }, 409);
       const count = reward.max_uses === null ? `#${result.used}` : `${result.used}/${reward.max_uses}`;
-      const text = `${reward.title}: "${reward.name}" was redeemed (${count}).${answer ? ` Note: ${answer}` : ""}`;
-      const sent = await notify(text);
+      const text = `${reward.name} was redeemed (${count}).${answer ? ` Note: ${answer}` : ""}`;
+      const sent = reward.silent ? true : await notify(text);
       if (sent) await sql`UPDATE redemptions SET notified_at = now() WHERE id = ${result.id}`;
       // ntfy can refuse the server (hosts share IPs, so the rate limit runs out); then the phone, which has
       // the section's token, sends the same alert itself and confirms it with /alerted.
