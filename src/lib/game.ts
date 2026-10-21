@@ -75,6 +75,8 @@ export type GameState = {
   minigameWins: Record<string, number>;
   /** An app icon chosen but not applied yet ("default" for the original); applied when the app is left. */
   pendingIcon: string | null;
+  /** The how-to-play intro has been seen (shown once, on the first launch). */
+  introSeen: boolean;
 };
 
 export type GameAction =
@@ -108,6 +110,7 @@ export type GameAction =
   | { type: "setFame"; fame: "none" | "sent" | "declined" }
   | { type: "minigameWon"; game: string }
   | { type: "setPendingIcon"; icon: string | null }
+  | { type: "setIntroSeen"; seen: boolean }
   /** Place an item (or move it, including from another room) at x, y: fractions of the room art. */
   | { type: "placeItem"; room: string; item: string; x: number; y: number }
   | { type: "removeItem"; room: string; item: string }
@@ -167,6 +170,7 @@ export const newGame = (): GameState => ({
   fame: "none",
   minigameWins: {},
   pendingIcon: null,
+  introSeen: false,
 });
 
 /** Multiplier from a gem upgrade: 1 + per-level step x level. */
@@ -412,6 +416,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
     }
     case "setPendingIcon":
       return { ...state, pendingIcon: action.icon };
+    case "setIntroSeen":
+      return state.introSeen === action.seen ? state : { ...state, introSeen: action.seen };
     case "minigameWon":
       return { ...state, minigameWins: { ...state.minigameWins, [action.game]: (state.minigameWins[action.game] ?? 0) + 1 } };
     case "setFame":
@@ -544,6 +550,8 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     fame: s.fame === "sent" || s.fame === "declined" ? s.fame : "none",
     minigameWins: { ...(s.minigameWins ?? {}) },
     pendingIcon: typeof s.pendingIcon === "string" ? s.pendingIcon : null,
+    // Saves from before the intro existed belong to players who already know the game.
+    introSeen: s.introSeen === true || (typeof s.introSeen !== "boolean" && (s.taps ?? 0) > 0),
     room: s.room && typeof s.room.current === "string" ? upgradeRoom({ current: s.room.current, placed: { ...(s.room.placed ?? {}) }, layout: s.room.layout }) : base.room,
   };
 };

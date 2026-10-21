@@ -10,7 +10,9 @@ import { BACKGROUNDS } from "@/constants/backgrounds";
 import { GEM_ITEMS, GEM_KIND_LABEL, GEM_LEVEL_COSTS, GEM_UPGRADES, gemBalance, type GemItem, type GemItemKind, type GemUpgrade } from "@/constants/gems";
 import { GEM } from "@/constants/rebirth";
 import { useAudio } from "@/hooks/use-audio";
+import { openSections } from "@/constants/rewards";
 import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
+import { useNow } from "@/hooks/use-now";
 import type { GameState } from "@/lib/game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { appIcon, iconFromPending, setAppIcon } from "@/lib/app-icon";
@@ -189,8 +191,10 @@ const SECTION_TITLE: Record<GemItemKind, string> = { skin: "MEDKIT SKINS", tap: 
 /** Third page of the shop: spend Natal Gems on permanent upgrades and cosmetics. */
 export function GemShop() {
   const state = useGameSelector(pickGems);
-  // Code-only items (like the Dustin skins) only exist for whoever unlocked their section.
-  const items = GEM_ITEMS.filter((i) => !i.section || state.unlockedSections.includes(i.section));
+  // Code-only items (like the Dustin skins) only exist for whoever unlocked their section, until it ends.
+  const now = useNow(60_000);
+  const open = openSections(state.unlockedSections, now);
+  const items = GEM_ITEMS.filter((i) => !i.section || open.includes(i.section));
   const locked = state.rebirths < 1;
   return (
     <View className="flex-1">

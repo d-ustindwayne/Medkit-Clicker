@@ -42,6 +42,8 @@ type Store = { get: () => GameState; subscribe: (listener: () => void) => () => 
 const StoreContext = createContext<Store | null>(null);
 const SettingsContext = createContext<Settings>(DEFAULT_SETTINGS);
 const ToastContext = createContext<Toast[]>([]);
+/** True once the save has loaded (before that the state is a blank new game). */
+const ReadyContext = createContext(false);
 const ActionsContext = createContext<GameActions | null>(null);
 
 export function GameProvider({ children, onReady }: { children: ReactNode; onReady?: () => void }) {
@@ -216,6 +218,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
 
   return (
     <ActionsContext value={actions}>
+      <ReadyContext value={ready}>
       <SettingsContext value={settings}>
         <ToastContext value={toasts}>
           <StoreContext value={store}>
@@ -223,6 +226,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
           </StoreContext>
         </ToastContext>
       </SettingsContext>
+      </ReadyContext>
     </ActionsContext>
   );
 }
@@ -278,4 +282,5 @@ export function useGameActions() {
 }
 
 export const useSettings = () => use(SettingsContext);
+export const useGameReady = () => use(ReadyContext);
 export const useToasts = () => use(ToastContext);

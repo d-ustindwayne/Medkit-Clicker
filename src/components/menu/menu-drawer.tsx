@@ -15,10 +15,11 @@ import { PixelButton } from "@/components/ui/pixel-button";
 import { PixelIcon } from "@/components/ui/pixel-icon";
 import { visibleAchievements } from "@/constants/achievements";
 import { APP_INFO } from "@/constants/app";
-import { REWARD_SECTIONS } from "@/constants/rewards";
+import { REWARD_SECTIONS, openSections } from "@/constants/rewards";
 import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
+import { useNow } from "@/hooks/use-now";
 
 type Page = "menu" | "achievements" | "settings" | "about" | "redeem" | `rewards:${string}`;
 
@@ -56,7 +57,9 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
   const { theme } = useSettings();
   // A slice, not the whole state: the drawer is always mounted and shouldn't redraw on every tick.
   const { achievements, unlockedSections, rebirths, fame } = useGameSelector((s) => ({ achievements: s.achievements, unlockedSections: s.unlockedSections, rebirths: s.rebirths, fame: s.fame }));
+  // Achievements stay listed after a section ends; its rewards page doesn't.
   const shownAch = visibleAchievements(unlockedSections);
+  const open = openSections(unlockedSections, useNow(60_000));
   const { dispatch } = useGameActions();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -90,7 +93,7 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
           <ScrollView contentContainerClassName="gap-3 p-4">
             {page === "menu" && (
               <>
-                {REWARD_SECTIONS.filter((s) => unlockedSections.includes(s.id)).map((s) => (
+                {REWARD_SECTIONS.filter((s) => open.includes(s.id)).map((s) => (
                   <MenuLink key={s.id} label={s.title} onPress={() => setPage(`rewards:${s.id}`)} />
                 ))}
                 <MenuLink label="Achievements" detail={`${shownAch.filter((a) => achievements[a.id] !== undefined).length}/${shownAch.length}`} onPress={() => setPage("achievements")} />

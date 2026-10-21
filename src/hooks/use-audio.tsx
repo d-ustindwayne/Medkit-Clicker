@@ -3,7 +3,9 @@ import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, type AudioPlay
 import { AppState, Platform } from "react-native";
 
 import { SFX, SOUNDTRACK, type Playlist, type SfxName } from "@/constants/playlists";
+import { sectionOpen } from "@/constants/rewards";
 import { useGameActions, useSettings } from "@/hooks/use-game";
+import { useNow } from "@/hooks/use-now";
 import { OFFLINE_MESSAGE, cloudEnabled, downloadMusic, ensureToken, hasPendingCode, isOffline, loadCachedPlaylists, wakeServer, type CachedPlaylist } from "@/lib/cloud";
 import { VOLUME_STEPS } from "@/lib/storage";
 
@@ -86,10 +88,13 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     });
     return () => sub.remove();
   }, []);
+  // A token is "<section>.<signature>": its music goes when that section ends.
+  const now = useNow(60_000);
+  const musicOpen = !token || sectionOpen(token.split(".")[0], now);
   const library: Playlist[] = useMemo(() => {
-    const downloaded = cached.map((p) => ({ id: p.id, name: p.name, tracks: p.tracks.map((uri) => ({ uri })) }));
+    const downloaded = musicOpen ? cached.map((p) => ({ id: p.id, name: p.name, tracks: p.tracks.map((uri) => ({ uri })) })) : [];
     return [SOUNDTRACK, ...downloaded];
-  }, [cached]);
+  }, [cached, musicOpen]);
 
   // Music: one player that walks through the selected playlist. The track index resets when the
   // playlist changes because it is stored alongside the playlist it belongs to.
@@ -170,7 +175,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const musicState = useMemo<MusicState>(
     () => ({
       library: library.map(({ id, name }) => ({ id, name })),
-      canDownload: cloudEnabled && (!!token || pending),
+      canDownload: cloudEnabled && musicOpen && (!!token || pending),
       download,
       downloadError,
       fetchMusic,
@@ -195,7 +200,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         music.seekTo(seconds).catch(() => {});
       },
     }),
-    [library, token, pending, download, downloadError, fetchMusic, playlist, trackIndex, trackCount, musicOn, paused, status.currentTime, status.duration, music],
+    [library, token, pending, musicOpen, download, downloadError, fetchMusic, playlist, trackIndex, trackCount, musicOn, paused, status.currentTime, status.duration, music],
   );
 
   return (

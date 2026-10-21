@@ -9,7 +9,9 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, SettingsGroup, Stepper, Toggle, VolumeControl } from "@/components/ui/controls";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { useMusic } from "@/hooks/use-audio";
+import { openSections } from "@/constants/rewards";
 import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
+import { useNow } from "@/hooks/use-now";
 import { COIN } from "@/constants/boosts";
 import { coinBalance } from "@/lib/game";
 import { cloudEnabled } from "@/lib/cloud";
@@ -21,6 +23,7 @@ const cycle = (i: number, delta: number, length: number) => (i + delta + length)
 export function SettingsPage({ onDone }: { onDone: () => void }) {
   const settings = useSettings();
   const state = useGameState();
+  const now = useNow(60_000);
   const music = useMusic();
   const { updateSettings, setTheme, replaceSave, resetProgress, dispatch, pushToast } = useGameActions();
   const [confirmReset, setConfirmReset] = useState(false);
@@ -89,7 +92,7 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
           </View>
         )}
         {/* A section unlocked without the server (an older build, offline): the code has to be checked online once. */}
-        {cloudEnabled && !music.canDownload && state.unlockedSections.length > 0 && (
+        {cloudEnabled && !music.canDownload && openSections(state.unlockedSections, now).length > 0 && (
           <Text className="font-body text-xs text-ink opacity-70">{"Missing your music? Enter your code again on the code page while you're online."}</Text>
         )}
         <Field label="Sound effects">

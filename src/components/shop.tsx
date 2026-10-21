@@ -290,7 +290,7 @@ export function Shop({ compact, width }: { compact: boolean; width: number }) {
     <View className="flex-1 bg-primary">
       <Text
         accessibilityRole="header"
-        className={`text-center font-pixel tracking-[2px] text-ink ${compact ? "pt-2 text-3xl" : "pt-5 text-5xl"}`}
+        className={`text-center font-pixel tracking-[2px] text-ink ${compact ? "pt-6 text-3xl" : "pt-5 text-5xl"}`}
         style={{ textShadowColor: "rgba(0,0,0,0.28)", textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0.1 }}
       >
         {SHOP_PAGES[page].title}

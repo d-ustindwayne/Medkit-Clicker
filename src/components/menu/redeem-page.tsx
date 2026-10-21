@@ -9,7 +9,7 @@ import { OFFLINE_MESSAGE, claimPromoOnline, cloudEnabled, isOffline, savePending
 import { formatCount } from "@/lib/format";
 import { codeHash, isDevCode, sectionForCode } from "@/lib/codes";
 import { BACKGROUNDS } from "@/constants/backgrounds";
-import { REWARD_SECTIONS } from "@/constants/rewards";
+import { REWARD_SECTIONS, sectionOpen } from "@/constants/rewards";
 import type { PromoItem } from "@/lib/game";
 
 /** "+20 Care Coins, Purple Rain background" */
@@ -72,6 +72,7 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
         }
       }
       section ??= await sectionForCode(code);
+      if (section && !sectionOpen(section.id)) return setError("That code has expired.");
       if (!section) {
         // 3. A promo code released later: patients, Care Coins, gems, backgrounds or a mix, once per phone.
         const hash = await codeHash(code);

@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { useKeepAwake } from "expo-keep-awake";
 import { AppState, Pressable, Text, View, useWindowDimensions } from "react-native";
-import Animated, { Easing, type SharedValue, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { Easing, Extrapolation, type SharedValue, interpolate, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BackgroundPattern } from "@/components/background-pattern";
 import { CurrencyBar } from "@/components/currency-bar";
 import { HallOfFame } from "@/components/hall-of-fame";
+import { Intro } from "@/components/intro";
 import { MedkitButton, ORBIT_SCALE } from "@/components/medkit-button";
 import { MenuDrawer } from "@/components/menu/menu-drawer";
 import { Shop } from "@/components/shop";
@@ -16,11 +17,13 @@ import { Pager } from "@/components/ui/pager";
 import { ToastStack } from "@/components/toast-stack";
 import { RoomPage } from "@/components/room/room-page";
 import { ownsBackground } from "@/constants/backgrounds";
+import { GEM_ITEMS } from "@/constants/gems";
+import { sectionOpen } from "@/constants/rewards";
 import { BOOSTS, LUCKY_MULT } from "@/constants/boosts";
 import { healingRate } from "@/constants/rebirth";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
-import { iconFromPending, setAppIcon } from "@/lib/app-icon";
+import { appIcon, iconFromPending, setAppIcon } from "@/lib/app-icon";
 import { askPhotosOnce } from "@/lib/stickers";
 import { useNow } from "@/hooks/use-now";
 import { usePalette } from "@/hooks/use-palette";
@@ -125,12 +128,19 @@ function Backdrop({ width, height }: { width: number; height: number }) {
 }
 
 /** Swipeable stage: the medkit, then My Room. `onEditing` hears when decorating starts or stops. */
-function Clicker({ width, height, compact, shopUp, onEditing }: { width: number; height: number; compact: boolean; shopUp: boolean; onEditing: (on: boolean) => void }) {
+/** The shop's drag on phones: the medkit area's live height and its two resting heights. */
+type ShopDrag = { value: SharedValue<number>; low: number; high: number; top: number };
+
+function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: number; height: number; compact: boolean; shopUp: boolean; drag?: ShopDrag; onEditing: (on: boolean) => void }) {
   // Only what the medkit area shows, so it doesn't redraw on every tick.
-  const { owned, rebirths, boosts, luckyTaps, waiting, room, gemUpgrades, medkitSkin, tapEffect } = useGameSelector((s) => ({
+  const { owned, rebirths, boosts, luckyTaps, waiting, room, gemUpgrades, medkitSkin: chosenSkin, tapEffect } = useGameSelector((s) => ({
     owned: s.owned, rebirths: s.rebirths, boosts: s.boosts, luckyTaps: s.luckyTaps, waiting: s.patients.length, room: s.room,
     gemUpgrades: s.gemUpgrades, medkitSkin: s.medkitSkin, tapEffect: s.tapEffect,
   }));
+  // A skin from a code-locked section falls back to the original medkit once the section ends.
+  const now = useNow(60_000);
+  const skinSection = GEM_ITEMS.find((i) => i.id === chosenSkin)?.section;
+  const medkitSkin = skinSection && !sectionOpen(skinSection, now) ? null : chosenSkin;
   const [editing, setEditingState] = useState(false);
   const setEditing = (on: boolean) => {
     setEditingState(on);
@@ -139,7 +149,16 @@ function Clicker({ width, height, compact, shopUp, onEditing }: { width: number;
   // Leave room for the orbiting supplies around the medkit.
   // With the shop pulled up the counter steps aside, so the medkit can use the space it leaves.
   const showCounter = !editing && !shopUp;
-  const size = Math.min((width * (compact ? 0.72 : 0.55)) / ORBIT_SCALE, (height * (compact ? (showCounter ? 0.52 : 0.62) : 0.58)) / ORBIT_SCALE, 420);
+  const fit = (h: number, share: number) => Math.min((width * (compact ? 0.72 : 0.55)) / ORBIT_SCALE, (h * share) / ORBIT_SCALE, 420);
+  // On phones the medkit is drawn at its bigger size and scaled with the shop's drag, so it zooms in
+  // and out with the finger instead of jumping when the drag ends.
+  const sizeDown = drag ? fit(drag.high - drag.top, 0.52) : fit(height, compact ? (showCounter ? 0.52 : 0.62) : 0.58);
+  const sizeUp = drag ? fit(drag.low - drag.top, 0.62) : sizeDown;
+  const size = Math.max(sizeDown, sizeUp);
+  const zoom = useAnimatedStyle(() => {
+    if (!drag) return {};
+    return { transform: [{ scale: interpolate(drag.value.get(), [drag.low, drag.high], [sizeUp / size, sizeDown / size], Extrapolation.CLAMP) }] };
+  });
 
   return (
     // Decorating: start below the menu button and currency chips, since the counter is hidden.
@@ -160,7 +179,9 @@ function Clicker({ width, height, compact, shopUp, onEditing }: { width: number;
             label: "Medkit",
             content: (
               <View className="flex-1 items-center justify-center">
-                <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths, boosts, luckyTaps, room, gemUpgrades })} owned={owned} skin={medkitSkin} effect={tapEffect} />
+                <Animated.View style={zoom}>
+                  <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths, boosts, luckyTaps, room, gemUpgrades })} owned={owned} skin={medkitSkin} effect={tapEffect} />
+                </Animated.View>
               </View>
             ),
           },
@@ -168,7 +189,7 @@ function Clicker({ width, height, compact, shopUp, onEditing }: { width: number;
             key: "room",
             label: waiting ? `My Room, ${waiting} ${waiting === 1 ? "patient is" : "patients are"} waiting` : "My Room",
             badge: waiting > 0,
-            content: <RoomPage width={width} editing={editing} onEditingChange={setEditing} />,
+            content: <RoomPage width={width} editing={editing} onEditingChange={setEditing} hideControls={shopUp} />,
           },
         ]}
       />
@@ -210,7 +231,8 @@ function ShopGrip({ expanded, onChange, height, low, high }: { expanded: boolean
       onResponderTerminate={() => settle(expanded)}
       accessibilityRole="button"
       accessibilityLabel={expanded ? "Shrink the shop" : "Expand the shop"}
-      className="absolute left-0 right-0 top-0 z-20 h-7 items-center justify-center"
+      // The bar sits at the top of the touch strip, clear of the shop title below it.
+      className="absolute left-0 right-0 top-0 z-20 h-7 items-center pt-2"
     >
       <View className="h-1.5 w-12 rounded-full bg-ink/40" />
     </View>
@@ -221,6 +243,12 @@ function ShopGrip({ expanded, onChange, height, low, high }: { expanded: boolean
 function PendingIcon() {
   const pending = useGameSelector((s) => s.pendingIcon);
   const { dispatch } = useGameActions();
+  // An icon from a code-locked section that has ended goes back to the original next time.
+  useEffect(() => {
+    const current = appIcon();
+    const item = GEM_ITEMS.find((i) => i.kind === "icon" && i.name === current);
+    if (item?.section && !sectionOpen(item.section)) dispatch({ type: "setPendingIcon", icon: "default" });
+  }, [dispatch]);
   useEffect(() => {
     if (!pending) return;
     const sub = AppState.addEventListener("change", (s) => {
@@ -254,6 +282,7 @@ export default function GameScreen() {
     animatedHeight.set(withTiming(clickerHeight, { duration: 260, easing: Easing.out(Easing.cubic) }));
   }, [animatedHeight, clickerHeight]);
   const clickerStyle = useAnimatedStyle(() => ({ height: animatedHeight.get() }));
+  const drag = useMemo(() => (wide ? undefined : { value: animatedHeight, low: height * 0.36, high: height * 0.56, top: insets.top }), [wide, animatedHeight, height, insets.top]);
 
   return (
     <View className={`flex-1 bg-backdrop ${wide ? "flex-row" : "flex-col"}`}>
@@ -267,7 +296,7 @@ export default function GameScreen() {
           <CurrencyBar />
         </View>
         {/* Decorating needs the space: the shop folds down while the room is edited. */}
-        <Clicker width={clickerWidth} height={clickerHeight - insets.top} compact={!wide} shopUp={shopUp && !wide} onEditing={(on) => on && setShopUp(false)} />
+        <Clicker width={clickerWidth} height={clickerHeight - insets.top} compact={!wide} shopUp={shopUp && !wide} drag={drag} onEditing={(on) => on && setShopUp(false)} />
       </Animated.View>
 
       <View
@@ -280,6 +309,7 @@ export default function GameScreen() {
 
       <ToastStack />
       <HallOfFame />
+      <Intro />
       <PendingIcon />
       <MenuDrawer visible={menuOpen} onClose={() => setMenuOpen(false)} />
     </View>

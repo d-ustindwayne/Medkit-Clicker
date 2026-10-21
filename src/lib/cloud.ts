@@ -73,7 +73,9 @@ export async function ensureToken() {
     // A code the server doesn't know (404) is dropped; it would never work.
     await AsyncStorage.removeItem(PENDING_CODE_KEY);
     return res?.token ?? null;
-  } catch {
+  } catch (e) {
+    // An expired code (410) won't work later either.
+    if ((e as { status?: number }).status === 410) await AsyncStorage.removeItem(PENDING_CODE_KEY);
     return null;
   }
 }

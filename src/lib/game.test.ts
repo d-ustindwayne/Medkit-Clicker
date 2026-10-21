@@ -427,3 +427,17 @@ describe("taller rooms", () => {
     expect(normalizeSave(JSON.parse(JSON.stringify(s)))!.room.placed.empty).toEqual(s.room.placed.empty);
   });
 });
+
+describe("intro", () => {
+  test("new players see it once; saves from before it existed skip it", () => {
+    expect(newGame().introSeen).toBe(false);
+    const veteran = JSON.parse(JSON.stringify({ ...newGame(), taps: 50 }));
+    delete veteran.introSeen;
+    expect(normalizeSave(veteran)!.introSeen).toBe(true);
+    const fresh = JSON.parse(JSON.stringify(newGame()));
+    delete fresh.introSeen;
+    expect(normalizeSave(fresh)!.introSeen).toBe(false);
+    expect(run(newGame(), { type: "setIntroSeen", seen: true }).introSeen).toBe(true);
+    expect(normalizeSave({ ...newGame(), taps: 9, introSeen: false })!.introSeen).toBe(false);
+  });
+});

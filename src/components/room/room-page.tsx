@@ -15,6 +15,8 @@ import { useGameActions, useGameSelector } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 
 const ART_W = 320;
+/** The decorate button: a house with a pencil (src/media/photos/sprites/misc/decorate.aseprite). */
+const DECORATE_ICON = require("@/imgs/misc/decorate.png");
 /** Room buttons and the item tray draw above every placed item (DRAG_DEPTH included). */
 const CONTROLS_DEPTH = DRAG_DEPTH + 10;
 type Box = { x: number; y: number; w: number; h: number };
@@ -123,7 +125,8 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
 }
 
 /** "My Room": decorate hospital rooms with unlocked items; staff walk around and patients turn up. */
-export function RoomPage({ width, editing, onEditingChange }: { width: number; editing: boolean; onEditingChange: (on: boolean) => void }) {
+/** `hideControls`: the shop is pulled up, so the room is small; its decorate button steps aside. */
+export function RoomPage({ width, editing, onEditingChange, hideControls = false }: { width: number; editing: boolean; onEditingChange: (on: boolean) => void; hideControls?: boolean }) {
   const state = useGameSelector((s) => ({ room: s.room, achievements: s.achievements, rebirths: s.rebirths, treated: s.treated, owned: s.owned, gemItems: s.gemItems }));
   const { dispatch, pushToast } = useGameActions();
   const { playSfx, unlock } = useAudio();
@@ -250,7 +253,7 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
         }}
         className={`h-10 w-10 items-center justify-center border-2 border-outline ${editing ? "bg-success" : "bg-surface"}`}
       >
-        <PixelIcon name={editing ? "check" : "edit"} size={16} />
+        {editing ? <PixelIcon name="check" size={16} /> : <Image source={DECORATE_ICON} style={{ width: 28, height: 28 }} contentFit="contain" />}
       </Pressable>
     </HardShadow>
   );
@@ -300,7 +303,7 @@ export function RoomPage({ width, editing, onEditingChange }: { width: number; e
       </ScenePage>
 
       {/* Decorate button, drawn above everything in the room. */}
-      {!editing && (
+      {!editing && !hideControls && (
         <View className="absolute right-3 top-2" style={{ zIndex: CONTROLS_DEPTH }}>
           {toggle}
         </View>

@@ -5,6 +5,7 @@ import { Pressable, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import { HardShadow } from "@/components/ui/hard-shadow";
+import { PixelButton } from "@/components/ui/pixel-button";
 import { APP_INFO, CREDIT } from "@/constants/app";
 import { HOSPITAL_IMAGE, MEDKIT_IMAGE } from "@/constants/items";
 import { useAudio } from "@/hooks/use-audio";
@@ -79,6 +80,7 @@ export function AboutPage({ onSecret }: { onSecret?: () => void }) {
         Tap the medkit to heal patients. Spend them in the shop on supplies that keep healing for you. Your progress saves on
         its own, and your team keeps working for up to 4 hours while the app is closed.
       </Text>
+      <PixelButton label="How to play" onPress={() => dispatch({ type: "setIntroSeen", seen: false })} />
 
       <HardShadow offset={5}>
       <View className="border-2 border-outline bg-surface px-3 py-1">

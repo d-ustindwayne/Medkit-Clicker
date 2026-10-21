@@ -69,7 +69,8 @@
     "apk:emulator": "cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 -Pandroid.enableMinifyInReleaseBuilds=true -Pandroid.enableShrinkResourcesInReleaseBuilds=true",
     "tasks": "bun scripts/tasks.ts",
     "add-code": "bun scripts/add-code.ts",
-    "add-promo": "bun scripts/add-promo.ts"
+    "add-promo": "bun scripts/add-promo.ts",
+    "expire-section": "bun scripts/expire-section.ts"
   },
   "private": true,
   "license": "Apache-2.0",

@@ -23,12 +23,13 @@ export const HOSPITAL_SKY: ImageSourcePropType = require("@/imgs/scenes/hospital
 
 /** The sky follows the phone's clock. `tint` darkens or warms the buildings to match. */
 export type DayPhase = "sunrise" | "day" | "sunset" | "night";
-export const SKIES: Record<DayPhase, { image: ImageSourcePropType; tint: string | null; clouds: number; fill: string }> = {
+export const SKIES: Record<DayPhase, { image: ImageSourcePropType; tint: string | null; clouds: number; fill: string; dark: number; lights: boolean }> = {
   // `fill` is the sky image's top colour, so the sky carries on above the art without a seam.
-  sunrise: { image: require("@/imgs/scenes/hospital_sky_sunrise.png"), tint: "rgba(255,170,150,0.12)", clouds: 0.9, fill: "#008ed8" },
-  day: { image: HOSPITAL_SKY, tint: null, clouds: 1, fill: "#58b5ee" },
-  sunset: { image: require("@/imgs/scenes/hospital_sky_sunset.png"), tint: "rgba(255,120,60,0.16)", clouds: 0.8, fill: "#002978" },
-  night: { image: require("@/imgs/scenes/hospital_sky_night.png"), tint: "rgba(10,16,48,0.42)", clouds: 0.25, fill: "#080c28" },
+  // `dark` shades the people and cars (0-1); `lights` turns the headlights on.
+  sunrise: { image: require("@/imgs/scenes/hospital_sky_sunrise.png"), tint: "rgba(255,170,150,0.12)", clouds: 0.9, fill: "#008ed8", dark: 0.1, lights: false },
+  day: { image: HOSPITAL_SKY, tint: null, clouds: 1, fill: "#58b5ee", dark: 0, lights: false },
+  sunset: { image: require("@/imgs/scenes/hospital_sky_sunset.png"), tint: "rgba(255,120,60,0.16)", clouds: 0.8, fill: "#002978", dark: 0.2, lights: true },
+  night: { image: require("@/imgs/scenes/hospital_sky_night.png"), tint: "rgba(10,16,48,0.42)", clouds: 0.25, fill: "#080c28", dark: 0.45, lights: true },
 };
 /** Sunrise 5-7, day 7-17, sunset 17-19, night 19-5. */
 export const dayPhase = (hour: number): DayPhase => (hour >= 5 && hour < 7 ? "sunrise" : hour >= 7 && hour < 17 ? "day" : hour >= 17 && hour < 19 ? "sunset" : "night");

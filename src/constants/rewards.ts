@@ -34,7 +34,19 @@ export type RewardSection = {
   codeHash: string | undefined;
   /** Who gets told when something is redeemed (used in the share message). */
   notify: string;
+  /**
+   * When the code and everything it unlocks end (ms since epoch), or undefined for never. Set in
+   * .env.local next to the code's hash (`bun run add-code <section> <code> <expiry>`). Achievements
+   * already earned stay.
+   */
+  expiresAt: number | undefined;
   rewards: Reward[];
+};
+
+/** "2026-01-31T00:00:00+08:00" from .env.local, as ms; undefined when unset or unreadable. */
+const expiry = (iso: string | undefined) => {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? t : undefined;
 };
 
 export const REWARD_SECTIONS: RewardSection[] = [
@@ -44,6 +56,7 @@ export const REWARD_SECTIONS: RewardSection[] = [
     // Expo inlines EXPO_PUBLIC_* at build time, so this must be written out literally.
     codeHash: process.env.EXPO_PUBLIC_CODE_JASMINE,
     notify: "Dustin",
+    expiresAt: expiry(process.env.EXPO_PUBLIC_CODE_JASMINE_EXPIRES),
     // Priced high on purpose: these are real favours. Unlimited ones are for grinding.
     // Priced high on purpose: these are real favours. Most need 3 rebirths; kisses, chocolate and fun
     // facts are open from the start.
@@ -73,3 +86,12 @@ export const REWARD_SECTIONS: RewardSection[] = [
     ],
   },
 ];
+
+/** Whether a section's code and content are still on (not past its expiry). Unknown ids count as open. */
+export const sectionOpen = (id: string, now = Date.now()) => {
+  const s = REWARD_SECTIONS.find((x) => x.id === id);
+  return !s?.expiresAt || now < s.expiresAt;
+};
+
+/** The unlocked sections that haven't expired. */
+export const openSections = (unlocked: string[], now = Date.now()) => unlocked.filter((id) => sectionOpen(id, now));

@@ -1,7 +1,9 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { Pressable, Text, View, type ImageSourcePropType } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+
+import Svg, { Defs, LinearGradient, Polygon, Stop } from "react-native-svg";
 
 import { RebirthCard } from "@/components/hospital/rebirth-card";
 import { ScenePage } from "@/components/scene-page";
@@ -76,8 +78,39 @@ function Cloud({ cloud, width }: { cloud: (typeof CLOUDS)[number]; width: number
 
 type Car = { id: number; image: ImageSourcePropType; lane: 0 | 1; seconds: number };
 
+/** How dark people and cars are (0-1) and whether headlights are on, from the time of day. */
+type Night = { dark: number; lights: boolean };
+const NIGHT_COLOUR = "#0a1030";
+
+/** The sprite again in the night colour on top: darkens only its own pixels, not the space around it. */
+function Shade({ source, size, dark }: { source: ImageSourcePropType; size: number; dark: number }) {
+  if (dark <= 0) return null;
+  return <Image source={source} tintColor={NIGHT_COLOUR} style={{ position: "absolute", left: 0, top: 0, width: size, height: size, opacity: dark }} contentFit="contain" />;
+}
+
+/** Headlight row in the 32px car art, and how far the beam reaches along the road (art pixels). */
+const HEADLIGHT_Y = 18;
+const BEAM = 46;
+/** A soft beam from the front of a car (drawn facing right) that spreads down onto the road ahead. */
+function Headlights({ px, size }: { px: number; size: number }) {
+  const len = BEAM * px;
+  const y = HEADLIGHT_Y * px;
+  const ground = (WHEEL_BOTTOM + 2) * px;
+  return (
+    <Svg pointerEvents="none" width={len} height={size + 2 * px} style={{ position: "absolute", left: size - px, top: 0 }}>
+      <Defs>
+        <LinearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+          <Stop offset="0" stopColor="#fff1b8" stopOpacity={0.7} />
+          <Stop offset="1" stopColor="#fff1b8" stopOpacity={0} />
+        </LinearGradient>
+      </Defs>
+      <Polygon points={`0,${y - px} 0,${y + 2 * px} ${len},${ground} ${len},${y - 5 * px}`} fill="url(#beam)" />
+    </Svg>
+  );
+}
+
 /** One car driving across the road, then reporting back so it can be removed. */
-const PassingCar = memo(function PassingCar({ car, width, onGone }: { car: Car; width: number; onGone: (id: number) => void }) {
+const PassingCar = memo(function PassingCar({ car, width, onGone, night }: { car: Car; width: number; onGone: (id: number) => void; night: Night }) {
   const px = width / ART_W;
   const size = CAR_PX * px;
   const { y, dir } = LANES[car.lane];
@@ -91,6 +124,8 @@ const PassingCar = memo(function PassingCar({ car, width, onGone }: { car: Car; 
   return (
     <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0, top: (y - WHEEL_BOTTOM) * px, width: size, height: size, zIndex: 1 + car.lane }, move]}>
       <Image source={car.image} style={{ width: size, height: size }} contentFit="contain" />
+      <Shade source={car.image} size={size} dark={night.dark} />
+      {night.lights && <Headlights px={px} size={size} />}
     </Animated.View>
   );
 });
@@ -101,7 +136,7 @@ type Call = { id: number; condition: string };
  * The emergency: an ambulance drives in, parks at the entrance and waits with a call-out.
  * Tapping it admits the patient; otherwise it leaves after AMBULANCE_WAIT seconds.
  */
-function Ambulance({ call, width, onAdmit, onGone }: { call: Call; width: number; onAdmit: () => void; onGone: () => void }) {
+function Ambulance({ call, width, onAdmit, onGone, night }: { call: Call; width: number; onAdmit: () => void; onGone: () => void; night: Night }) {
   const px = width / ART_W;
   const size = CAR_PX * px;
   const parkX = (DOOR_X - CAR_PX / 2) * px;
@@ -145,6 +180,8 @@ function Ambulance({ call, width, onAdmit, onGone }: { call: Call; width: number
       <Animated.View style={[{ position: "absolute", left: 0, top, width: size, height: size, zIndex: 3 }, move]}>
         <Pressable accessibilityRole="button" accessibilityLabel={`Ambulance: ${call.condition}. Tap to admit the patient.`} hitSlop={14} onPress={admit}>
           <Image source={AMBULANCE} style={{ width: size, height: size }} contentFit="contain" />
+          <Shade source={AMBULANCE} size={size} dark={night.dark} />
+          {night.lights && <Headlights px={px} size={size} />}
           {/* Siren glow over the light bar (art pixels 10-13 on row 7). */}
           <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 9 * px, top: 5.5 * px, width: 6 * px, height: 3 * px, borderRadius: 3 * px, backgroundColor: "rgba(255,90,90,0.75)" }, glow]} />
         </Pressable>
@@ -166,7 +203,7 @@ function Ambulance({ call, width, onAdmit, onGone }: { call: Call; width: number
 type Visitor = { id: number; frames: [ImageSourcePropType, ImageSourcePropType]; from: number; to: number; seconds: number };
 
 /** A visitor walking along the plaza, to the door (and fading in) or out of it. */
-const Walker = memo(function Walker({ v, width, onGone }: { v: Visitor; width: number; onGone: (id: number) => void }) {
+const Walker = memo(function Walker({ v, width, onGone, dark }: { v: Visitor; width: number; onGone: (id: number) => void; dark: number }) {
   const px = width / ART_W;
   const size = VISITOR_PX * px;
   const dir = v.to > v.from ? 1 : -1;
@@ -190,9 +227,11 @@ const Walker = memo(function Walker({ v, width, onGone }: { v: Visitor; width: n
     <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0, top: (VISITOR_FEET_Y - VISITOR_PX) * px, width: size, height: size }, move]}>
       <Animated.View style={[{ position: "absolute" }, frameA]}>
         <Image source={v.frames[0]} style={{ width: size, height: size }} contentFit="contain" />
+        <Shade source={v.frames[0]} size={size} dark={dark} />
       </Animated.View>
       <Animated.View style={[{ position: "absolute" }, frameB]}>
         <Image source={v.frames[1]} style={{ width: size, height: size }} contentFit="contain" />
+        <Shade source={v.frames[1]} size={size} dark={dark} />
       </Animated.View>
     </Animated.View>
   );
@@ -201,7 +240,7 @@ const Walker = memo(function Walker({ v, width, onGone }: { v: Visitor; width: n
 // ---------- the page ----------
 
 /** Cars, visitors and emergencies. Only spawns while the page is on screen. */
-function Street({ width, active }: { width: number; active: boolean }) {
+function Street({ width, active, night }: { width: number; active: boolean; night: Night }) {
   const store = useGameStore();
   const { dispatch, pushToast } = useGameActions();
   const { playSfx } = useAudio();
@@ -266,12 +305,12 @@ function Street({ width, active }: { width: number; active: boolean }) {
   return (
     <>
       {visitors.map((v) => (
-        <Walker key={v.id} v={v} width={width} onGone={visitorGone} />
+        <Walker key={v.id} v={v} width={width} onGone={visitorGone} dark={night.dark} />
       ))}
       {cars.map((c) => (
-        <PassingCar key={c.id} car={c} width={width} onGone={carGone} />
+        <PassingCar key={c.id} car={c} width={width} onGone={carGone} night={night} />
       ))}
-      {call && <Ambulance key={call.id} call={call} width={width} onAdmit={admit} onGone={ambulanceGone} />}
+      {call && <Ambulance key={call.id} call={call} width={width} onAdmit={admit} onGone={ambulanceGone} night={night} />}
     </>
   );
 }
@@ -315,6 +354,9 @@ export function HospitalPage({ width, active }: { width: number; active: boolean
   const now = useNow(60_000);
   const phase = dayPhase(new Date(now).getHours());
   const sky = SKIES[phase];
+  const { dark, lights } = sky;
+  // One object per change of time of day, so the memoized cars and visitors don't redraw needlessly.
+  const night = useMemo(() => ({ dark, lights }), [dark, lights]);
   const height = width * (ART_H / ART_W);
   return (
     // Clip: clouds and cars start off the page's edges and would otherwise show over the next page.
@@ -328,7 +370,7 @@ export function HospitalPage({ width, active }: { width: number; active: boolean
         <Image source={tier.image} style={{ position: "absolute", width, height }} contentFit="cover" accessibilityLabel={tier.name} />
         {/* Evening and night light over the buildings; the sky image itself stays bright and starry. */}
         {sky.tint && <View pointerEvents="none" style={{ position: "absolute", width, height, top: 0, backgroundColor: sky.tint }} />}
-        <Street width={width} active={active} />
+        <Street width={width} active={active} night={night} />
       </ScenePage>
       <View className="absolute left-3 right-3 top-7">
         <RebirthCard />

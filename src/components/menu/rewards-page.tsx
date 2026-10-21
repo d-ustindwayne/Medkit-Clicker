@@ -7,7 +7,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { MEDKIT_IMAGE } from "@/constants/items";
-import { REWARD_SECTIONS, type Reward, type RewardSection } from "@/constants/rewards";
+import { REWARD_SECTIONS, sectionOpen, type Reward, type RewardSection } from "@/constants/rewards";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
 import { OFFLINE_MESSAGE, cloudEnabled, ensureToken, fetchRewards, isOffline, redeemOnline } from "@/lib/cloud";
@@ -225,6 +225,7 @@ export function RewardsPage({ sectionId }: { sectionId: string }) {
   const { dispatch } = useGameActions();
   const section = REWARD_SECTIONS.find((s) => s.id === sectionId);
   const [offline, setOffline] = useState(false);
+  const now = useNow(60_000);
 
   // Pull the server's redemption history so a reinstall can't reset the limits.
   useEffect(() => {
@@ -246,6 +247,7 @@ export function RewardsPage({ sectionId }: { sectionId: string }) {
     };
   }, [dispatch]);
   if (!section) return null;
+  if (!sectionOpen(section.id, now)) return <Text className="font-body text-base leading-6 text-ink">This section has ended.</Text>;
 
   return (
     <View className="gap-4">

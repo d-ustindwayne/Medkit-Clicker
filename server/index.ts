@@ -42,6 +42,16 @@ function sectionOf(req: Request): string | null {
 
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 
+/**
+ * Whether a section has ended: its `expires_at` (set with scripts/expire-section.ts) is in the past.
+ * to_jsonb(...) ->> reads the column if the database has it, and null otherwise.
+ */
+async function sectionEnded(section: string) {
+  const [row] = await sql`SELECT to_jsonb(a) ->> 'expires_at' AS expires FROM access_codes a WHERE section = ${section}`;
+  return !!row?.expires && new Date(row.expires) <= new Date();
+}
+const ENDED = "That code has expired.";
+
 async function notify(text: string) {
   if (!NTFY_TOPIC) return false;
   const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, { method: "POST", body: text, headers: { Title: "Medkit Clicker", Tags: "gift" } }).catch(() => null);
@@ -62,6 +72,7 @@ Bun.serve({
       if (!code) return json({ error: "Missing code" }, 400);
       const [row] = await sql`SELECT section, title, notify_name FROM access_codes WHERE code_sha256 = ${sha256(normalize(code))}`;
       if (!row) return json({ error: "That code didn't match anything." }, 404);
+      if (await sectionEnded(row.section)) return json({ error: ENDED }, 410);
       return json({ token: tokenFor(row.section), section: row.section, title: row.title, notify: row.notify_name });
     }
 
@@ -104,6 +115,8 @@ Bun.serve({
 
     const section = sectionOf(req);
     if (!section) return json({ error: "Enter your code first." }, 401);
+    // Everything behind the code (rewards, redemptions, music) ends with it.
+    if (await sectionEnded(section)) return json({ error: ENDED }, 410);
 
     // Rewards with how many times each has been used.
     if (path === "/rewards" && req.method === "GET") {

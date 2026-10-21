@@ -78,3 +78,6 @@ CREATE TABLE IF NOT EXISTS hall_of_fame (
   rebirths   INT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- When a section ends (bun run expire-section): its code, rewards and music stop. NULL = never.
+ALTER TABLE access_codes ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
