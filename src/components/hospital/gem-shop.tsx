@@ -198,18 +198,15 @@ export function GemShop() {
   const locked = state.rebirths < 1;
   return (
     <View className="flex-1">
-    <ScrollView contentContainerClassName="gap-4 px-4 pb-6" scrollEnabled={!locked}>
-      <View className="flex-row items-center justify-between border-2 border-outline bg-accent px-3 py-2">
-        <Text className="font-body text-sm text-ink">Your {GEM.name}</Text>
-        <View className="flex-row items-center gap-1">
-          <Image source={GEM.image} style={{ width: 20, height: 20 }} contentFit="contain" />
-          <Text className="font-number text-lg text-ink">{gemBalance(state)}</Text>
-        </View>
+    {/* The balance stays put above the list while it scrolls. */}
+    <View className="mx-4 mb-2 flex-row items-center justify-between border-2 border-outline bg-accent px-3 py-2">
+      <Text className="font-body text-sm text-ink">Your {GEM.name}</Text>
+      <View className="flex-row items-center gap-1">
+        <Image source={GEM.image} style={{ width: 20, height: 20 }} contentFit="contain" />
+        <Text className="font-number text-lg text-ink">{gemBalance(state)}</Text>
       </View>
-      <Text className="font-body text-sm leading-5 text-ink">
-        Rebirth on the Hospital page to earn {GEM.name}. Upgrades last forever; each rebirth opens new cosmetics.
-      </Text>
-
+    </View>
+    <ScrollView contentContainerClassName="gap-4 px-4 pb-6" scrollEnabled={!locked}>
       <Text className="font-pixel text-sm tracking-[2px] text-ink">UPGRADES</Text>
       {GEM_UPGRADES.map((u) => (
         <UpgradeCard key={u.id} upgrade={u} />

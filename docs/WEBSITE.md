@@ -15,7 +15,7 @@ Pages publishes only the built site (`website/dist`: HTML, scripts, styles, imag
 
 ## Deploying
 
-The workflow runs on pushes to `main` that change `website/` (or the workflow itself), and can be started by hand from the Actions tab. It builds with `BASE_PATH=/Medkit-Clicker/` and publishes to Pages. One-time setup: in this repo's **Settings → Pages**, set **Source** to **GitHub Actions**.
+The workflow runs on every push to `main`, and can be started by hand from the Actions tab (Run workflow). It builds with `BASE_PATH=/Medkit-Clicker/` and publishes to Pages. One-time setup (done 2026-10-22): in this repo's **Settings → Pages**, set **Source** to **GitHub Actions**.
 
 ## Assets
 

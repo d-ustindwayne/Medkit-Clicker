@@ -1,12 +1,11 @@
 name: Deploy website to GitHub Pages
 
 # Builds only website/ and publishes its dist/ folder; nothing else in the repo is served.
+# Every push to main redeploys the site (it takes about a minute), and it can be run by hand from
+# the Actions tab (Run workflow).
 on:
   push:
     branches: [main]
-    paths:
-      - "website/**"
-      - ".github/workflows/website.yml"
   workflow_dispatch:
 
 permissions:
@@ -25,7 +24,7 @@ jobs:
       run:
         working-directory: website
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       # Pages serves the site at /<repo-name>/, so the build uses that as its base.

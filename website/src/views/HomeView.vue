@@ -254,7 +254,7 @@ onBeforeUnmount(() => {
               <p class="step"><PixelIcon name="cross" :size="12" /> Step 2 of 5</p>
               <h2 id="supplies-title">Stock the supply room</h2>
               <p>
-                Spend patients on supplies that heal for you, from a bandage to a DNA lab. Each one you buy costs 15%
+                Spend patients on supplies that heal for you, from a bandage to a DNA lab. Each one you buy costs 14%
                 more than the last, and your team keeps working for up to {{ GAME.offlineHours }} hours while the app is
                 closed.
               </p>

@@ -65,32 +65,37 @@ export const HOSPITAL_TIERS = [
 /** The sky follows the clock, as in the game: `tint` darkens or warms the buildings, `clouds` is cloud opacity. */
 export type DayPhase = "sunrise" | "day" | "sunset" | "night";
 export const SKIES: Record<DayPhase, { label: string; img: string; tint: string | null; clouds: number; fill: string }> = {
-  sunrise: { label: "Sunrise", img: sprite("scenes/hospital_sky_sunrise.png"), tint: "rgba(255,170,150,0.12)", clouds: 0.9, fill: "#7f9fd8" },
-  day: { label: "Day", img: sprite("scenes/hospital_sky.png"), tint: null, clouds: 1, fill: "#8fcff5" },
-  sunset: { label: "Sunset", img: sprite("scenes/hospital_sky_sunset.png"), tint: "rgba(255,120,60,0.16)", clouds: 0.8, fill: "#4a4f9a" },
-  night: { label: "Night", img: sprite("scenes/hospital_sky_night.png"), tint: "rgba(10,16,48,0.42)", clouds: 0.25, fill: "#0b1030" },
+  sunrise: { label: "Sunrise", img: sprite("scenes/hospital_sky_sunrise.png"), tint: "rgba(255,170,150,0.12)", clouds: 0.9, fill: "#008ed8" },
+  day: { label: "Day", img: sprite("scenes/hospital_sky.png"), tint: null, clouds: 1, fill: "#58b5ee" },
+  sunset: { label: "Sunset", img: sprite("scenes/hospital_sky_sunset.png"), tint: "rgba(255,120,60,0.16)", clouds: 0.8, fill: "#002978" },
+  night: { label: "Night", img: sprite("scenes/hospital_sky_night.png"), tint: "rgba(10,16,48,0.42)", clouds: 0.25, fill: "#080c28" },
 };
 /** Sunrise 5-7, day 7-17, sunset 17-19, night 19-5. */
 export const dayPhase = (hour: number): DayPhase =>
   hour >= 5 && hour < 7 ? "sunrise" : hour >= 7 && hour < 17 ? "day" : hour >= 17 && hour < 19 ? "sunset" : "night";
 
-// The street in front of the hospital, on the scene's 320x180 art-pixel grid (src/constants/hospital.ts).
+/** The scene's art-pixel grid: 320x240, like the game since 2026-10-21 (src/constants/hospital.ts). */
+export const SCENE = { w: 320, h: 240 };
+
+// The street in front of the hospital, on the scene's art-pixel grid (src/constants/hospital.ts).
 export const STREET = {
   clouds: [
-    { img: sprite("street/cloud_big.png"), w: 60, y: 8, seconds: 140, start: 0.1 },
-    { img: sprite("street/cloud_mid.png"), w: 46, y: 28, seconds: 110, start: 0.7 },
-    { img: sprite("street/cloud_small.png"), w: 35, y: 44, seconds: 90, start: 0.4 },
+    { img: sprite("street/cloud_mid.png"), w: 46, y: 14, seconds: 160, start: 0.35 },
+    { img: sprite("street/cloud_small.png"), w: 35, y: 40, seconds: 120, start: 0.85 },
+    { img: sprite("street/cloud_big.png"), w: 60, y: 68, seconds: 140, start: 0.1 },
+    { img: sprite("street/cloud_mid.png"), w: 46, y: 88, seconds: 110, start: 0.7 },
+    { img: sprite("street/cloud_small.png"), w: 35, y: 104, seconds: 90, start: 0.4 },
   ],
   cars: ["hatch_red", "sedan_blue", "taxi", "van_green", "pickup_orange", "mini_pink", "sedan_white", "hatch_teal"].map((c) => sprite(`street/cars/${c}.png`)),
   ambulance: sprite("street/ambulance.png"),
   visitors: ["woman", "man", "kid", "elder"].map((v) => [sprite(`street/visitor_${v}_1.png`), sprite(`street/visitor_${v}_2.png`)] as const),
   /** Two lanes: the far one drives left, the near one right. `y` is where the wheels touch. */
   lanes: [
-    { y: 158, dir: -1 },
-    { y: 165, dir: 1 },
+    { y: 218, dir: -1 },
+    { y: 225, dir: 1 },
   ],
   doorX: 160,
-  visitorFeetY: 151,
+  visitorFeetY: 211,
   /** Art pixels per second. */
   visitorSpeed: 14,
 };

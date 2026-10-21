@@ -159,13 +159,32 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
     if (!drag) return {};
     return { transform: [{ scale: interpolate(drag.value.get(), [drag.low, drag.high], [sizeUp / size, sizeDown / size], Extrapolation.CLAMP) }] };
   });
+  // The counter fades and folds away as the shop is dragged up, and comes back as it's dragged down.
+  const [counterH, setCounterH] = useState(0);
+  const counterFade = useAnimatedStyle(() => {
+    if (!drag) return {};
+    const h = drag.value.get();
+    return {
+      opacity: interpolate(h, [drag.low, drag.low + (drag.high - drag.low) * 0.6, drag.high], [0, 0.2, 1], Extrapolation.CLAMP),
+      height: counterH ? interpolate(h, [drag.low, drag.high], [0, counterH], Extrapolation.CLAMP) : undefined,
+    };
+  });
 
   return (
     // Decorating: start below the menu button and currency chips, since the counter is hidden.
     <View className={`flex-1 items-center ${editing ? "pt-[92px]" : compact ? "pt-12" : "justify-center pt-4"}`}>
       {/* The counter stays while you swipe between the medkit and My Room, so progress is always in view.
           It steps aside while decorating, so the room, its buttons and the item tray all fit. */}
-      {showCounter && <Counter compact={compact} />}
+      {drag
+        ? !editing && (
+            <Animated.View style={[{ zIndex: 1, overflow: "hidden", alignSelf: "stretch" }, counterFade]}>
+              {/* Measured once at full height, so the fold knows how far to go. */}
+              <View onLayout={(e) => setCounterH((h) => h || e.nativeEvent.layout.height)}>
+                <Counter compact={compact} />
+              </View>
+            </Animated.View>
+          )
+        : showCounter && <Counter compact={compact} />}
       <Pager
         // The medkit's shine reaches up behind the counter instead of stopping at the page edge.
         overflowVisible

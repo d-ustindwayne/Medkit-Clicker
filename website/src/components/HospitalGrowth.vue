@@ -3,15 +3,15 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 import { useInView } from "@/composables/useInView";
 import { useReducedMotion } from "@/composables/useReducedMotion";
-import { dayPhase, HOSPITAL_TIERS, SKIES, STREET, type DayPhase } from "@/lib/content";
+import { dayPhase, HOSPITAL_TIERS, SCENE, SKIES, STREET, type DayPhase } from "@/lib/content";
 
 // The game's Hospital page in miniature: the look for each rebirth, a sky that follows the visitor's clock,
 // drifting clouds, two lanes of traffic, visitors walking to the door, and now and then an ambulance to admit.
 
 const emit = defineEmits<{ admit: [x: number, y: number] }>();
 
-const W = 320;
-const H = 180;
+const W = SCENE.w;
+const H = SCENE.h;
 const pctX = (x: number) => `${(x / W) * 100}%`;
 const pctY = (y: number) => `${(y / H) * 100}%`;
 
@@ -113,7 +113,7 @@ onBeforeUnmount(() => {
 <template>
   <figure ref="root" class="growth">
     <div class="scene" :style="{ background: sky.fill }">
-      <img class="pixel layer" :src="sky.img" alt="" width="1280" height="720" />
+      <img class="pixel layer" :src="sky.img" alt="" width="1280" height="960" />
       <img
         v-for="(c, i) in STREET.clouds"
         :key="i"
@@ -131,7 +131,7 @@ onBeforeUnmount(() => {
         :src="t.img"
         :alt="i === tier ? `${t.name}, the hospital after ${t.rebirths} rebirths` : ''"
         width="1280"
-        height="720"
+        height="960"
         loading="lazy"
       />
 
@@ -161,7 +161,7 @@ onBeforeUnmount(() => {
         type="button"
         class="ambulance"
         :class="[ambulance, { admitted }]"
-        :style="{ '--door': pctX(STREET.doorX - 16), top: pctY(165 - 28), width: pctX(32) }"
+        :style="{ '--door': pctX(STREET.doorX - 16), top: pctY(STREET.lanes[1].y - 28), width: pctX(32) }"
         :aria-label="admitted ? 'Patient admitted' : 'Admit the patient from the ambulance'"
         :disabled="admitted"
         @click="admit"
@@ -203,7 +203,7 @@ onBeforeUnmount(() => {
 }
 .scene {
   position: relative;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 3;
   border: 3px solid var(--outline);
   overflow: hidden;
   isolation: isolate;

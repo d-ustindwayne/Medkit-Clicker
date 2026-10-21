@@ -15,7 +15,7 @@ import { useGameActions, useGameSelector } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 
 const ART_W = 320;
-/** The decorate button: a house with a pencil (src/media/photos/sprites/misc/decorate.aseprite). */
+/** The decorate button: a pencil (src/media/photos/sprites/misc/decorate.aseprite). */
 const DECORATE_ICON = require("@/imgs/misc/decorate.png");
 /** Room buttons and the item tray draw above every placed item (DRAG_DEPTH included). */
 const CONTROLS_DEPTH = DRAG_DEPTH + 10;

@@ -59,7 +59,7 @@ const TOC = [
         <h2 id="supplies">Supplies</h2>
         <p>
           Supplies heal patients every second. There are 13, listed here from cheapest to most expensive. Each purchase
-          raises the next price by 15%.
+          raises the next price by 14%.
         </p>
         <ol class="supply-list">
           <li v-for="s in SUPPLIES" :key="s.name">
@@ -105,7 +105,7 @@ const TOC = [
 
         <h2 id="patients">Sick patients</h2>
         <p>
-          Sick patients turn up in your room at random. Treat them in a quick minigame to earn patients and coins. The minigames are:
+          Sick patients turn up in your room at random. Treat them in a quick minigame to earn patients and coins; the games get harder as your hospital grows. The minigames are:
         </p>
         <ul>
           <li v-for="g in MINIGAMES" :key="g">{{ g }}</li>

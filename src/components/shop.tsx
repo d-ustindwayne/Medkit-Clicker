@@ -197,19 +197,26 @@ const BoostCard = memo(function BoostCard({ boost, affordable, activeMs }: { boo
   );
 });
 
+/** The Care Coin balance, pinned under the Supplies / Boosts switch while the boosts scroll. */
+function CoinBar() {
+  const coins = useGameSelector(coinBalance);
+  return (
+    <View className="mx-4 mb-2 flex-row items-center justify-between border-2 border-outline bg-accent px-3 py-1.5">
+      <View className="flex-row items-center gap-2">
+        <Image source={COIN.image} style={{ width: 22, height: 22 }} contentFit="contain" />
+        <Text className="font-number text-lg text-ink">{coins}</Text>
+        <Text className="font-body text-sm text-ink">{COIN.name}</Text>
+      </View>
+      <Text className="flex-1 pl-3 text-right font-body text-xs text-ink opacity-70">Earn them from achievements</Text>
+    </View>
+  );
+}
+
 function BoostsList() {
   const { coins, boosts } = useGameSelector((s) => ({ coins: coinBalance(s), boosts: s.boosts }));
   const now = useNow();
   return (
     <>
-      <View className="mb-3 flex-row items-center justify-between border-2 border-outline bg-accent px-3 py-2">
-        <View className="flex-row items-center gap-2">
-          <Image source={COIN.image} style={{ width: 24, height: 24 }} contentFit="contain" />
-          <Text className="font-number text-xl text-ink">{coins}</Text>
-          <Text className="font-body text-sm text-ink">{COIN.name}</Text>
-        </View>
-        <Text className="flex-1 pl-3 text-right font-body text-xs text-ink opacity-70">Earn them from achievements</Text>
-      </View>
       {BOOSTS.map((b) => {
         const left = b.effect.kind === "timed" ? Math.max(0, (boosts[b.id] ?? 0) - now) : 0;
         // Round to whole seconds so cards only re-render once a second while active.
@@ -278,6 +285,7 @@ function ShopPage() {
         </View>
       </Animated.View>
       </View>
+      {tab === "boosts" && <CoinBar />}
       <ScrollView contentContainerClassName="px-4 pb-4">{tab === "supplies" ? <SuppliesList qty={qty} /> : <BoostsList />}</ScrollView>
     </View>
   );
