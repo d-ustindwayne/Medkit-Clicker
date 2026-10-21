@@ -19,7 +19,8 @@ function connect() {
   // Env vars often hold the certificate on one line with literal "\n"; turn those back into newlines.
   const ca = raw ? (raw.includes("BEGIN CERTIFICATE") ? raw.replace(/\\n/g, "\n") : readFileSync(raw, "utf8")) : undefined;
   const url = process.env.DATABASE_URL!;
-  return ca ? new SQL({ url: url.replace(/\?.*$/, ""), tls: { ca, rejectUnauthorized: true } }) : new SQL(url);
+  // A small pool: the free database has only a few connection slots, shared with deploys and scripts.
+  return ca ? new SQL({ url: url.replace(/\?.*$/, ""), tls: { ca, rejectUnauthorized: true }, max: 3 }) : new SQL({ url, max: 3 });
 }
 const sql = connect();
 const SECRET = process.env.SERVER_SECRET ?? "";
@@ -52,11 +53,46 @@ async function sectionEnded(section: string) {
 }
 const ENDED = "That code has expired.";
 
+/** How the last alert went, for /health (never the topic itself). */
+let lastAlert: { at: string; ok: boolean; detail: string } | null = null;
+
 async function notify(text: string) {
-  if (!NTFY_TOPIC) return false;
-  const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, { method: "POST", body: text, headers: { Title: "Medkit Clicker", Tags: "gift" } }).catch(() => null);
-  return !!res?.ok;
+  if (!NTFY_TOPIC) {
+    lastAlert = { at: new Date().toISOString(), ok: false, detail: "NTFY_TOPIC is not set" };
+    console.error("Alert not sent: NTFY_TOPIC is not set.");
+    return false;
+  }
+  try {
+    const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, { method: "POST", body: text, headers: { Title: "Medkit Clicker", Tags: "gift" }, signal: AbortSignal.timeout(10_000) });
+    lastAlert = { at: new Date().toISOString(), ok: res.ok, detail: `HTTP ${res.status}` };
+    if (!res.ok) console.error(`Alert not sent: ntfy answered ${res.status} ${await res.text().catch(() => "")}`);
+    return res.ok;
+  } catch (e) {
+    lastAlert = { at: new Date().toISOString(), ok: false, detail: e instanceof Error ? e.message : "request failed" };
+    console.error("Alert not sent:", e);
+    return false;
+  }
 }
+
+/**
+ * Alerts that didn't go out (ntfy down or busy) are tried again every minute for a day, so a
+ * redemption is never silently missed. Each one says it's late.
+ */
+async function retryAlerts() {
+  const rows = await sql`
+    SELECT d.id, d.note, r.name, r.max_uses, a.title,
+      (SELECT count(*)::int FROM redemptions e WHERE e.reward_id = d.reward_id AND e.redeemed_at <= d.redeemed_at) AS nth
+    FROM redemptions d JOIN rewards r ON r.id = d.reward_id JOIN access_codes a ON a.section = r.section
+    WHERE d.notified_at IS NULL AND d.redeemed_at > now() - interval '1 day'
+    ORDER BY d.redeemed_at LIMIT 10`;
+  for (const row of rows) {
+    const count = row.max_uses === null ? `#${row.nth}` : `${row.nth}/${row.max_uses}`;
+    const sent = await notify(`${row.title}: "${row.name}" was redeemed (${count}, alert delayed).${row.note ? ` Note: ${row.note}` : ""}`);
+    if (!sent) break;
+    await sql`UPDATE redemptions SET notified_at = now() WHERE id = ${row.id}`;
+  }
+}
+setInterval(() => void retryAlerts().catch((e) => console.error("Alert retry failed:", e)), 60_000);
 
 Bun.serve({
   port: Number(process.env.PORT ?? 8787),
@@ -64,7 +100,8 @@ Bun.serve({
     const url = new URL(req.url);
     const path = url.pathname;
 
-    if (path === "/health") return json({ ok: true });
+    // Also says whether reward alerts are set up and how the last one went.
+    if (path === "/health") return json({ ok: true, alerts: { configured: !!NTFY_TOPIC, last: lastAlert } });
 
     // Trade a redeem code for a token. Rate-limiting is left to the host (codes are long enough).
     if (path === "/unlock" && req.method === "POST") {

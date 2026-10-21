@@ -132,7 +132,8 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
     try {
       const res = await redeemOnline(token, reward.id, extra);
       dispatch({ type: "redeem", rewardId: reward.id });
-      pushToast({ kind: "info", title: "Redeemed", body: res.notified ? `${reward.name}. ${section.notify} has been told!` : `${reward.name}. It's saved; the alert to ${section.notify} didn't go out this time.` });
+      // A delayed alert is retried by the server, so it still arrives; no need to say who it's for.
+      pushToast({ kind: "info", title: "Redeemed", body: res.notified ? `${reward.name}. ${section.notify} has been told!` : `${reward.name}. It's saved, and the alert is on its way.` });
     } catch (e) {
       if ((e as { status?: number }).status === 409) pushToast({ kind: "info", title: "All redeemed", body: `There are no more "${reward.name}" to redeem.` });
       else pushToast({ kind: "info", title: "Can't redeem right now", body: `${isOffline(e) ? OFFLINE_MESSAGE : e instanceof Error ? e.message : "Something went wrong."} Nothing was spent.` });
