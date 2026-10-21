@@ -1,7 +1,7 @@
 import type { ImageSourcePropType } from "react-native";
 
 // The Natal Gem shop: permanent upgrades bought in levels, and cosmetics that rebirths unlock.
-// Gems come from rebirthing (1 each). Decided with Dustin on 2026-10-20; numbers in docs/TASKS.md.
+// Gems come from rebirthing (1 each). Decided with Dustin on 2026-10-20.
 
 /** Every upgrade has 5 levels; level n costs GEM_LEVEL_COSTS[n - 1]. */
 export const GEM_LEVEL_COSTS = [1, 2, 3, 5, 8];

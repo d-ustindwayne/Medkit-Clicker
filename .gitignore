@@ -58,3 +58,14 @@ render-env.txt
 
 # Third-party reference images (stock/licensed): kept locally, not redistributed
 src/media/photos/references/
+
+# Agent instructions and working notes (kept locally, not in the repo)
+CLAUDE.md
+.claude/
+docs/TASKS.md
+docs/ART_PLAN.md
+docs/ASSETS.md
+docs/ASSET_INSPECTION.md
+docs/NOTIFICATIONS.md
+docs/ROOM.md
+docs/IOS.md

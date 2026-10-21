@@ -4,7 +4,7 @@ import type { ItemId } from "@/constants/items";
 import type { Scene } from "@/constants/scenes";
 
 // "My Room": hospital rooms you decorate with items unlocked by playing. Placed items give small
-// permanent bonuses. Rooms, limits, unlocks and bonuses are PLACEHOLDERS; see docs/TASKS.md.
+// permanent bonuses. Rooms, limits, unlocks and bonuses are PLACEHOLDERS.
 
 /** What unlocks a room or an item. `null` = available from the start. */
 export type Unlock =

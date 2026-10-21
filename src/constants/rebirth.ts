@@ -1,5 +1,5 @@
 // Rebirth (prestige): start a fresh run and earn a Natal Gem, a currency that carries over.
-// Every number here is a PLACEHOLDER for balancing; see docs/TASKS.md "Needs your decision".
+// Every number here is a PLACEHOLDER for balancing.
 
 import type { ImageSourcePropType } from "react-native";
 

@@ -51,7 +51,6 @@ bun run start
 | `bun run lint`                      | Lint with ESLint                                                                                                  |
 | `bun run typecheck`                 | Type-check with TypeScript                                                                                        |
 | `bun run test`                      | Unit tests for the game logic (Bun's built-in runner)                                                             |
-| `bun run tasks`                     | Progress summary of the task board in `docs/TASKS.md`                                                             |
 | `bun run add-code <section> <code>` | Register a redeem code. Only its hash is stored, in `.env.local` (gitignored). Restart the dev server afterwards. |
 
 ## Project structure
@@ -70,12 +69,7 @@ Game balance (prices, rates and growth) lives in `src/constants/items.ts`. Devel
 
 ## Docs
 
-- [docs/TASKS.md](docs/TASKS.md): status, roadmap, open decisions and concerns
-- [docs/ASSETS.md](docs/ASSETS.md): art that's still needed, with sizes and where it goes
-- [docs/ART_PLAN.md](docs/ART_PLAN.md): pixel-art rules, where each sprite lives, and the large-art status
 - [docs/TESTING.md](docs/TESTING.md): the test checklist and the latest results
-- [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md): the plan for reward alerts and reminders
-- [docs/ROOM.md](docs/ROOM.md): how My Room works (rooms, items, unlocks, bonuses)
 - [docs/DATABASE.md](docs/DATABASE.md): Aiven PostgreSQL, the API, and how to set them up
 - [docs/WEBSITE.md](docs/WEBSITE.md): the website in website/: address, deploy and asset sync
 

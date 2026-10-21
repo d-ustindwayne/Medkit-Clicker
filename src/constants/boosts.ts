@@ -1,7 +1,7 @@
 import type { ImageSourcePropType } from "react-native";
 
 // Boosts: one-off power-ups bought with Care Coins, the currency achievements pay out.
-// Every number here is a PLACEHOLDER for balancing; see docs/TASKS.md "Needs your decision".
+// Every number here is a PLACEHOLDER for balancing.
 
 export const COIN = {
   name: "Care Coins",
