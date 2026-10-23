@@ -1,0 +1,68 @@
+diff --git a/android/src/main/java/expo/modules/alternateappicons/ExpoAlternateAppIconsModule.kt b/android/src/main/java/expo/modules/alternateappicons/ExpoAlternateAppIconsModule.kt
+index 9c3ba02686d8d2d41e900f5483b4d06df4c1d22e..823d7c0aac745f7f1a93e30de22964906e3b5eda 100644
+--- a/android/src/main/java/expo/modules/alternateappicons/ExpoAlternateAppIconsModule.kt
++++ b/android/src/main/java/expo/modules/alternateappicons/ExpoAlternateAppIconsModule.kt
+@@ -22,30 +22,48 @@ class ExpoAlternateAppIconsModule : Module() {
+     AsyncFunction("setAlternateAppIcon").Coroutine(this@ExpoAlternateAppIconsModule::setAlternateAppIcon)
+   }
+ 
+-  private fun getAppIconName(): String? {
+-    val currentActivityComponent = appContext.activityProvider?.currentActivity?.componentName ?: return null
++  // Patched (Medkit Clicker): the icon in use is read from which launcher entry is enabled, not from
++  // the name the running activity was opened under. Opened from recents, that name is the plain
++  // MainActivity even while an alternate icon is on, so the original reported "default", switching
++  // back did nothing, and switching to another icon left the old one enabled too.
++
++  /** MainActivity and its icon aliases (MainActivityGold, ...), enabled or not. */
++  private fun launcherComponents(): List<ComponentName> {
++    val context = appContext.reactContext ?: return emptyList()
++    val info = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_ACTIVITIES or PackageManager.MATCH_DISABLED_COMPONENTS)
++    return (info.activities ?: emptyArray())
++      .map { ComponentName(context.packageName, it.name) }
++      .filter { getSimpleName(it).startsWith(MAIN_ACTIVITY_NAME) }
++  }
++
++  /** Whether a component is enabled now, counting the manifest default when it was never changed. */
++  private fun isEnabled(pm: PackageManager, component: ComponentName): Boolean =
++    when (pm.getComponentEnabledSetting(component)) {
++      PackageManager.COMPONENT_ENABLED_STATE_ENABLED -> true
++      PackageManager.COMPONENT_ENABLED_STATE_DEFAULT -> getSimpleName(component) == MAIN_ACTIVITY_NAME
++      else -> false
++    }
+ 
++  private fun getAppIconName(): String? {
++    val pm = appContext.reactContext?.packageManager ?: return null
+     return try {
+-      retrieveIconNameFromComponent(currentActivityComponent)
++      launcherComponents().firstOrNull { getSimpleName(it) != MAIN_ACTIVITY_NAME && isEnabled(pm, it) }?.let { retrieveIconNameFromComponent(it) }
+     } catch (error: PackageManager.NameNotFoundException) {
+       null
+     }
+   }
+ 
+   private suspend fun setAlternateAppIcon(icon: String?): String? = withContext(Dispatchers.Main) {
+-    val currentActivityComponent = appContext.activityProvider!!.currentActivity!!.componentName
+-
+-    val currentIconName = retrieveIconNameFromComponent(currentActivityComponent)
+-
+-    if (currentIconName == icon) return@withContext icon
+-
+-    val newActivityComponent = replaceMainActivitySimpleName(currentActivityComponent, icon)
+-
+-    appContext.reactContext?.packageManager?.run {
+-      setComponentEnabledSetting(newActivityComponent, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+-      setComponentEnabledSetting(currentActivityComponent, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
++    val pm = appContext.reactContext?.packageManager ?: return@withContext null
++    val target = "$MAIN_ACTIVITY_NAME${icon ?: ""}"
++    val components = launcherComponents()
++    // Turn the chosen entry on first, then every other one off, so exactly one icon is left.
++    components.filter { getSimpleName(it) == target && !isEnabled(pm, it) }.forEach {
++      pm.setComponentEnabledSetting(it, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
++    }
++    components.filter { getSimpleName(it) != target && isEnabled(pm, it) }.forEach {
++      pm.setComponentEnabledSetting(it, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+     }
+-
+     return@withContext icon
+   }
+ 

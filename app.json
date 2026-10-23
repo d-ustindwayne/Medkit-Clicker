@@ -18,7 +18,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.dust.dev.mc"
+      "package": "com.medkitclicker.app"
     },
     "web": {
       "output": "single",
@@ -26,6 +26,7 @@
     },
     "plugins": [
       "./plugins/with-abi-filters",
+      "./plugins/with-release-signing",
       "expo-router",
       [
         "expo-splash-screen",
@@ -40,6 +41,15 @@
         }
       ],
       "expo-audio",
+      [
+        "react-native-audio-api",
+        {
+          "iosBackgroundMode": false,
+          "androidForegroundService": false,
+          "androidPermissions": [],
+          "disableFFmpeg": true
+        }
+      ],
       "expo-sharing",
       "expo-font",
       "expo-image",

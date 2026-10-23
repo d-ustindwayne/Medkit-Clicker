@@ -47,7 +47,6 @@ bun run start
 | `bun run db:setup` | Create the database tables and upload codes, rewards and music |
 | `bun run server` | Run the API locally (needs `.env`, see `.env.example`) |
 | `bun run apk:phone` | Small release APK for real phones (arm64 only, minified) → `android/app/build/outputs/apk/release/` |
-| `bun run apk:emulator` | The same, for the x86_64 emulator |
 | `bun run lint`                      | Lint with ESLint                                                                                                  |
 | `bun run typecheck`                 | Type-check with TypeScript                                                                                        |
 | `bun run test`                      | Unit tests for the game logic (Bun's built-in runner)                                                             |
