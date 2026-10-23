@@ -4,6 +4,7 @@ import { BackHandler, ScrollView, Text, View } from "react-native";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HardShadow } from "@/components/ui/hard-shadow";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { PixelIcon } from "@/components/ui/pixel-icon";
 import { BACKGROUNDS } from "@/constants/backgrounds";
@@ -147,9 +148,7 @@ function ItemTile({ item }: { item: GemItem }) {
       <HardShadow offset={3}>
         <View className={`items-center gap-1 border-2 border-outline p-2 ${equipped ? "bg-accent" : "bg-surface"}`}>
           <Image source={item.image} style={{ width: 52, height: 52, opacity: locked ? 0.35 : 1 }} contentFit="contain" />
-          <Text className="text-center font-display text-sm text-ink" numberOfLines={1}>
-            {item.name}
-          </Text>
+          <MarqueeText className="text-center font-display text-sm text-ink">{item.name}</MarqueeText>
           {locked ? (
             <Text className="text-center font-body text-xs text-ink opacity-70">Rebirth {item.rebirths} to unlock</Text>
           ) : owned ? (

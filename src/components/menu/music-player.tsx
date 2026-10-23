@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 import { useSlide } from "@/components/ui/controls";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import { PixelIcon, type PixelIconName } from "@/components/ui/pixel-icon";
 import { useAudio, useMusic } from "@/hooks/use-audio";
 
@@ -61,11 +62,9 @@ export function MusicPlayer() {
   return (
     <View className="gap-3 border-[1.5px] border-outline bg-backdrop p-3">
       <View className="flex-row items-center justify-between">
-        <View>
+        <View className="flex-1">
           <Text className="font-pixel text-xs tracking-[2px] text-ink opacity-70">{m.paused ? "PAUSED" : m.playing ? "NOW PLAYING" : "MUTED"}</Text>
-          <Text className="font-display text-base text-ink">
-            {m.playlistName} · Track {m.trackIndex + 1} of {m.trackCount}
-          </Text>
+          <MarqueeText className="font-display text-base text-ink">{`${m.playlistName} · Track ${m.trackIndex + 1} of ${m.trackCount}`}</MarqueeText>
         </View>
       </View>
 

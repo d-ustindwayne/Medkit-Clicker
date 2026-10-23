@@ -19,7 +19,8 @@ export function ScenePage({ scene, width, children, above, contentRef, sides }: 
       <View style={{ flex: scene.anchor, overflow: "hidden", alignSelf: "stretch" }}>{above}</View>
       <View className="flex-row">
         {sides && <Image source={sides.left} style={{ width: sideW, height }} contentFit="cover" />}
-        <View ref={contentRef} style={{ width, height }}>
+        {/* Above the side art, which is drawn after it: an item's ✕ at the room's right edge reaches over it. */}
+        <View ref={contentRef} style={{ width, height, zIndex: 1 }}>
           <Image source={scene.image} style={{ width, height }} contentFit="cover" />
           {children && <View className="absolute inset-0">{children}</View>}
         </View>

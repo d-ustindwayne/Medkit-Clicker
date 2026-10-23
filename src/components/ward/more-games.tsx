@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
-import { Pressable, Text, View, type ImageSourcePropType } from "react-native";
+import { Text, View, type ImageSourcePropType } from "react-native";
 import Animated, {
   Easing,
   cancelAnimation,
@@ -17,6 +17,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { PixelButton } from "@/components/ui/pixel-button";
+import { TapPressable } from "@/components/ui/press-down";
 import { hardness, pickVariant, shuffle, useDone, useJuice, type GameProps } from "@/components/ward/game-kit";
 import { SHOP_ITEMS } from "@/constants/items";
 import { useAudio } from "@/hooks/use-audio";
@@ -202,17 +203,17 @@ function FasterPulse({ onDone, tuning }: GameProps) {
         <Text className="font-display text-base text-ink">{asking ? "Which heart is faster?" : "Watch both hearts..."}</Text>
         <View className="flex-row gap-4">
           {[leftStyle, rightStyle].map((style, side) => (
-            <Pressable
+            <TapPressable
               key={side}
               accessibilityRole="button"
               accessibilityLabel={side === 0 ? "Left heart" : "Right heart"}
-              onPressIn={() => pick(side)}
+              onDown={() => pick(side)}
               className={`h-32 w-32 items-center justify-center border-2 border-outline ${picked === side ? (side === setup.fastSide ? "bg-success/30" : "bg-danger/30") : "bg-surface"}`}
             >
               <Animated.View style={style}>
                 <Image source={HEART} style={{ width: 84, height: 84 }} contentFit="contain" />
               </Animated.View>
-            </Pressable>
+            </TapPressable>
           ))}
         </View>
         <Hint>{asking ? "Tap the heart that beats faster." : "One pulse is racing. Which one?"}</Hint>
@@ -331,9 +332,9 @@ function PillsGame({ onDone, tuning }: GameProps) {
         <TimeBar left={left} total={total} />
         <View className="flex-row flex-wrap" style={{ width: cols * cell + (cols - 1) * gap, gap }}>
           {round.pills.map((p, i) => (
-            <Pressable key={i} accessibilityRole="button" accessibilityLabel={pillName(p)} onPressIn={() => tap(i)} className="items-center justify-center border-2 border-outline bg-surface" style={{ width: cell, height: cell }}>
+            <TapPressable key={i} accessibilityRole="button" accessibilityLabel={pillName(p)} onDown={() => tap(i)} className="items-center justify-center border-2 border-outline bg-surface" style={{ width: cell, height: cell }}>
               <Pill spec={p} i={i} taken={taken.includes(i)} cell={cell - 4} />
-            </Pressable>
+            </TapPressable>
           ))}
         </View>
         <Hint>{"One wrong pill and it's a mix-up!"}</Hint>
@@ -496,7 +497,7 @@ function XrayFilm({ variant, tuning, onResult }: { variant: XrayVariant; tuning:
             const odd = film.odd.has(i);
             const glow = picked.includes(i) ? (odd ? "bg-success/30" : "bg-danger/30") : "";
             return (
-              <Pressable key={i} accessibilityRole="button" accessibilityLabel={`${variant === "coin" ? "Tummy" : "Bone"} ${i + 1}`} onPressIn={() => pick(i)} className={`${cols === 4 ? "h-14 w-[23%]" : "h-16 w-[30%]"} items-center justify-center ${glow}`}>
+              <TapPressable key={i} accessibilityRole="button" accessibilityLabel={`${variant === "coin" ? "Tummy" : "Bone"} ${i + 1}`} onDown={() => pick(i)} className={`${cols === 4 ? "h-14 w-[23%]" : "h-16 w-[30%]"} items-center justify-center ${glow}`}>
                 {variant === "coin" ? (
                   // Gas bubbles get brighter (closer to the coin) as the game gets harder.
                   <Tummy coin={odd} bubbles={odd ? c.bubbles.slice(0, 1) : c.bubbles} faint={0.35 + level * 0.35} />
@@ -505,7 +506,7 @@ function XrayFilm({ variant, tuning, onResult }: { variant: XrayVariant; tuning:
                     <Bone crack={cracked && odd ? crackW : undefined} shift={variant === "joint" && odd ? shift : 0} />
                   </View>
                 )}
-              </Pressable>
+              </TapPressable>
             );
           })}
           <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0, right: 0, top: 0, height: 6, backgroundColor: "rgba(127,224,196,0.35)" }, scanStyle]} />
@@ -702,10 +703,10 @@ function GermGame({ onDone, tuning }: GameProps) {
           {Array.from({ length: tuning.germCells }, (_, i) => {
             const g = wave.find((s) => s.cell === i);
             return (
-              <Pressable key={i} accessibilityRole="button" accessibilityLabel={g && !g.busted ? (g.good ? "Good bacteria" : "Germ") : "Empty"} onPressIn={() => bust(i)} className="h-16 w-16 items-center justify-center border-2 border-outline bg-surface">
+              <TapPressable key={i} accessibilityRole="button" accessibilityLabel={g && !g.busted ? (g.good ? "Good bacteria" : "Germ") : "Empty"} onDown={() => bust(i)} className="h-16 w-16 items-center justify-center border-2 border-outline bg-surface">
                 {g && <Germ key={g.n} busted={g.busted} good={g.good} />}
                 {splats.map((s) => s.cell === i && <Splat key={s.n} good={s.good} />)}
-              </Pressable>
+              </TapPressable>
             );
           })}
         </View>
@@ -803,10 +804,10 @@ function BreathGame({ onDone, tuning }: GameProps) {
         <Text className="font-number text-base text-ink">
           Breath {Math.min(round + 1, BREATHS)} of {BREATHS} · {good} good (need 2)
         </Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={exhaling ? "Hold to breathe out" : "Hold to breathe in"} onPressIn={inhale} onPressOut={exhale} className="h-52 w-52 items-center justify-center">
+        <TapPressable accessibilityRole="button" accessibilityLabel={exhaling ? "Hold to breathe out" : "Hold to breathe in"} onDown={inhale} onUp={exhale} className="h-52 w-52 items-center justify-center">
           <Animated.View style={[{ position: "absolute", width: ringSize, height: ringSize, borderRadius: ringSize / 2, borderWidth: 4, borderStyle: "dashed", borderColor: "#4edb4e" }, target]} />
           <Animated.View style={[{ width: 120, height: 120, borderRadius: 60 }, circle]} />
-        </Pressable>
+        </TapPressable>
         <Hint>{variant === "varied" && round === 0 && note.startsWith("Hold") ? "Each breath is different: fill the ring, then let go." : note}</Hint>
       </View>
     </Animated.View>
@@ -829,7 +830,7 @@ const FlipCard = memo(function FlipCard({ image, faceUp, matched, w, onPress }: 
   const front = useAnimatedStyle(() => ({ opacity: flip.get() >= 0.5 ? 1 : 0, transform: [{ perspective: 400 }, { rotateY: `${flip.get() * 180 - 180}deg` }, { scale: bounce.get() }] }));
   const h = Math.round(w * 1.25);
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={faceUp ? "Card" : "Hidden card"} onPressIn={onPress} style={{ width: w, height: h }}>
+    <TapPressable accessibilityRole="button" accessibilityLabel={faceUp ? "Card" : "Hidden card"} onDown={onPress} style={{ width: w, height: h }}>
       <Animated.View style={[{ position: "absolute", width: w, height: h }, back]}>
         <View className="flex-1 items-center justify-center border-2 border-outline bg-primary">
           <Text className="font-pixel text-2xl text-surface">+</Text>
@@ -840,7 +841,7 @@ const FlipCard = memo(function FlipCard({ image, faceUp, matched, w, onPress }: 
           <Image source={image} style={{ width: w * 0.75, height: w * 0.75 }} contentFit="contain" />
         </View>
       </Animated.View>
-    </Pressable>
+    </TapPressable>
   );
 });
 /** How long every card shows face up at the start of the "peek" variant. */

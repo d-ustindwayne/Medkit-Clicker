@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, Text } from "react-native";
 
+import { pressDown } from "@/components/ui/press-down";
 import { useAudio } from "@/hooks/use-audio";
 
 type Tone = "plain" | "accent" | "success" | "danger";
@@ -39,8 +40,7 @@ export function PixelButton({ label, children, tone = "plain", onPress, classNam
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       disabled={disabled}
-      onPress={instant ? undefined : press}
-      onPressIn={instant ? press : undefined}
+      {...(instant ? pressDown(disabled ? () => {} : press) : { onPress: press })}
       className={`min-h-11 items-center justify-center px-3 py-2 ${bare ? "" : "border-[1.5px] border-outline"} active:translate-y-0.5 active:opacity-80 ${toneClass[tone]} ${disabled ? "opacity-40" : ""} ${className}`}
     >
       {children ?? <Text className="font-rounded text-sm text-ink">{label}</Text>}

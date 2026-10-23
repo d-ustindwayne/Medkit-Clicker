@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import Animated, { FadeIn, SlideInLeft } from "react-native-reanimated";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FAME_REBIRTHS } from "@/components/hall-of-fame";
@@ -20,6 +20,10 @@ import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
 import { useNow } from "@/hooks/use-now";
+
+/** How long the drawer takes to slide in, and back out. */
+const SLIDE_IN_MS = 220;
+const SLIDE_OUT_MS = 200;
 
 type Page = "menu" | "achievements" | "settings" | "about" | "redeem" | `rewards:${string}`;
 
@@ -67,19 +71,34 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
   const { dispatch } = useGameActions();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const close = () => {
-    onClose();
-    setHistory(["menu"]);
-  };
+  const close = () => onClose();
+  const drawerW = Math.min(400, width * 0.88);
+  // The Modal stays up after `visible` turns false until the drawer has slid back out (closing the
+  // Modal at once would make it vanish). It opens back on the menu page.
+  const [shown, setShown] = useState(visible);
+  if (visible && !shown) setShown(true);
+  const slide = useSharedValue(0);
+  useEffect(() => {
+    if (!shown) return;
+    slide.set(withTiming(visible ? 1 : 0, { duration: visible ? SLIDE_IN_MS : SLIDE_OUT_MS, easing: Easing.out(Easing.cubic) }));
+    if (visible) return;
+    const t = setTimeout(() => {
+      setShown(false);
+      setHistory(["menu"]);
+    }, SLIDE_OUT_MS);
+    return () => clearTimeout(t);
+  }, [visible, shown, slide]);
+  const backdropStyle = useAnimatedStyle(() => ({ opacity: slide.get() }));
+  const drawerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: (slide.get() - 1) * drawerW }] }));
 
   return (
-    <Modal transparent statusBarTranslucent navigationBarTranslucent visible={visible} animationType="none" onRequestClose={() => (page === "menu" ? close() : back())}>
+    <Modal transparent statusBarTranslucent navigationBarTranslucent visible={shown} animationType="none" onRequestClose={() => (page === "menu" ? close() : back())}>
       <View style={themeVars[theme]} className="flex-1 flex-row">
-        <Animated.View entering={FadeIn.duration(150)} style={StyleSheet.absoluteFill}>
+        <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
           <Pressable accessibilityLabel="Close menu" onPress={close} className="flex-1 bg-black/50" />
         </Animated.View>
 
-        <Animated.View entering={SlideInLeft.duration(220)} accessibilityViewIsModal style={{ width: Math.min(400, width * 0.88), height: "100%" }}>
+        <Animated.View accessibilityViewIsModal style={[{ width: drawerW, height: "100%" }, drawerStyle]}>
           <View className="flex-1 border-r-[3px] border-outline bg-backdrop" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
           <View className="flex-row items-center gap-3 bg-primary px-4 py-4">
             <PixelButton

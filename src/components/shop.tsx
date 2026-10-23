@@ -10,6 +10,7 @@ import { Shine } from "@/components/fx/shine";
 import { GemShop } from "@/components/hospital/gem-shop";
 import { HospitalPage } from "@/components/hospital/hospital-page";
 import { HardShadow } from "@/components/ui/hard-shadow";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import { Pager } from "@/components/ui/pager";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector } from "@/hooks/use-game";
@@ -70,9 +71,7 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
             tintColor={hidden ? palette.ink : undefined}
           />
           <View className="flex-1">
-            <Text className="font-pixel text-base tracking-[3px] text-ink" numberOfLines={1}>
-              {hidden ? "???" : item.name.toUpperCase()}
-            </Text>
+            <MarqueeText className="font-pixel text-base tracking-[3px] text-ink">{hidden ? "???" : item.name.toUpperCase()}</MarqueeText>
             <View className="flex-row items-center gap-1">
               <Image source={MEDKIT_IMAGE} style={{ width: 16, height: 16 }} contentFit="contain" />
               <Text className="font-number text-base leading-5 text-ink">{formatCount(cost)}{qty > 1 ? ` for ${qty}` : ""}</Text>
@@ -190,9 +189,7 @@ const BoostCard = memo(function BoostCard({ boost, affordable, activeMs }: { boo
           <View className="flex-row items-center gap-3 px-3 py-2">
             <Image source={boost.image} style={{ width: 40, height: 40 }} contentFit="contain" />
             <View className="flex-1">
-              <Text className="font-pixel text-sm tracking-[2px] text-ink" numberOfLines={1}>
-                {boost.name.toUpperCase()}
-              </Text>
+              <MarqueeText className="font-pixel text-sm tracking-[2px] text-ink">{boost.name.toUpperCase()}</MarqueeText>
               <Text className="font-body text-xs leading-4 text-ink opacity-80">{boost.description}</Text>
             </View>
             <View className="items-end gap-1">
@@ -272,7 +269,7 @@ function ShopPage() {
             }}
             className={`flex-1 items-center py-1.5 ${tab === id ? "bg-ink" : "bg-surface"}`}
           >
-            <Text className={`font-pixel text-sm tracking-[3px] ${tab === id ? "text-surface" : "text-ink"}`}>{id.toUpperCase()}</Text>
+            <MarqueeText shrink={0.7} className={`font-pixel text-sm tracking-[3px] ${tab === id ? "text-surface" : "text-ink"}`}>{id.toUpperCase()}</MarqueeText>
           </Pressable>
         ))}
       </View>

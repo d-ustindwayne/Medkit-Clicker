@@ -12,7 +12,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] Tapping adds patients, shows "+N", a shockwave and particles, and plays the click
 - [ ] 📱 Each tap gives a light vibration (and none when Vibration is off in Settings)
 - [ ] The heartbeat pulse and rotating sunburst run while idle
-- [ ] Owned supplies orbit the medkit (up to 16, mixed across item types)
+- [ ] Owned supplies orbit the medkit (up to 16, mixed across item types), and none is cut off at the ring's edge
 - [ ] Swiping the medkit area goes to the Hospital page and back; the dots follow
 
 ## Shop
@@ -31,6 +31,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 
 ## Menu and navigation
 - [ ] The menu opens and closes; every page opens (Achievements, Redeem, Settings, About) and back works
+- [ ] Closing the menu slides it out to the left (it doesn't vanish), and it opens again on the menu page
 - [ ] Back returns to the page before, one step at a time (Rewards → Code → About → Menu)
 - [ ] About shows the ward patients treated and a Visit website button
 - [ ] The Android system back button closes the menu or page before leaving the app
@@ -70,6 +71,14 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] At a high level (Dev Tools: +10 of each item a few times), the harder rounds show up: pills in three sizes and with two rules (up to 5x5), exhale and hidden breaths, a 20-30 beat pulse, the injection's dark core
 - [ ] Rhythm: mashing never leaves the count stuck at 0 after an on-time tap; Bandage arrows give 7.5 s
 
+## Web version (phone browser and computer)
+- [ ] One swipe turns one page, however short and fast (medkit/My Room and the shop)
+- [ ] A toast goes away when tapped, swiped either way (finger or mouse), and springs back from a short drag
+- [ ] Minigames count every tap when tapping fast with two thumbs (Bandage, Germ Buster, Rhythm)
+- [ ] The page never widens or zooms out when a toast or confetti appears
+- [ ] Long names (shop items, boosts, Gem Shop, the music track, toasts, background names) scroll slowly when they don't fit, and end in "…" with Reduce motion; nothing runs past its box at phone widths
+- [ ] Decorating: an item at the far right of the room shows its whole ✕; on a computer the ✓ button sits below the currency chips
+
 ## Layout and looks
 - [ ] Phone portrait: the shop sits under the medkit and nothing is cut off; toasts don't hide important buttons
 - [ ] Tablet or landscape: the shop sits beside the medkit
@@ -78,6 +87,14 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] Heart Monitor sweeps smoothly with random beats; Blood Stream cells tumble; in decorate mode the reception's side floor carries on the tile grid
 
 ## Latest run
+
+### 2026-10-24: web build, Playwright (Chrome, Edge, Firefox at 1366x768 and 390x844)
+
+Local web export served from the scratchpad (no API). Each check was also run against the unfixed 0.7.2 build to confirm it caught the bug.
+
+**Passed in all six browser/size runs (92 checks):** medkit taps; the menu slides out on close; the pages are snap points the browser can't fling past; mouse drag pages the shop; the shop list scrolls; toasts dismiss on tap, on a touch swipe (Chromium) and on a mouse drag, and spring back from a short drag; an item at the far right keeps its ✕ on top of the side art; the ✓ button clears the chips; the dots follow the page; the page never got wider than the screen (0.7.2: 434 px at 390); fast overlapping two-thumb taps all count in the Bandage game (0.7.2: 1 of 20); Delete progress starts over; no page errors.
+**Overflow sweep at 390, 360 and 320 px:** nothing runs past its box; long names scroll; the awards grid fills its rows at 320 px.
+**Not provable here:** the feel of a real fling (headless Chrome's synthetic touches have no momentum), touch swipes in Firefox (its touch simulation can't scroll), anything on the Android app (no phone connected; the Android bundle compiles).
 
 ### 2026-10-23: Samsung phone, release build (arm64)
 

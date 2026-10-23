@@ -8,6 +8,11 @@ import { useReduceMotion } from "@/hooks/use-reduce-motion";
 const MAX_SPRITES = 16;
 const SPRITE = 30;
 const ORBIT_MS = 45_000;
+/**
+ * Margin around the ring for the sprites that sit on it (and their corners as they turn). On Android
+ * the ring is drawn into a texture the size of its view, which cuts off anything past the view's edge.
+ */
+const PAD = SPRITE;
 
 /** Owned supplies circling the medkit, Cookie Clicker style. One sprite per unit, up to MAX_SPRITES. */
 export const Orbit = memo(function Orbit({ size, owned, active = true }: { size: number; owned: Record<ItemId, number>; active?: boolean }) {
@@ -35,7 +40,7 @@ export const Orbit = memo(function Orbit({ size, owned, active = true }: { size:
 
   const radius = size / 2;
   return (
-    <Animated.View pointerEvents="none" renderToHardwareTextureAndroid style={[{ position: "absolute", width: size, height: size }, style]}>
+    <Animated.View pointerEvents="none" renderToHardwareTextureAndroid style={[{ position: "absolute", left: -PAD, top: -PAD, width: size + PAD * 2, height: size + PAD * 2 }, style]}>
       {sprites.map((item, i) => {
         const a = (i / sprites.length) * Math.PI * 2;
         return (
@@ -47,8 +52,8 @@ export const Orbit = memo(function Orbit({ size, owned, active = true }: { size:
               position: "absolute",
               width: SPRITE * (item.iconScale ?? 1),
               height: SPRITE * (item.iconScale ?? 1),
-              left: radius + radius * Math.cos(a) - (SPRITE * (item.iconScale ?? 1)) / 2,
-              top: radius + radius * Math.sin(a) - (SPRITE * (item.iconScale ?? 1)) / 2,
+              left: PAD + radius + radius * Math.cos(a) - (SPRITE * (item.iconScale ?? 1)) / 2,
+              top: PAD + radius + radius * Math.sin(a) - (SPRITE * (item.iconScale ?? 1)) / 2,
               // Point each sprite at the medkit.
               transform: [{ rotate: `${(a * 180) / Math.PI + 90}deg` }],
             }}

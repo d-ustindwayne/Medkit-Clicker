@@ -5,6 +5,7 @@ import Animated, { cancelAnimation, Easing, FadeIn, FadeInDown, FadeOut, SlideIn
 
 import { ScenePage } from "@/components/scene-page";
 import { HardShadow } from "@/components/ui/hard-shadow";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import { AnimatedSprite } from "@/components/ui/animated-sprite";
 import { PixelIcon } from "@/components/ui/pixel-icon";
 import { WardPatient } from "@/components/ward/ward-patient";
@@ -363,10 +364,8 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
               <PixelIcon name="left" size={12} />
             </Pressable>
             <View className="flex-1 items-center px-1">
-              <Text className="font-pixel text-[10px] tracking-[1px] text-ink">{room.title.toUpperCase()}</Text>
-              <Text className="font-number text-xs text-ink" numberOfLines={1}>
-                {placed.length}/{room.limit} items · +{Math.round(rate * 100)}%/s +{Math.round(tap * 100)}%/tap
-              </Text>
+              <MarqueeText className="font-pixel text-[10px] tracking-[1px] text-ink">{room.title.toUpperCase()}</MarqueeText>
+              <MarqueeText className="font-number text-xs text-ink">{`${placed.length}/${room.limit} items · +${Math.round(rate * 100)}%/s +${Math.round(tap * 100)}%/tap`}</MarqueeText>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Next room" onPress={() => cycleRoom(1)} className="h-9 w-8 items-center justify-center">
               <PixelIcon name="right" size={12} />

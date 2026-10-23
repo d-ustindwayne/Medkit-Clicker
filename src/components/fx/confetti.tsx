@@ -40,7 +40,8 @@ export const Confetti = memo(function Confetti({ seed }: { seed: number }) {
 
   if (reduceMotion) return null;
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    // Clipped: pieces drift past the screen's edges, which on the web widens the page for a moment.
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}>
       {pieces.map((p, i) => (
         <ConfettiPiece key={i} piece={p} height={height} />
       ))}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Image } from "@/components/ui/image";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 
 import { visibleAchievements } from "@/constants/achievements";
 import { COIN } from "@/constants/boosts";
@@ -28,8 +28,9 @@ export function AchievementsPage() {
   const currentUnlocked = achievements[current.id] !== undefined;
   const [gridW, setGridW] = useState(0);
   const cols = Math.max(1, Math.floor((gridW + GAP) / (TILE + GAP)));
-  // Rounded down, so rounding can never push the last tile of a row onto the next one.
-  const tile = gridW ? Math.floor((gridW - GAP * (cols - 1)) / cols) : TILE;
+  // Rounded down, so rounding can never push the last tile of a row onto the next one. The web reports
+  // whole-pixel widths, rounded either way, so there a pixel is kept spare.
+  const tile = gridW ? Math.floor((gridW - (Platform.OS === "web" ? 1 : 0) - GAP * (cols - 1)) / cols) : TILE;
 
   return (
     <View className="gap-4">

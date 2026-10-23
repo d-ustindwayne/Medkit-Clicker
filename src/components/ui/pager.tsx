@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { Platform, Pressable, ScrollView, Text, View, type GestureResponderEvent } from "react-native";
+import { Platform, Pressable, ScrollView, Text, View, type GestureResponderEvent, type ViewStyle } from "react-native";
 
 import { useAudio } from "@/hooks/use-audio";
 
@@ -22,6 +22,11 @@ type Props = {
 /** How long after start-up the second page is built, once the first screen has settled. */
 const PREWARM_MS = 1500;
 const WEB = Platform.OS === "web";
+/**
+ * Web: each page takes the full height, or its own lists grow instead of scrolling. It's also a snap
+ * point the browser may not fling past, so a short, fast swipe turns one page, not all of them.
+ */
+const WEB_PAGE = { height: "100%", scrollSnapAlign: "start", scrollSnapStop: "always" } as unknown as ViewStyle;
 
 /** Which page a finished drag lands on: a quick flick turns the page even when it's short. */
 const stepFor = (dx: number, ms: number, width: number) => {
@@ -219,8 +224,7 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
         {...webScroll}
       >
         {pages.map((p, i) => (
-          // On the web each page also needs the full height, or its own lists grow instead of scrolling.
-          <View key={p.key} style={WEB ? { width, height: "100%" } : { width }}>
+          <View key={p.key} style={WEB ? [WEB_PAGE, { width }] : { width }}>
             {mounted.includes(i) ? p.content : null}
           </View>
         ))}

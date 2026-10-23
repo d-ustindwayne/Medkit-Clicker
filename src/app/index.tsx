@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { useKeepAwake } from "expo-keep-awake";
-import { AppState, Pressable, Text, View, useWindowDimensions } from "react-native";
+import { AppState, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
 import Animated, { Easing, Extrapolation, type SharedValue, interpolate, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -13,6 +13,7 @@ import { MedkitButton, ORBIT_SCALE } from "@/components/medkit-button";
 import { MenuDrawer } from "@/components/menu/menu-drawer";
 import { Shop } from "@/components/shop";
 import { HardShadow } from "@/components/ui/hard-shadow";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import { Pager } from "@/components/ui/pager";
 import { ToastStack } from "@/components/toast-stack";
 import { RoomPage } from "@/components/room/room-page";
@@ -33,6 +34,8 @@ import { tapValue } from "@/lib/game";
 /** Above this width the shop sits beside the medkit (PC & tablet view). */
 const WIDE_BREAKPOINT = 768;
 const SIDEBAR_WIDTH = 380;
+/** The sidebar's left border (border-l-[3px]), which the shop's pages must leave room for. */
+const SIDEBAR_BORDER = 3;
 
 function MenuButton({ onPress }: { onPress: () => void }) {
   const { playSfx, unlock } = useAudio();
@@ -93,6 +96,7 @@ function Counter({ compact }: { compact: boolean }) {
   const palette = usePalette();
   const rate = healingRate({ owned, rebirths, boosts, room });
   const label = `${Math.floor(healed) === 1 ? "Patient" : "Patients"} Healed`;
+  const rateText = `${formatRate(rate)} ${rate === 1 ? "Medkit" : "Medkits"} per second`;
   // Hard pixel drop shadow; NativeWind has no text-shadow utilities.
   const shadow = { textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 };
   // The count shrinks to fit by its length. adjustsFontSizeToFit would re-measure the text on every
@@ -118,10 +122,15 @@ function Counter({ compact }: { compact: boolean }) {
       )}
       <View className="mt-2 max-w-full flex-row items-center gap-2">
         <View className="max-w-full rounded-full border-[1.5px] border-outline bg-surface px-4 py-1">
-          {/* One line that shrinks to fit, so a long rate ("350.23 million") is never cut off. */}
-          <Text className={`text-center font-display text-ink ${compact ? "text-sm" : "text-lg"}`} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-            {formatRate(rate)} {rate === 1 ? "Medkit" : "Medkits"} per second
-          </Text>
+          {/* One line that shrinks to fit, so a long rate ("350.23 million") is never cut off. The web
+              has no adjustsFontSizeToFit, so there it's scaled down (and scrolls if it still won't fit). */}
+          {Platform.OS === "web" ? (
+            <MarqueeText shrink={0.6} className={`text-center font-display text-ink ${compact ? "text-sm" : "text-lg"}`}>{rateText}</MarqueeText>
+          ) : (
+            <Text className={`text-center font-display text-ink ${compact ? "text-sm" : "text-lg"}`} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {rateText}
+            </Text>
+          )}
         </View>
       </View>
       <ActiveBoosts />
@@ -183,8 +192,9 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
   });
 
   return (
-    // Decorating: start below the menu button and currency chips, since the counter is hidden.
-    <View className={`flex-1 items-center ${editing ? "pt-[92px]" : compact ? "pt-12" : "justify-center pt-4"}`}>
+    // Decorating: start below the menu button and currency chips, since the counter is hidden (wide
+    // screens have bigger chips, about 140 px tall; in rem on the web, where computers get bigger text).
+    <View className={`flex-1 items-center ${editing ? (compact ? "pt-[92px]" : Platform.OS === "web" ? "pt-[9.5rem]" : "pt-[152px]") : compact ? "pt-12" : "justify-center pt-4"}`}>
       {/* The counter stays while you swipe between the medkit and My Room, so progress is always in view.
           It steps aside while decorating, so the room, its buttons and the item tray all fit. */}
       {drag
@@ -342,7 +352,7 @@ export default function GameScreen() {
         style={wide ? { width: SIDEBAR_WIDTH, paddingTop: insets.top, paddingRight: insets.right } : { paddingBottom: insets.bottom }}
       >
         {!wide && <ShopGrip expanded={shopUp} onChange={setShopUp} height={animatedHeight} low={height * 0.36} high={height * 0.56} />}
-        <Shop compact={!wide} width={wide ? SIDEBAR_WIDTH : width} />
+        <Shop compact={!wide} width={wide ? SIDEBAR_WIDTH - SIDEBAR_BORDER - insets.right : width} />
       </View>
 
       <ToastStack />

@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { Pressable, Text, View, type GestureResponderEvent } from "react-native";
 
 import { HardShadow } from "@/components/ui/hard-shadow";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { PixelIcon, type PixelIconName } from "@/components/ui/pixel-icon";
 import { useAudio } from "@/hooks/use-audio";
@@ -65,9 +66,7 @@ export function Stepper({ label, value, onPrev, onNext }: { label: string; value
         <PixelIcon name="left" size={14} />
       </PixelButton>
       <View className="flex-1 items-center justify-center">
-        <Text className="font-rounded text-sm text-ink" numberOfLines={1}>
-          {value}
-        </Text>
+        <MarqueeText className="font-rounded text-sm text-ink">{value}</MarqueeText>
       </View>
       <PixelButton accessibilityLabel={`Next ${label}`} onPress={onNext} tone="accent" bare className="w-11 border-l-[1.5px] border-outline">
         <PixelIcon name="right" size={14} />

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
 import { MORE_GAMES } from "@/components/ward/more-games";
@@ -8,6 +8,7 @@ import { pickVariant, shuffle, useDone, useJuice, type GameProps } from "@/compo
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { PixelIcon } from "@/components/ui/pixel-icon";
+import { TapPressable } from "@/components/ui/press-down";
 import { COIN } from "@/constants/boosts";
 import { minigameTuning, type SickPatient } from "@/constants/patients";
 import { themeVars } from "@/constants/theme";
@@ -207,12 +208,12 @@ function RhythmGame({ onDone, tuning }: GameProps) {
       <Text className="font-number text-base text-ink">
         {beat < 0 ? "Get ready..." : `Beat ${beat + 1} of ${count}`} · {hitCount} on time (need {NEED_BEATS})
       </Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Tap with the heartbeat" onPressIn={press} className="h-36 w-36 items-center justify-center">
+      <TapPressable accessibilityRole="button" accessibilityLabel="Tap with the heartbeat" onDown={press} className="h-36 w-36 items-center justify-center">
         {ripple > 0 && <HeartRipple key={ripple} />}
         <Animated.View style={heart}>
           <Image source={require("@/imgs/misc/heart.png")} style={{ width: 120, height: 120, opacity: skipped ? 0.4 : 1 }} contentFit="contain" tintColor={skipped ? "#8a94a3" : undefined} />
         </Animated.View>
-      </Pressable>
+      </TapPressable>
       <Text className="text-center font-body text-sm text-ink opacity-70">{hint}</Text>
     </View>
     </Animated.View>
@@ -287,9 +288,9 @@ function BandageArrows({ onDone, tuning }: GameProps) {
     if (count.current >= WRAPS) done(true);
   };
   const pad = (a: Arrow) => (
-    <Pressable key={a} accessibilityRole="button" accessibilityLabel={`Wrap ${a}`} onPressIn={() => press(a)} className="h-14 w-14 items-center justify-center border-2 border-outline bg-accent active:scale-95">
+    <TapPressable key={a} accessibilityRole="button" accessibilityLabel={`Wrap ${a}`} onDown={() => press(a)} className="h-14 w-14 items-center justify-center border-2 border-outline bg-accent active:scale-95">
       <PixelIcon name={a} size={22} />
-    </Pressable>
+    </TapPressable>
   );
   return (
     <Animated.View style={juice.style}>
@@ -371,14 +372,14 @@ function BandageTaps({ onDone, tuning, alternate }: GameProps & { alternate: boo
     </Animated.View>
   );
   const side = (s: number) => (
-    <Pressable
+    <TapPressable
       accessibilityRole="button"
       accessibilityLabel={s === 0 ? "Wrap from the left" : "Wrap from the right"}
-      onPressIn={() => wrap(s)}
+      onDown={() => wrap(s)}
       className={`h-28 w-20 items-center justify-center border-2 border-outline ${nextSide === -1 || nextSide === s ? "bg-accent" : "bg-surface opacity-60"} active:scale-95`}
     >
       <Text className="font-pixel text-2xl text-ink">{s === 0 ? "<" : ">"}</Text>
-    </Pressable>
+    </TapPressable>
   );
   return (
     <View className="items-center gap-3">
@@ -395,9 +396,9 @@ function BandageTaps({ onDone, tuning, alternate }: GameProps & { alternate: boo
           {side(1)}
         </View>
       ) : (
-        <Pressable accessibilityRole="button" accessibilityLabel="Wrap the bandage" onPressIn={() => wrap(0)} className="h-32 w-32 items-center justify-center border-2 border-outline bg-accent active:scale-95">
+        <TapPressable accessibilityRole="button" accessibilityLabel="Wrap the bandage" onDown={() => wrap(0)} className="h-32 w-32 items-center justify-center border-2 border-outline bg-accent active:scale-95">
           {roll(96)}
-        </Pressable>
+        </TapPressable>
       )}
       <Text className="text-center font-body text-sm text-ink opacity-70">{alternate ? "Tap left, right, left, right... as fast as you can!" : "Tap as fast as you can!"}</Text>
     </View>
