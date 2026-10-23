@@ -46,7 +46,8 @@ bun run start
 | `bun run music:compose` | Compose the soundtrack: BeepBox JSON plus looping MP3s (needs ffmpeg) |
 | `bun run db:setup` | Create the database tables and upload codes, rewards and music |
 | `bun run server` | Run the API locally (needs `.env`, see `.env.example`) |
-| `bun run apk:phone` | Small release APK for real phones (arm64 only, minified) → `android/app/build/outputs/apk/release/` |
+| `bun run apk:phone` | Test APK for real phones (arm64 only, minified, debug-signed) → `android/app/build/outputs/apk/release/` |
+| `bun run apk:release` | The APK to publish: 32- and 64-bit phones, signed with the release key. Attach it to the GitHub release twice, as `medkit-clicker-<version>.apk` and as `medkit-clicker.apk` (the website's Download button links to that name) |
 | `bun run lint`                      | Lint with ESLint                                                                                                  |
 | `bun run typecheck`                 | Type-check with TypeScript                                                                                        |
 | `bun run test`                      | Unit tests for the game logic (Bun's built-in runner)                                                             |

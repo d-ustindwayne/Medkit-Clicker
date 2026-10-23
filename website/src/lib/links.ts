@@ -6,8 +6,13 @@ export const PROMO = {
 
 // Outside links. Empty strings hide the matching button; fill them in when they exist.
 export const LINKS = {
-  /** Where the Android APK is downloaded from. */
-  download: "https://github.com/d-ustindwayne/Medkit-Clicker/releases/latest",
+  /**
+   * The Android APK itself, so the button downloads it straight away. Every release must attach a
+   * copy named medkit-clicker.apk for this link to keep working.
+   */
+  download: "https://github.com/d-ustindwayne/Medkit-Clicker/releases/latest/download/medkit-clicker.apk",
+  /** All releases, with notes and older versions. */
+  releases: "https://github.com/d-ustindwayne/Medkit-Clicker/releases",
   /** The web version of the game, exported into the site's play/ folder by the deploy workflow. */
   play: `${import.meta.env.BASE_URL}play/`,
   github: "https://github.com/d-ustindwayne",
