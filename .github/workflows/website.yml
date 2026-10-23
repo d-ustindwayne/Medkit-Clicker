@@ -1,6 +1,7 @@
 name: Deploy website to GitHub Pages
 
-# Builds only website/ and publishes its dist/ folder; nothing else in the repo is served.
+# Builds website/ and the web version of the game (served at /<repo-name>/play/), and publishes
+# website/dist; nothing else in the repo is served.
 # Every push to main redeploys the site (it takes about a minute), and it can be run by hand from
 # the Actions tab (Run workflow).
 on:
@@ -33,6 +34,19 @@ jobs:
           BASE_PATH: /${{ github.event.repository.name }}/
       # Deep links like /docs fall back to the app, which routes them.
       - run: cp dist/index.html dist/404.html
+      # The game itself, exported for the web into the site's play/ folder. Online features (rewards,
+      # music downloads) and code-locked sections need the repository variables below; without them
+      # the web version simply plays without those parts.
+      - run: bun install --frozen-lockfile
+        working-directory: .
+      - run: bunx expo export --platform web --output-dir website/dist/play
+        working-directory: .
+        env:
+          EXPO_BASE_URL: /${{ github.event.repository.name }}/play
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+          EXPO_PUBLIC_CODE_DEV: ${{ vars.EXPO_PUBLIC_CODE_DEV }}
+          EXPO_PUBLIC_CODE_JASMINE: ${{ vars.EXPO_PUBLIC_CODE_JASMINE }}
+          EXPO_PUBLIC_CODE_JASMINE_EXPIRES: ${{ vars.EXPO_PUBLIC_CODE_JASMINE_EXPIRES }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

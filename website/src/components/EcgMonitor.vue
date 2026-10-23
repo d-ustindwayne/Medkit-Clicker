@@ -45,6 +45,8 @@ const path = computed(() => {
 
 <template>
   <div class="ecg">
+    <!-- The trace fills everything up to the readout, however wide the healed count gets. -->
+    <div class="strip">
     <svg class="trace" :viewBox="`0 0 ${W} 32`" preserveAspectRatio="none" aria-hidden="true">
       <clipPath id="ecg-drawn">
         <rect x="0" y="0" :width="progress * W" height="32" />
@@ -70,6 +72,7 @@ const path = computed(() => {
         <span class="sr-only">{{ c.label }}</span>
       </button>
     </nav>
+    </div>
     <p class="readout" aria-live="polite">
       <span class="readout-label">Healed</span> <span class="readout-value">{{ healed.toLocaleString() }}</span>
     </p>
@@ -88,10 +91,16 @@ const path = computed(() => {
   display: flex;
   align-items: center;
 }
+.strip {
+  position: relative;
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
+}
 .trace {
   position: absolute;
-  inset: 0 8rem 0 0;
-  width: calc(100% - 8rem);
+  inset: 0;
+  width: 100%;
   height: 100%;
 }
 path {
@@ -112,7 +121,7 @@ path {
 }
 .beats {
   position: absolute;
-  inset: 0 8rem 0 0;
+  inset: 0;
 }
 .beat {
   position: absolute;
@@ -125,9 +134,8 @@ path {
   cursor: pointer;
 }
 .readout {
-  margin-left: auto;
-  width: 8rem;
-  padding-right: 0.75rem;
+  flex: none;
+  padding: 0 0.75rem 0 0.6rem;
   text-align: right;
   font-family: "Silkscreen", monospace;
   color: #4edb4e;

@@ -12,7 +12,8 @@ export const GAME = {
   author: "Dustin Dwayne Diaz",
   year: 2026,
   license: "Apache License 2.0",
-  achievements: 111,
+  // Everyone's achievements, as the game's menu counts them (the code-locked one isn't included).
+  achievements: 127,
   offlineHours: 4,
 };
 
@@ -26,10 +27,10 @@ export const SUPPLIES = [
   { name: "Syringe", img: sprite("sprites/shop/syringe.png") },
   { name: "Medicine", img: sprite("sprites/shop/medicines.png") },
   { name: "IV Bag", img: sprite("sprites/shop/iv_bag.png") },
-  { name: "Blood Test", img: sprite("sprites/shop/blood_vial.png") },
-  { name: "Rapid Test", img: sprite("sprites/shop/covid_test.png") },
+  { name: "Blood Sample", img: sprite("sprites/shop/blood_vial.png") },
+  { name: "COVID Test", img: sprite("sprites/shop/covid_test.png") },
   { name: "Microscope", img: sprite("sprites/shop/microscope.png") },
-  { name: "DNA Lab", img: sprite("sprites/shop/dna.png") },
+  { name: "DNA Strand", img: sprite("sprites/shop/dna.png") },
 ];
 
 export const BOOSTS = [
@@ -64,11 +65,13 @@ export const HOSPITAL_TIERS = [
 
 /** The sky follows the clock, as in the game: `tint` darkens or warms the buildings, `clouds` is cloud opacity. */
 export type DayPhase = "sunrise" | "day" | "sunset" | "night";
-export const SKIES: Record<DayPhase, { label: string; img: string; tint: string | null; clouds: number; fill: string }> = {
-  sunrise: { label: "Sunrise", img: sprite("scenes/hospital_sky_sunrise.png"), tint: "rgba(255,170,150,0.12)", clouds: 0.9, fill: "#008ed8" },
-  day: { label: "Day", img: sprite("scenes/hospital_sky.png"), tint: null, clouds: 1, fill: "#58b5ee" },
-  sunset: { label: "Sunset", img: sprite("scenes/hospital_sky_sunset.png"), tint: "rgba(255,120,60,0.16)", clouds: 0.8, fill: "#002978" },
-  night: { label: "Night", img: sprite("scenes/hospital_sky_night.png"), tint: "rgba(10,16,48,0.42)", clouds: 0.25, fill: "#080c28" },
+// `dark` shades the people and cars (0-1) and `lights` turns the headlights on, as in the game
+// (SKIES in src/constants/hospital.ts).
+export const SKIES: Record<DayPhase, { label: string; img: string; tint: string | null; clouds: number; fill: string; dark: number; lights: boolean }> = {
+  sunrise: { label: "Sunrise", img: sprite("scenes/hospital_sky_sunrise.png"), tint: "rgba(255,170,150,0.12)", clouds: 0.9, fill: "#008ed8", dark: 0.1, lights: false },
+  day: { label: "Day", img: sprite("scenes/hospital_sky.png"), tint: null, clouds: 1, fill: "#58b5ee", dark: 0, lights: false },
+  sunset: { label: "Sunset", img: sprite("scenes/hospital_sky_sunset.png"), tint: "rgba(255,120,60,0.16)", clouds: 0.8, fill: "#002978", dark: 0.2, lights: true },
+  night: { label: "Night", img: sprite("scenes/hospital_sky_night.png"), tint: "rgba(10,16,48,0.42)", clouds: 0.25, fill: "#080c28", dark: 0.45, lights: true },
 };
 /** Sunrise 5-7, day 7-17, sunset 17-19, night 19-5. */
 export const dayPhase = (hour: number): DayPhase =>
@@ -124,7 +127,18 @@ export const ROOM_ITEMS = [
   item("Lava Lamp", "lava_lamp", true),
 ];
 
-export const MINIGAMES = ["Injection timing", "CPR rhythm", "Bandage-wrap tap race"];
+// Each has variants that open up as you progress (a drifting vein, skipped beats, look-alike capsules...).
+export const MINIGAMES = [
+  "Injection timing",
+  "CPR rhythm",
+  "Bandage-wrap tap race",
+  "Pulse check",
+  "Sort the meds",
+  "Spot the fracture on the X-ray",
+  "Germ buster",
+  "Deep breaths",
+  "Match the meds",
+];
 
 const staff = (id: string, name: string) => ({
   name,
@@ -140,13 +154,16 @@ export const STAFF = [
   staff("14_nurse_lavender", "Nurse in lavender scrubs"),
 ];
 
-export const TRACKS = [
+export const TRACKS: { title: string; note?: string; src: string }[] = [
   { title: "Waiting Room", src: sprite("audio/waiting_room.mp3") },
   { title: "Morning Rounds", src: sprite("audio/morning_rounds.mp3") },
   { title: "Night Shift", src: sprite("audio/night_shift.mp3") },
-  { title: "Visiting Hours", note: "a waltz", src: sprite("audio/visiting_hours.mp3") },
+  { title: "Visiting Hours", src: sprite("audio/visiting_hours.mp3") },
   { title: "Recovery Room", src: sprite("audio/recovery_room.mp3") },
 ];
+
+/** Sound effects from the game. */
+export const SFX = { tap: sprite("audio/tap.mp3") };
 
 export const SPRITES = {
   medkit: sprite("sprites/medkit.png"),

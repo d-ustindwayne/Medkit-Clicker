@@ -98,6 +98,10 @@ export class VoxelStage {
   private crossData: { x: number; y: number; z: number; speed: number; phase: number; size: number; depth: number }[] = [];
   private viewH = 1;
   private viewW = 1;
+  /** The canvas's size on screen in CSS pixels (phones change it as the address bar shows and hides). */
+  private pxW = 1;
+  private pxH = 1;
+  private sizeWatch: ResizeObserver | null = null;
   private reducedMotion: boolean;
   private onTap?: (clientX: number, clientY: number) => void;
 
@@ -211,6 +215,11 @@ export class VoxelStage {
     window.addEventListener("pointerup", this.handlePointerUp);
     window.addEventListener("pointercancel", this.handlePointerUp);
     window.addEventListener("resize", this.resize);
+    // The canvas resizes without a window resize when a phone's address bar slides in or out.
+    if ("ResizeObserver" in window) {
+      this.sizeWatch = new ResizeObserver(this.resize);
+      this.sizeWatch.observe(canvas);
+    }
     document.addEventListener("visibilitychange", this.handleVisibility);
     this.start();
   }
@@ -302,6 +311,7 @@ export class VoxelStage {
     window.removeEventListener("pointerup", this.handlePointerUp);
     window.removeEventListener("pointercancel", this.handlePointerUp);
     window.removeEventListener("resize", this.resize);
+    this.sizeWatch?.disconnect();
     document.removeEventListener("visibilitychange", this.handleVisibility);
     this.renderer.dispose();
   }
@@ -352,8 +362,13 @@ export class VoxelStage {
   };
 
   private resize = () => {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    // The canvas's own size, not the window's: on phones they differ while the address bar shows,
+    // which stretched the picture and left the medkit outside its spot until the bar moved again.
+    const w = this.canvas.clientWidth || window.innerWidth;
+    const h = this.canvas.clientHeight || window.innerHeight;
+    if (w === this.pxW && h === this.pxH) return;
+    this.pxW = w;
+    this.pxH = h;
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
@@ -363,7 +378,7 @@ export class VoxelStage {
   };
 
   private toNdc(e: PointerEvent) {
-    return new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+    return new THREE.Vector2((e.clientX / this.pxW) * 2 - 1, -(e.clientY / this.pxH) * 2 + 1);
   }
 
   private handlePointerMove = (e: PointerEvent) => {
@@ -465,7 +480,7 @@ export class VoxelStage {
     this.scrollVel *= Math.exp(-10 * dt);
 
     const x = anchor ? 0 : lerp(pa.x, pb.x, e) * this.viewW;
-    const y = anchor ? (0.5 - anchor.y / window.innerHeight) * this.viewH : lerp(pa.y, pb.y, e) * this.viewH;
+    const y = anchor ? (0.5 - anchor.y / this.pxH) * this.viewH : lerp(pa.y, pb.y, e) * this.viewH;
     this.pivot.position.set(x, y + bob, 0);
     this.pivot.rotation.set(
       (still ? 0 : -this.pointerSmooth.y * 0.12 + this.lean) + 0.06,

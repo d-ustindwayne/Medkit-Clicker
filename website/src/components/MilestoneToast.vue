@@ -1,26 +1,49 @@
 <script setup lang="ts">
+import { ref } from "vue";
+
 import PixelIcon from "@/components/PixelIcon.vue";
 import { SPRITES } from "@/lib/content";
 import { LINKS } from "@/lib/links";
 
-// Pops up like an achievement in the game once a visitor has healed enough patients on the site.
-defineProps<{ count: number }>();
+// Pops up like an achievement in the game: once a visitor has healed enough patients on the site,
+// or (with `code`) with a promo code to enter in the game.
+const props = withDefaults(defineProps<{ kicker?: string; title: string; text: string; image?: string; code?: string }>(), {
+  kicker: "Achievement unlocked",
+  image: undefined,
+  code: undefined,
+});
 const emit = defineEmits<{ close: [] }>();
+
+const copied = ref(false);
+async function copyCode() {
+  try {
+    await navigator.clipboard.writeText(props.code!);
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 1800);
+  } catch {
+    // Clipboard blocked: the code is on screen to type in.
+  }
+}
 </script>
 
 <template>
   <aside class="milestone" role="status" aria-live="polite">
     <div class="badge" aria-hidden="true">
-      <img class="pixel trophy" :src="SPRITES.trophy" width="64" height="64" alt="" />
+      <img class="pixel trophy" :src="image ?? SPRITES.trophy" width="64" height="64" alt="" />
     </div>
     <div class="body">
-      <p class="kicker">Achievement unlocked</p>
-      <p class="title">{{ count }} patients healed!</p>
-      <p class="text">You've got the touch. Keep healing in the full game on Android.</p>
+      <p class="kicker">{{ kicker }}</p>
+      <p class="title">{{ title }}</p>
+      <p class="text">{{ text }}</p>
       <div class="actions">
-        <a class="button pixel-button is-primary is-small" :href="LINKS.download" rel="noopener">
+        <button v-if="code" type="button" class="button pixel-button is-small code" @click="copyCode">{{ copied ? "Copied!" : `Copy ${code}` }}</button>
+        <a v-if="!code" class="button pixel-button is-primary is-small" :href="LINKS.download" rel="noopener">
           <PixelIcon name="download" :size="14" />
           Download for Android
+        </a>
+        <a class="button pixel-button is-small" :href="LINKS.play">
+          <PixelIcon name="play" :size="14" />
+          Play
         </a>
         <button type="button" class="later" @click="emit('close')">Not now</button>
       </div>
@@ -93,6 +116,10 @@ const emit = defineEmits<{ close: [] }>();
   align-items: center;
   gap: 0.9rem;
   margin-top: 0.9rem;
+}
+.code {
+  font-family: "Silkscreen", monospace;
+  letter-spacing: 0.04em;
 }
 .later {
   font: inherit;

@@ -25,10 +25,6 @@ const { visible } = useInView(root, 0.1);
 const reduced = useReducedMotion();
 const live = computed(() => visible.value && !reduced.value);
 
-// A rebirth flash whenever the look changes.
-const flashKey = ref(0);
-watch(tier, () => flashKey.value++);
-
 type Mover = { id: number; img: string; frames?: readonly [string, string]; y: number; from: number; to: number; seconds: number; flip: boolean };
 const cars = ref<Mover[]>([]);
 const walkers = ref<Mover[]>([]);
@@ -132,7 +128,6 @@ onBeforeUnmount(() => {
         :alt="i === tier ? `${t.name}, the hospital after ${t.rebirths} rebirths` : ''"
         width="1280"
         height="960"
-        loading="lazy"
       />
 
       <div
@@ -141,7 +136,7 @@ onBeforeUnmount(() => {
         class="mover walker"
         :style="{ '--from': pctX(v.from), '--to': pctX(v.to), top: pctY(v.y - 16), width: pctX(16), animationDuration: `${v.seconds}s` }"
       >
-        <div class="frames" :class="{ flip: v.flip }">
+        <div class="frames" :class="{ flip: v.flip }" :style="{ filter: sky.dark ? `brightness(${1 - sky.dark})` : undefined }">
           <img class="pixel" :src="v.frames![0]" alt="" />
           <img class="pixel" :src="v.frames![1]" alt="" />
         </div>
@@ -153,7 +148,11 @@ onBeforeUnmount(() => {
         class="mover car"
         :style="{ '--from': pctX(c.from), '--to': pctX(c.to), top: pctY(c.y - 28), width: pctX(32), animationDuration: `${c.seconds}s`, zIndex: c.y }"
       >
-        <img class="pixel" :class="{ flip: c.flip }" :src="c.img" alt="" />
+        <div class="body" :class="{ flip: c.flip }">
+          <img class="pixel" :src="c.img" alt="" />
+          <span v-if="sky.dark" class="shade" :style="{ '--sprite': `url(${c.img})`, opacity: sky.dark }"></span>
+          <span v-if="sky.lights" class="beam"></span>
+        </div>
       </div>
 
       <button
@@ -166,12 +165,15 @@ onBeforeUnmount(() => {
         :disabled="admitted"
         @click="admit"
       >
-        <img class="pixel" :src="STREET.ambulance" alt="" />
+        <div class="body">
+          <img class="pixel" :src="STREET.ambulance" alt="" />
+          <span v-if="sky.dark" class="shade" :style="{ '--sprite': `url(${STREET.ambulance})`, opacity: sky.dark }"></span>
+          <span v-if="sky.lights" class="beam"></span>
+        </div>
         <span v-if="ambulance === 'waiting' && !admitted" class="alert" aria-hidden="true">!</span>
       </button>
 
       <div v-if="sky.tint" class="tint" :style="{ background: sky.tint }"></div>
-      <div :key="flashKey" class="flash" :class="{ on: flashKey > 0 && !reduced }"></div>
     </div>
 
     <div class="skies" role="group" aria-label="Time of day">
@@ -233,11 +235,15 @@ onBeforeUnmount(() => {
     transform: translateX(var(--cross));
   }
 }
+// Changing the look: the new building fades in on top while the old one stays solid underneath,
+// and only then disappears, so the sky never shows through mid-change.
 .building {
   opacity: 0;
-  transition: opacity 240ms steps(4);
+  transition: opacity 0s linear 240ms;
   &.shown {
+    z-index: 1;
     opacity: 1;
+    transition: opacity 240ms steps(4);
   }
 }
 
@@ -262,6 +268,34 @@ onBeforeUnmount(() => {
 }
 .flip {
   transform: scaleX(-1);
+}
+// Cars and the ambulance (art facing right; .flip turns the whole car, lights included).
+.body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+// Evening and night: the sprite again in the night colour over its own pixels, like the game's Shade.
+.shade {
+  position: absolute;
+  inset: 0;
+  background: #0a1030;
+  pointer-events: none;
+  -webkit-mask: var(--sprite) center / 100% 100% no-repeat;
+  mask: var(--sprite) center / 100% 100% no-repeat;
+  transition: opacity 600ms ease;
+}
+// Headlights: a soft beam from the front of the car (headlight row 18 of the 32px art) spreading
+// down to the road 46px ahead, the same shape as the game's.
+.beam {
+  position: absolute;
+  left: 96.875%;
+  top: 0;
+  width: 143.75%;
+  height: 106.25%;
+  pointer-events: none;
+  background: linear-gradient(to right, rgba(255, 241, 184, 0.7), rgba(255, 241, 184, 0));
+  clip-path: polygon(0 50%, 100% 38.2%, 100% 91.2%, 0 58.8%);
 }
 .walker {
   z-index: 150;
@@ -372,31 +406,13 @@ onBeforeUnmount(() => {
   }
 }
 
+// Evening and night light over the buildings. People and cars draw above it, shaded on their own
+// (and their headlights stay bright), as in the game.
 .tint {
   position: absolute;
   inset: 0;
-  z-index: 200;
+  z-index: 140;
   pointer-events: none;
-}
-// A white pixel dissolve when the hospital is reborn.
-.flash {
-  position: absolute;
-  inset: 0;
-  z-index: 210;
-  pointer-events: none;
-  background: #fff;
-  opacity: 0;
-  &.on {
-    animation: reborn 520ms steps(5) both;
-  }
-}
-@keyframes reborn {
-  0% {
-    opacity: 0.95;
-  }
-  100% {
-    opacity: 0;
-  }
 }
 
 .skies {

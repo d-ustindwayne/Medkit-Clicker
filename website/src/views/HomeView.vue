@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import BoostSlips from "@/components/BoostSlips.vue";
 import EcgMonitor from "@/components/EcgMonitor.vue";
+import { playTapSound, preloadTapSound } from "@/lib/tap-sound";
 import FrameSprite from "@/components/FrameSprite.vue";
 import HospitalGrowth from "@/components/HospitalGrowth.vue";
 import PixelIcon from "@/components/PixelIcon.vue";
@@ -13,7 +14,7 @@ import SupplyShelf from "@/components/SupplyShelf.vue";
 import { useReducedMotion } from "@/composables/useReducedMotion";
 import { useTheme } from "@/composables/useTheme";
 import { GAME, HOSPITAL_TIERS, MINIGAMES, ROOMS, ROOM_ITEMS, SPRITES } from "@/lib/content";
-import { LINKS } from "@/lib/links";
+import { LINKS, PROMO } from "@/lib/links";
 import { VoxelStage, type Pose } from "@/lib/stage";
 import { spriteToVoxels, type SpriteSpec } from "@/lib/voxels";
 
@@ -40,6 +41,9 @@ const { theme } = useTheme();
 
 const healed = ref(readHealed());
 const showMilestone = ref(false);
+/** Shown once per visit when the visitor scrolls to the bottom of the page. */
+const showPromo = ref(false);
+let promoShown = false;
 /** Heals that unlock the download nudge. */
 const MILESTONE = 50;
 /** Patients healed by admitting the ambulance in the hospital scene. */
@@ -56,6 +60,7 @@ function readHealed() {
 }
 
 function heal(x: number, y: number, amount = 1) {
+  playTapSound();
   const before = healed.value;
   healed.value += amount;
   try {
@@ -101,6 +106,10 @@ function onScroll() {
   frame = requestAnimationFrame(() => {
     const max = document.documentElement.scrollHeight - window.innerHeight;
     progress.value = max > 0 ? window.scrollY / max : 0;
+    if (!promoShown && max > 0 && progress.value > 0.98) {
+      promoShown = true;
+      showPromo.value = true;
+    }
     if (!stage || centers.length === 0) return;
     stage.setScroll(window.scrollY);
     if (narrowQuery.matches) {
@@ -157,6 +166,7 @@ watch(theme, (t) => stage?.setTheme(t));
 watch(reduced, (r) => stage?.setReducedMotion(r));
 
 onMounted(async () => {
+  preloadTapSound();
   measure();
   onScroll();
   window.addEventListener("scroll", onScroll, { passive: true });
@@ -192,7 +202,21 @@ onBeforeUnmount(() => {
 
 <template>
   <EcgMonitor :progress="progress" :chapters="beats" :healed="healed" @go="go" />
-  <MilestoneToast v-if="showMilestone" :count="MILESTONE" @close="showMilestone = false" />
+  <MilestoneToast
+    v-if="showMilestone"
+    :title="`${MILESTONE} patients healed!`"
+    text="You've got the touch. Keep healing in the full game, on Android or in your browser."
+    @close="showMilestone = false"
+  />
+  <MilestoneToast
+    v-else-if="showPromo"
+    kicker="A gift for reaching the end"
+    :title="`Code: ${PROMO.code}`"
+    :text="PROMO.text"
+    :image="SPRITES.medkit"
+    :code="PROMO.code"
+    @close="showPromo = false"
+  />
 
   <canvas ref="canvas" class="stage" :class="{ ready }" aria-hidden="true"></canvas>
   <div class="floaters" aria-hidden="true">
@@ -214,6 +238,10 @@ onBeforeUnmount(() => {
               <a class="button pixel-button is-primary" :href="LINKS.download" rel="noopener">
                 <PixelIcon name="download" :size="16" />
                 Download for Android
+              </a>
+              <a class="button pixel-button" :href="LINKS.play">
+                <PixelIcon name="play" :size="16" />
+                Play in browser
               </a>
               <RouterLink class="button pixel-button" to="/docs">Read the guide</RouterLink>
             </div>
@@ -254,7 +282,7 @@ onBeforeUnmount(() => {
               <p class="step"><PixelIcon name="cross" :size="12" /> Step 2 of 5</p>
               <h2 id="supplies-title">Stock the supply room</h2>
               <p>
-                Spend patients on supplies that heal for you, from a bandage to a DNA lab. Each one you buy costs 14%
+                Spend patients on supplies that heal for you, from a bandage to a DNA strand. Each one you buy costs 14%
                 more than the last, and your team keeps working for up to {{ GAME.offlineHours }} hours while the app is
                 closed.
               </p>
@@ -356,12 +384,16 @@ onBeforeUnmount(() => {
         <h2 id="download-title" class="finale-title">Open your clinic</h2>
         <p class="finale-text">
           Medkit Clicker is an Android app. The APK is on GitHub Releases; your phone may ask you to allow installs from
-          your browser first.
+          your browser first. On any other device, play it right here in your browser.
         </p>
         <div class="actions is-centered">
           <a class="button pixel-button is-primary heartbeat" :href="LINKS.download" rel="noopener">
             <PixelIcon name="download" :size="16" />
             Download for Android
+          </a>
+          <a class="button pixel-button" :href="LINKS.play">
+            <PixelIcon name="play" :size="16" />
+            Play in browser
           </a>
           <RouterLink class="button pixel-button" to="/docs">Read the guide</RouterLink>
         </div>
@@ -373,9 +405,13 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .stage {
   position: fixed;
-  inset: 0;
-  width: 100vw;
+  top: 0;
+  left: 0;
+  width: 100%;
+  // The visible height right now (it changes as a phone's address bar comes and goes), so the
+  // picture isn't stretched; 100vh is the fallback for older browsers.
   height: 100vh;
+  height: 100dvh;
   z-index: 1;
   opacity: 0;
   transition: opacity 400ms ease;

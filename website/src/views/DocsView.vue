@@ -38,6 +38,8 @@ const TOC = [
         <p>
           Medkit Clicker runs on Android. Download the APK from <a :href="LINKS.download" rel="noopener">GitHub Releases</a>
           and open it on your phone. If Android asks, allow installs from your browser or file manager, then tap Install.
+          On an iPhone, tablet or computer, <a :href="LINKS.play">play it in your browser</a> instead; your progress is
+          saved in that browser.
         </p>
 
         <h2 id="basics">The basics</h2>
@@ -81,7 +83,10 @@ const TOC = [
         </p>
 
         <h2 id="boosts">Boosts</h2>
-        <p>Spend Care Coins in the shop's Boosts tab.</p>
+        <p>
+          Spend Care Coins in the shop's Boosts tab. Boosts running at the same time add up instead of multiplying: a 2x
+          and a 3x per-second boost together make 5x.
+        </p>
         <div class="table-wrap">
           <table class="table is-fullwidth">
             <thead>
@@ -105,7 +110,7 @@ const TOC = [
 
         <h2 id="patients">Sick patients</h2>
         <p>
-          Sick patients turn up in your room at random. Treat them in a quick minigame to earn patients and coins; the games get harder as your hospital grows. The minigames are:
+          Sick patients turn up in your room at random. Treat them in a quick minigame to earn patients and coins; the games get harder (and pay more) as your hospital grows, and each one gains new twists along the way. The minigames are:
         </p>
         <ul>
           <li v-for="g in MINIGAMES" :key="g">{{ g }}</li>
@@ -144,13 +149,14 @@ const TOC = [
         <p>
           The music player plays the original soundtrack, with play and pause, track skipping and seeking. Sound effects
           have their own volume, and phones vibrate on taps (you can turn that off). Pick a light or dark theme and one of
-          seven backgrounds.
+          seven backgrounds. Tilting the phone moves the background a little. Under Accessibility, Reduce motion calms
+          the screen, and Colour labels put a letter on each pill colour in the minigames.
         </p>
 
         <h2 id="saves">Saves</h2>
         <p>
           The game saves every 10 seconds and whenever you leave the app. You can export a save to a folder you choose,
-          or import one, as JSON or CSV.
+          or import one, as JSON or CSV. A save also carries your settings and app icon.
         </p>
 
         <h2 id="credits">Credits</h2>
