@@ -231,6 +231,8 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       resetProgress: async () => {
         seenAchievements.current = new Set();
         dispatch({ type: "reset" });
+        // The chosen playlist and background may belong to what was just deleted.
+        updateSettings({ playlist: DEFAULT_SETTINGS.playlist, background: DEFAULT_SETTINGS.background });
         lastTick.current = Date.now();
         await clearGame();
       },

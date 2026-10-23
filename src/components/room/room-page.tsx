@@ -1,6 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
-import { Pressable, ScrollView, Text, View, type GestureResponderEvent, type ImageSourcePropType } from "react-native";
+import { Pressable, ScrollView, Text, View, useWindowDimensions, type GestureResponderEvent, type ImageSourcePropType } from "react-native";
 import Animated, { cancelAnimation, Easing, FadeIn, FadeInDown, FadeOut, SlideInDown, SlideOutDown, type SharedValue, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 
 import { ScenePage } from "@/components/scene-page";
@@ -188,7 +188,12 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
   // the whole floor stays in view: an item placed low down is never hidden behind the tray.
   const [box, setBox] = useState({ root: 0, bar: 0, tray: 0 });
   const measured = (key: keyof typeof box) => (h: number) => setBox((b) => (b[key] === h ? b : { ...b, [key]: h }));
-  const roomW = editing && box.root ? Math.min(width, Math.max(width * 0.5, (box.root - box.bar - box.tray) * room.aspect)) : width;
+  // On a wide, short screen (a computer) the room also shrinks to fit the page's height, with its side
+  // art filling in left and right; phones are tall enough that it always spans the width.
+  const roomW = !box.root ? width : editing ? Math.min(width, Math.max(width * 0.5, (box.root - box.bar - box.tray) * room.aspect)) : Math.min(width, box.root * room.aspect);
+  const narrow = !editing && roomW < width;
+  // Big screens show bigger currency chips at the top right, so the decorate button moves to the bottom.
+  const wideScreen = useWindowDimensions().width >= 768;
   const height = roomW / room.aspect;
   // The room and its sides (a quarter of its width each), at least as wide as the page.
   const stripW = Math.max(width, roomW * 1.5);
@@ -412,7 +417,8 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
           </View>
         </ScrollView>
       ) : (
-        <ScenePage scene={editing ? { ...room, anchor: 0 } : room} width={roomW} contentRef={sceneRef} sides={editing ? room.sides : undefined}>
+        <View className="flex-1 overflow-hidden">
+        <ScenePage scene={room} width={roomW} contentRef={sceneRef} sides={narrow ? room.sides : undefined}>
           {placedSorted.map((p) => {
             const item = ROOM_ITEMS.find((i) => i.id === p.item);
             if (!item) return null;
@@ -434,14 +440,15 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
               />
             );
           })}
-          {!editing && <Staff ids={room.staff} width={width} height={height} />}
-          {!editing && <WardPatient width={width} height={height} />}
+          {!editing && <Staff ids={room.staff} width={roomW} height={height} />}
+          {!editing && <WardPatient width={roomW} height={height} />}
         </ScenePage>
+        </View>
       )}
 
       {/* Decorate button, drawn above everything in the room. */}
       {!editing && !hideControls && (
-        <View className="absolute right-3 top-2" style={{ zIndex: CONTROLS_DEPTH }}>
+        <View className={`absolute right-3 ${wideScreen ? "bottom-3" : "top-2"}`} style={{ zIndex: CONTROLS_DEPTH }}>
           {toggle}
         </View>
       )}

@@ -164,13 +164,14 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
       <ConfirmDialog
         visible={confirmReset}
         title="Delete all progress?"
-        body="This erases your patients, shop items, rebirths and achievements. Rewards you've already redeemed stay redeemed. It can't be undone, so export a save first if you might want it back."
+        body="This erases everything on this device: patients, shop items, rebirths, achievements, codes you've entered and downloaded music. It can't be undone, so export a save first if you might want it back."
         cancelLabel="Keep playing"
         confirmLabel="Delete progress"
         onCancel={() => setConfirmReset(false)}
         onConfirm={async () => {
           setConfirmReset(false);
           await resetProgress();
+          await music.forget();
           onDone();
         }}
       />

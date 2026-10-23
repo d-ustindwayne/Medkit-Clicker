@@ -6,7 +6,7 @@ import { SFX, SOUNDTRACK, type Playlist, type SfxName } from "@/constants/playli
 import { sectionOpen } from "@/constants/rewards";
 import { useGameActions, useSettings } from "@/hooks/use-game";
 import { useNow } from "@/hooks/use-now";
-import { OFFLINE_MESSAGE, cloudEnabled, downloadMusic, ensureToken, hasPendingCode, isOffline, loadCachedPlaylists, wakeServer, type CachedPlaylist } from "@/lib/cloud";
+import { OFFLINE_MESSAGE, cloudEnabled, downloadMusic, ensureToken, forgetCloud, hasPendingCode, isOffline, loadCachedPlaylists, wakeServer, type CachedPlaylist } from "@/lib/cloud";
 import { initSfx, playSfxFast, setSfxVolume } from "@/lib/sfx";
 import { VOLUME_STEPS } from "@/lib/storage";
 
@@ -26,6 +26,8 @@ export type MusicState = {
   downloadError: string | null;
   /** Downloads (or updates) the code-locked music. Call after a code unlock. */
   fetchMusic: () => Promise<void>;
+  /** Removes the code's music and token (Delete progress). */
+  forget: () => Promise<void>;
   playlistName: string;
   trackIndex: number;
   trackCount: number;
@@ -191,6 +193,13 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       download,
       downloadError,
       fetchMusic,
+      forget: async () => {
+        await forgetCloud();
+        setCached([]);
+        setToken(null);
+        setPending(false);
+        setDownloadError(null);
+      },
       playlistName: playlist?.name ?? "",
       trackIndex,
       trackCount,

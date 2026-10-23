@@ -131,6 +131,17 @@ export const redeemOnline = async (token: string, rewardId: string, note?: strin
 
 const musicDir = () => new Directory(Paths.document, "music");
 
+/** Deleting progress: forgets the code's token, a code waiting to go online, and the downloaded music. */
+export async function forgetCloud() {
+  await AsyncStorage.multiRemove([TOKEN_KEY, PENDING_CODE_KEY, LIBRARY_KEY]);
+  try {
+    const dir = musicDir();
+    if (dir.exists) dir.delete();
+  } catch {
+    // no music folder (web) or already gone
+  }
+}
+
 /** Playlists already downloaded to this phone (only files that are really there). */
 export async function loadCachedPlaylists(): Promise<CachedPlaylist[]> {
   try {

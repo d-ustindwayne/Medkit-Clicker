@@ -485,7 +485,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
   }
 };
 
-/** Redemptions are real-world purchases: keep the longer history so resets and old saves can't refund them. */
+/** Redemptions are real-world purchases: keep the longer history so importing an old save can't refund them. */
 const keepRewards = (from: GameState, into: GameState): GameState => {
   const redemptions = { ...into.redemptions };
   for (const [id, times] of Object.entries(from.redemptions)) {
@@ -510,7 +510,9 @@ function putAwayLocked(s: GameState): GameState {
 }
 
 export const gameReducer = (state: GameState, action: GameAction): GameState => {
-  if (action.type === "reset") return keepRewards(state, newGame());
+  // Deleting progress starts over completely, code unlocks included; the server still remembers
+  // what was redeemed, so the limits hold.
+  if (action.type === "reset") return newGame();
   if (action.type === "import") return putAwayLocked(withAchievements(keepRewards(state, action.state)));
   const next = withAchievements(apply(state, action));
   return action.type === "rebirth" || action.type === "devRebirth" || action.type === "load" ? putAwayLocked(next) : next;

@@ -14,6 +14,10 @@ const formatPercent = (p: number) => {
   return "<1%";
 };
 
+/** Badge tiles are about this size; they grow a little so each row fills the width exactly. */
+const TILE = 56;
+const GAP = 8;
+
 export function AchievementsPage() {
   const state = useGameState();
   const { achievements } = state;
@@ -22,6 +26,10 @@ export function AchievementsPage() {
   const unlockedCount = ACHIEVEMENTS.filter((a) => achievements[a.id] !== undefined).length;
   const current = ACHIEVEMENTS.find((a) => a.id === selected) ?? ACHIEVEMENTS[0];
   const currentUnlocked = achievements[current.id] !== undefined;
+  const [gridW, setGridW] = useState(0);
+  const cols = Math.max(1, Math.floor((gridW + GAP) / (TILE + GAP)));
+  // Rounded down, so rounding can never push the last tile of a row onto the next one.
+  const tile = gridW ? Math.floor((gridW - GAP * (cols - 1)) / cols) : TILE;
 
   return (
     <View className="gap-4">
@@ -68,7 +76,7 @@ export function AchievementsPage() {
       </View>
       </HardShadow>
 
-      <View className="flex-row flex-wrap gap-2">
+      <View className="flex-row flex-wrap gap-2" onLayout={(e) => setGridW(Math.floor(e.nativeEvent.layout.width))}>
         {ACHIEVEMENTS.map((a) => {
           const unlocked = achievements[a.id] !== undefined;
           const isSelected = a.id === selected;
@@ -79,10 +87,11 @@ export function AchievementsPage() {
               accessibilityLabel={unlocked || !a.secret ? a.name : "Secret achievement"}
               accessibilityState={{ selected: isSelected }}
               onPress={() => setSelected(a.id)}
-              className={`h-14 w-14 items-center justify-center border-2 border-outline ${isSelected ? "bg-primary" : unlocked ? "bg-surface" : "bg-ink/20"}`}
+              style={{ width: tile, height: tile }}
+              className={`items-center justify-center border-2 border-outline ${isSelected ? "bg-primary" : unlocked ? "bg-surface" : "bg-ink/20"}`}
             >
               {unlocked ? (
-                <Image source={a.image} style={{ width: 36, height: 36 }} contentFit="contain" />
+                <Image source={a.image} style={{ width: tile * 0.64, height: tile * 0.64 }} contentFit="contain" />
               ) : (
                 <Text className="font-pixel text-xl text-ink opacity-50">?</Text>
               )}

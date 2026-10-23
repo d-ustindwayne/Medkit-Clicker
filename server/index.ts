@@ -102,9 +102,28 @@ async function retryAlerts() {
 // Every 10 minutes: ntfy counts refused attempts against the daily quota too, so retrying faster burns it.
 setInterval(() => void retryAlerts().catch((e) => console.error("Alert retry failed:", e)), 10 * 60_000);
 
+/**
+ * The web version of the game (GitHub Pages) calls the API from another site, so browsers need CORS
+ * headers. The phone app sends no Origin and is unaffected. Nothing uses cookies: access is by token.
+ */
+const WEB_ORIGINS = ["https://d-ustindwayne.github.io"];
+const allowedOrigin = (origin: string | null) => (origin && (WEB_ORIGINS.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) ? origin : null);
+
 Bun.serve({
   port: Number(process.env.PORT ?? 8787),
   async fetch(req) {
+    const origin = allowedOrigin(req.headers.get("origin"));
+    const cors: Record<string, string> = origin
+      ? { "access-control-allow-origin": origin, "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type, authorization", "access-control-max-age": "86400", vary: "Origin" }
+      : {};
+    if (req.method === "OPTIONS") return new Response(null, { status: origin ? 204 : 403, headers: cors });
+    const res = await route(req);
+    for (const [k, v] of Object.entries(cors)) res.headers.set(k, v);
+    return res;
+  },
+});
+
+async function route(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
 
@@ -232,6 +251,5 @@ Bun.serve({
     }
 
     return json({ error: "Not found" }, 404);
-  },
-});
+}
 console.log(`Medkit Clicker API on :${process.env.PORT ?? 8787}`);

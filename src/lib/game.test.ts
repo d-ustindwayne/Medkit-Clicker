@@ -222,6 +222,16 @@ describe("rebirth", () => {
   });
 });
 
+describe("delete progress", () => {
+  test("starts over completely, code unlocks and redemptions included", () => {
+    const s = { ...run(newGame(), { type: "earn", amount: 500 }), unlockedSections: ["jasmine"], redemptions: { kiss: [1] } };
+    const r = run(s, { type: "reset" });
+    expect(r.healed).toBe(0);
+    expect(r.unlockedSections).toEqual([]);
+    expect(r.redemptions).toEqual({});
+  });
+});
+
 describe("paid backgrounds", () => {
   test("buying spends Care Coins once; free and unaffordable ones don't", () => {
     const s = run(newGame(), { type: "devAddCoins", count: 20 });
