@@ -28,6 +28,7 @@ const files: Record<string, string> = {
   "audio/night_shift.mp3": "audio/soundtrack/night_shift.mp3",
   "audio/visiting_hours.mp3": "audio/soundtrack/visiting_hours.mp3",
   "audio/recovery_room.mp3": "audio/soundtrack/recovery_room.mp3",
+  "audio/tap.mp3": "audio/sfx/click_medkit.mp3",
 };
 
 const shop = ["bandage_roll", "gloves", "facemask", "thermometer", "stethoscope", "bp_tester", "syringe", "medicines", "iv_bag", "blood_vial", "covid_test", "microscope", "dna"];
