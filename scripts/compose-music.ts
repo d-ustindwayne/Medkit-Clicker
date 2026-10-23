@@ -197,6 +197,8 @@ function build(t: Track) {
     ch.kick.push(kickBar(s.drums, i));
     ch.snare.push(snareBar(s.drums, !!s.fill && i === s.bars - 1));
     ch.hat.push(hatBar(s.drums));
+    // Still generated (it draws from the same random sequence, so the songs stay the same), but
+    // left out of the mix: the constant hiss got tiring over a long session.
     ch.vinyl.push(vinylBar());
   });
   const channel = (type: "pitch" | "drum", inst: object, bars: Bar[], octave = 3) => {
@@ -228,7 +230,6 @@ function build(t: Track) {
       channel("pitch", INST.kick(60), ch.kick, 1),
       channel("drum", INST.snare(20), ch.snare),
       channel("drum", INST.hat(0), ch.hat),
-      channel("drum", INST.vinyl(-20), ch.vinyl),
     ],
   };
   // Round-trip through BeepBox so the saved file is exactly what BeepBox itself writes.
