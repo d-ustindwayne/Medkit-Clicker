@@ -22,7 +22,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] Can't afford: the card shakes, plays the invalid sound and gives a 📱 warning vibration
 - [ ] The progress bar fills toward the next purchase; the shine sweeps over affordable items
 - [ ] The list scrolls smoothly with all 13 cards
-- [ ] Swiping the shop goes to the "???" page and back
+- [ ] Swiping the shop goes to the "???" page and back; swiping the SHOP / HOSPITAL / GEMS title does too
 
 ## Achievements
 - [ ] The first tap unlocks "First Aid" with a toast showing the bronze trophy, confetti and a 📱 success vibration
@@ -31,6 +31,8 @@ Run through this before a release or after big changes. Items marked 📱 need a
 
 ## Menu and navigation
 - [ ] The menu opens and closes; every page opens (Achievements, Redeem, Settings, About) and back works
+- [ ] Back returns to the page before, one step at a time (Rewards → Code → About → Menu)
+- [ ] About shows the ward patients treated and a Visit website button
 - [ ] The Android system back button closes the menu or page before leaving the app
 
 ## Settings
@@ -40,7 +42,9 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] The music and sound-effect volume bars work; the mute button silences them
 - [ ] The Vibration toggle turns all vibration off and on
 - [ ] The background stepper cycles all 7 patterns; dark mode switches the palette everywhere, including dialogs
-- [ ] Export JSON/CSV saves a file (the first time, it asks for a folder); import restores it
+- [ ] Export JSON/CSV saves a file (it asks for a folder every time); import restores it, with the settings and app icon
+- [ ] Reduce motion stops the background, rays, confetti and shakes at once; turning it off brings the motion back
+- [ ] Colour labels put a letter on each pill colour in Sort the Meds
 - [ ] Delete progress asks for confirmation, then resets (rewards stay redeemed)
 - [ ] Dev tools (development builds only): add items, unlock all achievements, simulate time away
 
@@ -54,6 +58,7 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] Buying a boost spends coins; a countdown chip appears under the rate and on the card
 - [ ] Timed boosts run out on time; Lucky Stethoscope counts down per tap
 - [ ] Can't afford: shake, invalid sound, warning vibration
+- [ ] Two tap (or per-second) boosts at once add up: Adrenaline 2x + Code Blue 5x = 7x
 
 ## My Room and patients
 - [ ] Staff walk back and forth with a 3-frame step
@@ -62,13 +67,24 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] A full room says it's full; locked items and rooms say how to unlock them
 - [ ] A patient arrives with a "!" on the page dot and a toast; tapping them opens their minigame
 - [ ] Injection, rhythm and bandage minigames can be won and lost; a win shows the reward and +1 coin
+- [ ] At a high level (Dev Tools: +10 of each item a few times), the harder rounds show up: pills in three sizes and with two rules (up to 5x5), exhale and hidden breaths, a 20-30 beat pulse, the injection's dark core
+- [ ] Rhythm: mashing never leaves the count stuck at 0 after an on-time tap; Bandage arrows give 7.5 s
 
 ## Layout and looks
 - [ ] Phone portrait: the shop sits under the medkit and nothing is cut off; toasts don't hide important buttons
 - [ ] Tablet or landscape: the shop sits beside the medkit
 - [ ] All sprites are crisp (not blurry) at every size
+- [ ] Backgrounds reach every edge (no bare strip on the right); tilting the phone shifts them a little, near layers more than far ones
+- [ ] Heart Monitor sweeps smoothly with random beats; Blood Stream cells tumble; in decorate mode the reception's side floor carries on the tile grid
 
 ## Latest run
+
+### 2026-10-23: Samsung phone, release build (arm64)
+
+**Passed:** start-up (after fixing a crash in the tilt code), backgrounds reach the right edge, Reduce motion on and off,
+Heart Monitor at 120 fps with 0.25% late frames, Blood Stream cells, the reception's sides in decorate mode, swiping the
+shop title, About (website button, ward count), Back from Code to About, the dev code, a 4x4 two-rule pills round.
+**Not checked yet:** tilt by hand, the other hard minigame rounds (owner is testing them).
 
 ### 2026-10-20: Android emulator (Pixel-class, Android 16), debug build
 
