@@ -15,10 +15,12 @@ import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
 import { useNow } from "@/hooks/use-now";
 import type { GameState } from "@/lib/game";
 import { useHaptics } from "@/hooks/use-haptics";
-import { appIcon, iconFromPending, setAppIcon } from "@/lib/app-icon";
+import { appIcon, iconFromPending, setAppIcon, supportsIcons } from "@/lib/app-icon";
 import { saveSticker } from "@/lib/stickers";
 
 const MAX_LEVEL = GEM_LEVEL_COSTS.length;
+/** The game's own icon, first in the App Icons section: always owned, so there's a way back to it. */
+const ORIGINAL_ICON: GemItem = { id: "icon_default", name: "Original", kind: "icon", cost: 0, rebirths: 0, image: require("../../../assets/images/icon.png") };
 const pickGems = (s: GameState) => ({
   pendingIcon: s.pendingIcon,
   gemUpgrades: s.gemUpgrades, gemItems: s.gemItems, medkitSkin: s.medkitSkin, tapEffect: s.tapEffect,
@@ -82,7 +84,8 @@ function ItemTile({ item }: { item: GemItem }) {
   const { dispatch, updateSettings, pushToast } = useGameActions();
   const { playSfx } = useAudio();
   const haptic = useHaptics();
-  const owned = state.gemItems.includes(item.id);
+  const original = item.id === ORIGINAL_ICON.id;
+  const owned = original || state.gemItems.includes(item.id);
   const locked = state.rebirths < item.rebirths;
   const affordable = gemBalance(state) >= item.cost;
   const bgIndex = BACKGROUNDS.findIndex((b) => b.id === item.id);
@@ -92,7 +95,7 @@ function ItemTile({ item }: { item: GemItem }) {
     (item.kind === "skin" && state.medkitSkin === item.id) ||
     (item.kind === "tap" && state.tapEffect === item.id) ||
     (item.kind === "background" && settings.background === bgIndex) ||
-    (item.kind === "icon" && iconName === item.name);
+    (item.kind === "icon" && (original ? !iconName : iconName === item.name));
 
   const buy = () => {
     dispatch({ type: "buyGemItem", id: item.id });
@@ -106,13 +109,16 @@ function ItemTile({ item }: { item: GemItem }) {
       .then((where) => {
         if (where === "photos") pushToast({ kind: "info", title: "Sticker saved", body: `${item.name} is in your photos, in the mcstickers album.`, image: item.image });
         else if (where === "folder") pushToast({ kind: "info", title: "Sticker saved", body: `${item.name} is in the folder you picked.`, image: item.image });
+        else if (where === "download") pushToast({ kind: "info", title: "Sticker downloaded", body: `${item.name} is in your downloads.`, image: item.image });
       })
       .catch((e: unknown) => pushToast({ kind: "info", title: "Couldn't save", body: e instanceof Error ? e.message : "Something went wrong saving the sticker. Try again." }));
   };
   // Changing the icon can close the app on Android, so it waits: restart now, or it's applied the
   // next time the app is left.
   const [askRestart, setAskRestart] = useState(false);
-  const chosen = equipped ? "default" : item.name;
+  // Picking an icon only ever switches to it. (Tapping the one in use used to switch back to the
+  // original, which is easy to do by accident while the home screen takes a moment to update.)
+  const chosen = original ? "default" : item.name;
   const restartNow = () => {
     setAskRestart(false);
     setAppIcon(iconFromPending(chosen))
@@ -125,7 +131,7 @@ function ItemTile({ item }: { item: GemItem }) {
     pushToast({
       kind: "info",
       title: chosen === "default" ? "Original icon" : "App icon saved",
-      body: chosen === "default" ? "The original icon comes back after you close and reopen the app." : `The ${item.name} icon appears after you close and reopen the app.`,
+      body: `${chosen === "default" ? "The original icon comes back" : `The ${item.name} icon appears`} after you close the app. Your home screen can take a few seconds to update.`,
     });
   };
   const switchIcon = () => setAskRestart(true);
@@ -157,7 +163,7 @@ function ItemTile({ item }: { item: GemItem }) {
                 {item.kind === "sticker" ? (
                   <PixelButton label="Save" tone="success" onPress={save} />
                 ) : (
-                  <PixelButton label={equipped ? "Using" : "Use"} tone={equipped ? "plain" : "success"} onPress={use} />
+                  <PixelButton label={equipped ? "Using" : "Use"} tone={equipped ? "plain" : "success"} disabled={equipped && item.kind === "icon"} onPress={use} />
                 )}
               </View>
             )
@@ -173,7 +179,7 @@ function ItemTile({ item }: { item: GemItem }) {
         <ConfirmDialog
           visible={askRestart}
           title="Change the app icon?"
-          body={`The ${equipped ? "original" : item.name} icon shows after the app restarts. Restart now, or keep playing and it changes next time you open the game.`}
+          body={`The ${original ? "original" : item.name} icon shows after the app restarts (your home screen can take a few seconds to update). Restart now, or keep playing and it changes when you close the game.`}
           cancelLabel="Later"
           confirmLabel="Restart now"
           confirmTone="success"
@@ -218,7 +224,7 @@ export function GemShop() {
             {SECTION_TITLE[kind]}
           </Text>
           <View className="flex-row flex-wrap justify-between gap-y-3">
-            {items
+            {(kind === "icon" && supportsIcons ? [ORIGINAL_ICON, ...items] : items)
               .filter((i) => i.kind === kind)
               .map((i) => (
                 <ItemTile key={i.id} item={i} />

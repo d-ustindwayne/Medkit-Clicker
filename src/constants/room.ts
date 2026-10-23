@@ -30,6 +30,11 @@ export type Room = Scene & {
    * items can't stand inside it. An item dropped on one snaps to the nearest free spot.
    */
   blocked: { wall: Rect[]; floor: Rect[] };
+  /**
+   * The room carried on to the left and right (80x240 art each, made by scripts/room-sides.lua),
+   * shown while decorating when the room is zoomed out, and slid to.
+   */
+  sides: { left: ImageSourcePropType; right: ImageSourcePropType };
 };
 
 /** The rooms are 320x240 (4:3), exported at 1280x960. */
@@ -48,10 +53,12 @@ const measured = (b: { wall: Rect[]; floor: Rect[] }) => {
 export const ROOMS: Room[] = [
   {
     id: "empty", title: "Empty Room", image: require("@/imgs/scenes/room_empty.png"), ...shell, fillBottom: "#e9dcc8", unlock: null, limit: 6, staff: ["11_nurse_teal", "15_male_nurse"],
+    sides: { left: require("@/imgs/scenes/room_empty_left.png"), right: require("@/imgs/scenes/room_empty_right.png") },
     blocked: measured({ wall: [[0.06, 0.22, 0.17, 0.66] /* door */, [0.72, 0.15, 0.93, 0.45] /* window */], floor: [] }),
   },
   {
     id: "reception", title: "Reception", image: require("@/imgs/scenes/hospital_inside.png"), ...shell, fillBottom: "#dfe6ee", unlock: { achievements: 15 }, limit: 4, staff: ["12_nurse_pink", "16_doctor"],
+    sides: { left: require("@/imgs/scenes/room_reception_left.png"), right: require("@/imgs/scenes/room_reception_right.png") },
     blocked: measured({
       wall: [
         [0.05, 0.13, 0.28, 0.21], // RECEPTION sign
@@ -71,14 +78,17 @@ export const ROOMS: Room[] = [
   },
   {
     id: "lab", title: "Lab", image: require("@/imgs/scenes/room_lab.png"), ...shell, fillBottom: "#cfe3ee", unlock: { rebirths: 1 }, limit: 6, staff: ["16_doctor", "14_nurse_lavender"],
+    sides: { left: require("@/imgs/scenes/room_lab_left.png"), right: require("@/imgs/scenes/room_lab_right.png") },
     blocked: measured({ wall: [[0.12, 0.14, 0.29, 0.31] /* LAB board */, [0.33, 0.13, 0.45, 0.36] /* window */, [0.47, 0.36, 0.98, 0.66] /* counter */], floor: [] }),
   },
   {
     id: "pharmacy", title: "Pharmacy", image: require("@/imgs/scenes/room_pharmacy.png"), ...shell, fillBottom: "#efe4cf", unlock: { treated: 10 }, limit: 7, staff: ["13_nurse_navy", "11_nurse_teal"],
+    sides: { left: require("@/imgs/scenes/room_pharmacy_left.png"), right: require("@/imgs/scenes/room_pharmacy_right.png") },
     blocked: measured({ wall: [[0.03, 0.12, 0.35, 0.5] /* shelves */, [0.65, 0.12, 0.97, 0.5] /* shelves */, [0.45, 0.13, 0.56, 0.38] /* PHARMACY sign */], floor: [] }),
   },
   {
     id: "kids", title: "Children's Ward", image: require("@/imgs/scenes/room_kids.png"), ...shell, fillBottom: "#fde7ef", unlock: { achievements: 40 }, limit: 8, staff: ["12_nurse_pink", "15_male_nurse", "14_nurse_lavender"],
+    sides: { left: require("@/imgs/scenes/room_kids_left.png"), right: require("@/imgs/scenes/room_kids_right.png") },
     blocked: measured({ wall: [[0.11, 0.28, 0.66, 0.62] /* rainbow and its clouds */, [0.76, 0.14, 0.97, 0.46] /* window */], floor: [] }),
   },
 ];
@@ -150,23 +160,42 @@ const hitbox = (place: "floor" | "wall", x: number, y: number): Rect =>
   place === "wall" ? [x - 0.04, y - 0.16, x + 0.04, y - 0.03] : [x - 0.04, y - 0.04, x + 0.04, y];
 const overlaps = (a: Rect, b: Rect) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
 
-/** Whether an item may stand at x, y in a room (inside its zone and clear of the room's blocked areas). */
-export const canPlace = (room: Room, place: "floor" | "wall", x: number, y: number) => {
+/**
+ * The space a wall item's sprite takes (48/320 of the width, 0.2 of the room's height), trimmed by
+ * WALL_OVERLAP on each side: two wall items may overlap at their edges, but never enough for one to
+ * hide another.
+ */
+const WALL_OVERLAP = 0.1;
+export const wallBox = (x: number, y: number): Rect => {
+  const w = 0.15 * (1 - 2 * WALL_OVERLAP), h = 0.2 * (1 - 2 * WALL_OVERLAP);
+  return [x - w / 2, y - 0.2 * WALL_OVERLAP - h, x + w / 2, y - 0.2 * WALL_OVERLAP];
+};
+
+/**
+ * Whether an item may stand at x, y in a room: inside its zone, clear of the room's blocked areas
+ * and, for wall items, of the `others` (the other wall items' wallBox).
+ */
+export const canPlace = (room: Room, place: "floor" | "wall", x: number, y: number, others: Rect[] = []) => {
   const zone = ZONES[place];
   if (x < 0.05 || x > 0.95 || y < zone.minY || y > zone.maxY) return false;
   const box = hitbox(place, x, y);
-  return !room.blocked[place].some((r) => overlaps(box, r));
+  if (room.blocked[place].some((r) => overlaps(box, r))) return false;
+  if (place === "wall" && others.length > 0) {
+    const sprite = wallBox(x, y);
+    if (others.some((r) => overlaps(sprite, r))) return false;
+  }
+  return true;
 };
 
-/** The allowed spot nearest to x, y (on screen distance), so a drop on a sign or desk slides just clear of it. */
-export function snapPlacement(room: Room, place: "floor" | "wall", x: number, y: number) {
+/** The allowed spot nearest to x, y (on screen distance), or null when there's none left. */
+export function findSpot(room: Room, place: "floor" | "wall", x: number, y: number, others: Rect[] = []) {
   const zone = ZONES[place];
   const cx = Math.min(0.95, Math.max(0.05, x)), cy = Math.min(zone.maxY, Math.max(zone.minY, y));
-  if (canPlace(room, place, cx, cy)) return { x: cx, y: cy };
-  let best = { x: cx, y: cy }, bestD = Infinity;
+  if (canPlace(room, place, cx, cy, others)) return { x: cx, y: cy };
+  let best: { x: number; y: number } | null = null, bestD = Infinity;
   for (let gx = 0.05; gx <= 0.951; gx += 0.01) {
     for (let gy = zone.minY; gy <= zone.maxY + 0.001; gy += 0.01) {
-      if (!canPlace(room, place, gx, gy)) continue;
+      if (!canPlace(room, place, gx, gy, others)) continue;
       const d = ((gx - cx) * room.aspect) ** 2 + (gy - cy) ** 2;
       if (d < bestD) {
         bestD = d;
@@ -176,6 +205,20 @@ export function snapPlacement(room: Room, place: "floor" | "wall", x: number, y:
   }
   return best;
 }
+
+/** The allowed spot nearest to x, y, so a drop on a sign or desk slides just clear of it. */
+export const snapPlacement = (room: Room, place: "floor" | "wall", x: number, y: number) => {
+  const zone = ZONES[place];
+  return findSpot(room, place, x, y) ?? { x: Math.min(0.95, Math.max(0.05, x)), y: Math.min(zone.maxY, Math.max(zone.minY, y)) };
+};
+
+/** Where `item` would go if dropped at x, y among the room's `placed` items (null: no free spot on the wall). */
+export const spotFor = (room: Room, placed: Placement[], item: RoomItem, x: number, y: number) => {
+  const others = item.place !== "wall" ? [] : placed
+    .filter((p) => p.item !== item.id && ROOM_ITEMS.find((i) => i.id === p.item)?.place === "wall")
+    .map((p) => wallBox(p.x, p.y));
+  return findSpot(room, item.place, x, y, others);
+};
 
 export const unlockHint = (u: Unlock) => {
   if (!u) return "Available from the start";

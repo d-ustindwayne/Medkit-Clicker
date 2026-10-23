@@ -1,5 +1,8 @@
 import { getAppIconName, setAlternateAppIcon, supportsAlternateIcons } from "expo-alternate-app-icons";
 
+/** Whether this phone can change the home-screen icon. */
+export const supportsIcons = supportsAlternateIcons;
+
 /** The alternate app icon in use (a name from app.json), or null for the original. */
 export const appIcon = (): string | null => {
   try {

@@ -1,8 +1,9 @@
 import { memo, useEffect, useMemo } from "react";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 
 import { usePalette } from "@/hooks/use-palette";
+import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 const PIECES = 42;
 const FALL_MS = 2400;
@@ -20,7 +21,7 @@ const seeded = (seed: number) => () => {
 /** A one-shot shower of pixel confetti. Mount it with a fresh key and seed to fire again. */
 export const Confetti = memo(function Confetti({ seed }: { seed: number }) {
   const { width, height } = useWindowDimensions();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   const palette = usePalette();
 
   const pieces = useMemo<Piece[]>(() => {

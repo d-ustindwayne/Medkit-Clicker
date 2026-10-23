@@ -6,7 +6,7 @@ import { gemBalance } from "@/constants/gems";
 import { MEDKIT_IMAGE } from "@/constants/items";
 import { GEM } from "@/constants/rebirth";
 import { useGameSelector } from "@/hooks/use-game";
-import { formatShort, formatWhole } from "@/lib/format";
+import { formatCount, formatShort } from "@/lib/format";
 import { coinBalance } from "@/lib/game";
 
 function Chip({ image, value, label }: { image: number; value: string; label: string }) {
@@ -20,14 +20,16 @@ function Chip({ image, value, label }: { image: number; value: string; label: st
 
 /** The three currencies, stacked at the top-right: patients (medkits), Care Coins and Natal Gems. */
 export function CurrencyBar() {
-  // Medkits are shown in full (not rounded to 1.2K) so every patient counts.
-  const state = useGameSelector((s) => ({ healed: formatWhole(s.healed), coins: coinBalance(s), gems: gemBalance(s) }));
+  // Patients use short units (1.23K, 4.5M, 6.78T) to keep the chip narrow; the text only changes when
+  // the short form does, so the chips don't redraw on every tick. Care Coins and Natal Gems are
+  // counted one by one, so they show the exact amount (1,234).
+  const state = useGameSelector((s) => ({ healed: formatShort(s.healed), coins: coinBalance(s), gems: gemBalance(s) }));
   const coins = state.coins;
   return (
     <View className="gap-1" pointerEvents="none">
       <Chip image={MEDKIT_IMAGE as number} value={state.healed} label={`${state.healed} patients`} />
-      <Chip image={COIN.image as number} value={formatShort(coins)} label={`${coins} ${COIN.name}`} />
-      <Chip image={GEM.image as number} value={formatShort(state.gems)} label={`${state.gems} ${GEM.name}`} />
+      <Chip image={COIN.image as number} value={formatCount(coins)} label={`${coins} ${COIN.name}`} />
+      <Chip image={GEM.image as number} value={formatCount(state.gems)} label={`${state.gems} ${GEM.name}`} />
     </View>
   );
 }

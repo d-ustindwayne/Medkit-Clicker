@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { Image } from "@/components/ui/image";
+import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import type { ImageSourcePropType } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming, type SharedValue } from "react-native-reanimated";
+import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming, type SharedValue } from "react-native-reanimated";
 
 /**
  * A pixel sprite with a few frames, flipping through them on a loop. All frames stay mounted and
@@ -9,10 +10,15 @@ import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, w
  */
 export function AnimatedSprite({ frames, size, frameMs = 220 }: { frames: ImageSourcePropType[]; size: number; frameMs?: number }) {
   const t = useSharedValue(0);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
     if (reduceMotion) return;
+    t.set(0);
     t.set(withRepeat(withTiming(frames.length, { duration: frames.length * frameMs, easing: Easing.linear }), -1, false));
+    return () => {
+      cancelAnimation(t);
+      t.set(0);
+    };
   }, [t, frames.length, frameMs, reduceMotion]);
   return (
     <>

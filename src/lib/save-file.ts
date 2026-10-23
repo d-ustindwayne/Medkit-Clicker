@@ -5,35 +5,25 @@ import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
 
 import { normalizeSave, type GameState } from "@/lib/game";
+import { DEFAULT_SETTINGS, VOLUME_STEPS, type Settings } from "@/lib/storage";
 
 export type SaveFormat = "json" | "csv";
 
 const MIME: Record<SaveFormat, string> = { json: "application/json", csv: "text/csv" };
 
-const toCsv = (state: GameState) => {
-  const rows: [string, string | number][] = [
-    ["healed", state.healed],
-    ["totalHealed", state.totalHealed],
-    ["runHealed", state.runHealed],
-    ["rebirths", state.rebirths],
-    ["rebirthPoints", state.rebirthPoints],
-    ["taps", state.taps],
-    ["playSeconds", state.playSeconds],
-    ["themeSwitches", state.themeSwitches],
-    ["exports", state.exports],
-    ["startedAt", state.startedAt],
-    ["playlistsHeard", state.playlistsHeard.join(";")],
-    ["coinsSpent", state.coinsSpent],
-    ["luckyTaps", state.luckyTaps],
-    ["bonusCoins", state.bonusCoins],
-    ["treated", state.treated],
-    // Nested, so stored as URI-encoded JSON (no commas to break the CSV).
-    ["room", encodeURIComponent(JSON.stringify(state.room))],
-    ...Object.entries(state.boosts).map(([k, v]) => [`boosts.${k}`, v] as [string, number]),
-    ...Object.entries(state.owned).map(([k, v]) => [`owned.${k}`, v] as [string, number]),
-    ...Object.entries(state.achievements).map(([k, v]) => [`achievements.${k}`, v ?? 0] as [string, number]),
-  ];
-  return ["key,value", ...rows.map(([k, v]) => `${k},${v}`)].join("\n");
+/** Everything a save file carries: the game, the settings (look, audio, vibration) and the app icon. */
+export type SaveData = {
+  state: GameState;
+  settings: Partial<Settings> | null;
+  /** The home-screen icon (null for the original); undefined in saves from before icons were saved. */
+  appIcon?: string | null;
+};
+
+/** Every field gets a row; numbers as they are, anything else as URI-encoded JSON (no commas to break the CSV). */
+const toCsv = ({ state, settings, appIcon }: SaveData) => {
+  const cell = (v: unknown) => (typeof v === "number" ? String(v) : encodeURIComponent(JSON.stringify(v)));
+  const rows = [...Object.entries(state), ["settings", settings], ["appIcon", appIcon]].map(([k, v]) => `${k},${cell(v)}`);
+  return ["key,value", ...rows].join("\n");
 };
 
 const fromCsv = (text: string): unknown => {
@@ -42,20 +32,39 @@ const fromCsv = (text: string): unknown => {
     const [key, value] = line.split(",");
     if (!key || value === undefined) continue;
     const [group, sub] = key.split(".");
+    // Older CSV saves had one row per shop item, achievement and boost.
     if (sub && (group === "owned" || group === "achievements" || group === "boosts")) {
       (out[group] as Record<string, number>)[sub] = Number(value);
-    } else if (key === "room") {
-      try {
-        out.room = JSON.parse(decodeURIComponent(value));
-      } catch {
-        // ignore a damaged room row; normalizeSave falls back to an empty room
-      }
-    } else if (key === "playlistsHeard") {
-      out.playlistsHeard = value ? value.split(";") : [];
-    } else {
+    } else if (value !== "" && !Number.isNaN(Number(value))) {
       out[key] = Number(value);
+    } else {
+      try {
+        out[key] = JSON.parse(decodeURIComponent(value));
+      } catch {
+        // Older saves listed playlists as a;b;c. Anything else damaged is dropped; normalizeSave fills defaults.
+        if (key === "playlistsHeard") out.playlistsHeard = value ? value.split(";") : [];
+      }
     }
   }
+  return out;
+};
+
+/** Keeps only settings fields of the right type and range, so a hand-edited file can't break the app. */
+const readSettings = (raw: unknown): Partial<Settings> | null => {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const out: Partial<Settings> = {};
+  for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
+    if (typeof r[key] === typeof DEFAULT_SETTINGS[key]) (out as Record<string, unknown>)[key] = r[key];
+  }
+  if (out.theme !== undefined && out.theme !== "light" && out.theme !== "dark") delete out.theme;
+  // Indexes and volume steps must be whole numbers in range (the background is checked against the
+  // list where it's used, which wraps it).
+  const whole = (v: number | undefined, max = Infinity) => v !== undefined && Number.isInteger(v) && v >= 0 && v <= max;
+  if (out.background !== undefined && !whole(out.background)) delete out.background;
+  if (out.playlist !== undefined && !whole(out.playlist)) delete out.playlist;
+  if (out.musicVolume !== undefined && !whole(out.musicVolume, VOLUME_STEPS)) delete out.musicVolume;
+  if (out.sfxVolume !== undefined && !whole(out.sfxVolume, VOLUME_STEPS)) delete out.sfxVolume;
   return out;
 };
 
@@ -64,30 +73,17 @@ const fromCsv = (text: string): unknown => {
  * Documents is the friendliest default; a subfolder of Download also works.)
  */
 const ANDROID_START_FOLDER = "content://com.android.externalstorage.documents/tree/primary%3ADocuments";
-/** Remembers the folder the player picked so later exports save in one tap. */
-const EXPORT_FOLDER_KEY = "mc/exportFolder/v1";
-
-async function writeToRememberedFolder(name: string, mime: string, content: string) {
-  const uri = await AsyncStorage.getItem(EXPORT_FOLDER_KEY);
-  if (!uri) return false;
-  try {
-    new Directory(uri).createFile(name, mime).write(content);
-    return true;
-  } catch (e) {
-    console.warn("[export] remembered folder failed", uri, e);
-    // Permission revoked or folder deleted: forget it and ask again.
-    await AsyncStorage.removeItem(EXPORT_FOLDER_KEY);
-    return false;
-  }
-}
+/** Older builds remembered the export folder; every export now asks, so the old entry is cleared. */
+const OLD_EXPORT_FOLDER_KEY = "mc/exportFolder/v1";
 
 /**
- * Saves the game to a file. Web downloads it; Android asks for a folder (Downloads by default) and
+ * Saves the game to a file. Web downloads it; Android asks for a folder every time (Documents by default) and
  * writes it there; iOS has no Downloads folder, so it opens the share sheet's "Save to Files".
  * Resolves to false if the user backed out.
  */
-export async function exportSave(state: GameState, format: SaveFormat): Promise<boolean> {
-  const content = format === "json" ? JSON.stringify(state, null, 2) : toCsv(state);
+export async function exportSave(data: SaveData, format: SaveFormat): Promise<boolean> {
+  // JSON keeps the game fields at the top level, as older saves had them.
+  const content = format === "json" ? JSON.stringify({ ...data.state, settings: data.settings, appIcon: data.appIcon }, null, 2) : toCsv(data);
   const now = new Date();
   const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const name = `medkit-clicker-save-${day}.${format}`;
@@ -103,7 +99,7 @@ export async function exportSave(state: GameState, format: SaveFormat): Promise<
   }
 
   if (Platform.OS === "android") {
-    if (await writeToRememberedFolder(name, MIME[format], content)) return true;
+    AsyncStorage.removeItem(OLD_EXPORT_FOLDER_KEY).catch(() => {});
     let folder: Directory;
     try {
       folder = await Directory.pickDirectoryAsync(ANDROID_START_FOLDER);
@@ -111,7 +107,6 @@ export async function exportSave(state: GameState, format: SaveFormat): Promise<
       return false; // picker dismissed
     }
     folder.createFile(name, MIME[format]).write(content);
-    await AsyncStorage.setItem(EXPORT_FOLDER_KEY, folder.uri);
     return true;
   }
 
@@ -140,7 +135,7 @@ async function pickSaveText(): Promise<{ name: string; text: string } | null> {
 }
 
 /** Opens a file picker; resolves to the save inside, or null if cancelled. Throws on unreadable files. */
-export async function importSave(): Promise<GameState | null> {
+export async function importSave(): Promise<SaveData | null> {
   const picked = await pickSaveText();
   if (!picked) return null;
   const isCsv = picked.name.toLowerCase().endsWith(".csv") || picked.text.startsWith("key,value");
@@ -150,7 +145,11 @@ export async function importSave(): Promise<GameState | null> {
   } catch {
     raw = null;
   }
-  const state = normalizeSave(raw);
+  // The settings and icon ride along in the file but aren't part of the game state.
+  const { settings: _settings, appIcon: _icon, ...game } = (raw ?? {}) as Record<string, unknown>;
+  const state = normalizeSave(raw && typeof raw === "object" ? game : raw);
   if (!state) throw new Error("That file isn't a Medkit Clicker save. Choose a .json or .csv file exported from Settings.");
-  return state;
+  const extra = raw as { settings?: unknown; appIcon?: unknown };
+  // Older saves have no settings or icon; those stay as they are on this phone.
+  return { state, settings: readSettings(extra.settings), appIcon: typeof extra.appIcon === "string" || extra.appIcon === null ? extra.appIcon : undefined };
 }

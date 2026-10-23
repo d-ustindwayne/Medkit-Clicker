@@ -38,15 +38,21 @@ export const BOOSTS: Boost[] = [
   { id: "time_warp", name: "Time Warp", description: "Instantly heal 4 hours' worth of patients.", cost: 25, image: require("@/imgs/boosts/time_warp.png"), effect: { kind: "instant", rateSeconds: 14_400 } },
 ];
 
-/** Product of the active timed boosts' multipliers for one stat. `boosts` maps boost id -> end time (ms). */
-export function boostMultiplier(boosts: Record<string, number> | undefined, stat: "tap" | "rate" | "price", now = Date.now()) {
-  if (!boosts) return 1;
-  let m = 1;
+/**
+ * The active timed boosts' multiplier for one stat. `boosts` maps boost id -> end time (ms); `extra`
+ * adds other multipliers to the mix (the Lucky Stethoscope's taps). Tap and per-second boosts add up
+ * (x2 and x3 make x5; x7, x3 and x2 make x12, not x42), so stacking several, which has no limit,
+ * doesn't run away; price discounts multiply.
+ */
+export function boostMultiplier(boosts: Record<string, number> | undefined, stat: "tap" | "rate" | "price", now = Date.now(), extra: number[] = []) {
+  const ms = [...extra];
   for (const b of BOOSTS) {
-    if (b.effect.kind !== "timed" || (boosts[b.id] ?? 0) <= now) continue;
-    m *= b.effect[stat] ?? 1;
+    if (!boosts || b.effect.kind !== "timed" || (boosts[b.id] ?? 0) <= now) continue;
+    const m = b.effect[stat];
+    if (m !== undefined) ms.push(m);
   }
-  return m;
+  if (ms.length === 0) return 1;
+  return stat === "price" ? ms.reduce((a, m) => a * m, 1) : ms.reduce((a, m) => a + m, 0);
 }
 
 export const LUCKY_MULT = 10;

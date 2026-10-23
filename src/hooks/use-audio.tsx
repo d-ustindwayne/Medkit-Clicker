@@ -7,6 +7,7 @@ import { sectionOpen } from "@/constants/rewards";
 import { useGameActions, useSettings } from "@/hooks/use-game";
 import { useNow } from "@/hooks/use-now";
 import { OFFLINE_MESSAGE, cloudEnabled, downloadMusic, ensureToken, hasPendingCode, isOffline, loadCachedPlaylists, wakeServer, type CachedPlaylist } from "@/lib/cloud";
+import { initSfx, playSfxFast, setSfxVolume } from "@/lib/sfx";
 import { VOLUME_STEPS } from "@/lib/storage";
 
 type AudioControls = {
@@ -57,6 +58,8 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const [unlocked, setUnlocked] = useState(Platform.OS !== "web");
   const [paused, setPaused] = useState(false);
 
+  // Sound effects play through the fast engine in lib/sfx on phones; these players are the web
+  // version and the fallback while the engine's sounds are still loading.
   const click = useAudioPlayer(SFX.click);
   const medkit = useAudioPlayer(SFX.medkit);
   const buy = useAudioPlayer(SFX.buy);
@@ -64,6 +67,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const tapHearts = useAudioPlayer(SFX.tap_hearts);
   const tapSparkles = useAudioPlayer(SFX.tap_sparkles);
   const tapBubbles = useAudioPlayer(SFX.tap_bubbles);
+  useEffect(initSfx, []);
 
   // The music library: the game's soundtrack, then the playlists downloaded after Jasmine's code.
   const [cached, setCached] = useState<CachedPlaylist[]>([]);
@@ -136,15 +140,23 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   }, [music, musicOn, settings.musicVolume, playlist, dispatch]);
 
   const sfxVolume = settings.sfxVolume / VOLUME_STEPS;
+  const players = useMemo<Record<SfxName, AudioPlayer>>(
+    () => ({ click, medkit, buy, invalid, tap_hearts: tapHearts, tap_sparkles: tapSparkles, tap_bubbles: tapBubbles }),
+    [click, medkit, buy, invalid, tapHearts, tapSparkles, tapBubbles],
+  );
+  // Volume is set when it changes, not on every sound (each set is a call into native code).
+  useEffect(() => {
+    setSfxVolume(sfxVolume);
+    for (const p of Object.values(players)) setVolume(p, sfxVolume);
+  }, [players, sfxVolume]);
   const playSfx = useCallback(
     (name: SfxName) => {
-      if (sfxVolume <= 0) return;
-      const player = { click, medkit, buy, invalid, tap_hearts: tapHearts, tap_sparkles: tapSparkles, tap_bubbles: tapBubbles }[name];
-      setVolume(player, sfxVolume);
+      if (sfxVolume <= 0 || playSfxFast(name)) return;
+      const player = players[name];
       player.seekTo(0).catch(() => {});
       player.play();
     },
-    [click, medkit, buy, invalid, tapHearts, tapSparkles, tapBubbles, sfxVolume],
+    [players, sfxVolume],
   );
 
   const unlock = useCallback(() => setUnlocked(true), []);

@@ -17,6 +17,12 @@ const FOCUS_TICK_MS = 1000;
 /** Achievements unlocked in the first minute after launch wait, so their toasts aren't missed on start-up. */
 const ACHIEVEMENT_QUIET_MS = 60_000;
 const AUTOSAVE_MS = 10_000;
+/**
+ * Medkit taps are queued and applied together at most this often, so tapping as fast as you can
+ * runs the reducer, the achievement checks and every subscribed component ~10 times a second
+ * instead of once per tap. The tap's own feedback (sound, number, bounce) is still instant.
+ */
+const TAP_FLUSH_MS = 100;
 /** Gaps longer than this (app closed, backgrounded, tab hidden) count as time away. */
 const AWAY_THRESHOLD_S = 5;
 
@@ -24,6 +30,8 @@ export type Toast = { id: number; title: string; body: string; kind: "achievemen
 
 type GameActions = {
   dispatch: (action: GameAction) => void;
+  /** Medkit taps (batched, see TAP_FLUSH_MS). */
+  tap: (count?: number) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   setTheme: (theme: ThemeName) => void;
   replaceSave: (state: GameState) => void;
@@ -47,7 +55,25 @@ const ReadyContext = createContext(false);
 const ActionsContext = createContext<GameActions | null>(null);
 
 export function GameProvider({ children, onReady }: { children: ReactNode; onReady?: () => void }) {
-  const [state, dispatch] = useReducer(gameReducer, undefined, newGame);
+  const [state, rawDispatch] = useReducer(gameReducer, undefined, newGame);
+  // Queued taps go in before any other action, so a purchase right after tapping sees them.
+  const pendingTaps = useRef(0);
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [flushTaps] = useState(() => () => {
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+    tapTimer.current = null;
+    const count = pendingTaps.current;
+    pendingTaps.current = 0;
+    if (count > 0) rawDispatch({ type: "tap", count });
+  });
+  const [dispatch] = useState(() => (action: GameAction) => {
+    flushTaps();
+    rawDispatch(action);
+  });
+  const [tap] = useState(() => (count = 1) => {
+    pendingTaps.current += count;
+    tapTimer.current ??= setTimeout(flushTaps, TAP_FLUSH_MS);
+  });
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [ready, setReady] = useState(false);
@@ -80,7 +106,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
         body: `Your team healed ${formatCount(earned)} patients in ${formatDuration(away)}.`,
       });
     },
-    [pushToast],
+    [pushToast, dispatch],
   );
 
   // Load the save, then credit the time the app was closed.
@@ -104,7 +130,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [dispatch]);
 
   // The store: components using useGameSelector re-render only when their slice changes.
   const listeners = useRef(new Set<() => void>());
@@ -145,7 +171,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       for (const p of s.patients) if (now - p.arrivedAt > PATIENT_WAIT_MS) dispatch({ type: "patientLeaves", arrivedAt: p.arrivedAt });
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [ready, grantAway, pushToast]);
+  }, [ready, grantAway, pushToast, dispatch]);
 
   // Autosave on a timer and whenever the app leaves the foreground.
   useEffect(() => {
@@ -191,6 +217,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       });
     return {
       dispatch,
+      tap,
       updateSettings,
       setTheme: (theme) => {
         updateSettings({ theme });
@@ -214,7 +241,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
         focus.current = on;
       },
     };
-  }, [pushToast, dismissToast, grantAway]);
+  }, [pushToast, dismissToast, grantAway, dispatch, tap]);
 
   return (
     <ActionsContext value={actions}>
@@ -253,15 +280,20 @@ export function useGameSelector<T>(select: (s: GameState) => T): T {
   if (!store) throw new Error("useGameSelector must be used inside GameProvider");
   const [value, setValue] = useState(() => select(store.get()));
   const latest = useRef(select);
+  // The value last handed to React. Comparing against it here, not in a state updater, means an
+  // unchanged slice never schedules a render at all (dozens of components listen, many times a second).
+  const shown = useRef(value);
   useEffect(() => {
     latest.current = select;
+    shown.current = value;
   });
   useEffect(() => {
-    const check = () =>
-      setValue((prev) => {
-        const next = latest.current(store.get());
-        return shallowEqual(prev, next) ? prev : next;
-      });
+    const check = () => {
+      const next = latest.current(store.get());
+      if (shallowEqual(shown.current, next)) return;
+      shown.current = next;
+      setValue(next);
+    };
     check();
     return store.subscribe(check);
   }, [store]);

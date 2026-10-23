@@ -27,33 +27,41 @@ const tierOf = (n: number) => {
   return { tier, scaled: n / 10 ** (tier * 3) };
 };
 
-/** 123,456 below a million, then "1.234 million", "56.78 billion"... up to uncentillion. */
+/** Rounds to at most two decimals, dropping trailing zeros: 3.6999999 -> "3.7", 2.005 -> "2.01". */
+export const formatDecimal = (n: number) => trim((Math.round(n * 100) / 100).toFixed(2));
+
+/** A multiplier such as x3.7, rounded to two decimals. */
+export const formatMult = (n: number) => `x${formatDecimal(n)}`;
+
+/**
+ * Scaled to its unit with two decimals, rounded down so it never shows more than there is:
+ * 1,492 is 1.49K (not 1.5K) and 1,683,525 is 1.68M.
+ */
+const scaleTo = (n: number) => {
+  const { tier, scaled } = tierOf(n);
+  // The small nudge keeps float error (2.3 stored as 2.2999...) from dropping a whole hundredth.
+  return { tier, value: trim((Math.floor(scaled * 100 + 1e-6) / 100).toFixed(2)) };
+};
+
+/** 123,456 below a million, then "1.23 million", "56.78 billion"... up to uncentillion. */
 export const formatCount = (n: number) => {
   if (!Number.isFinite(n)) return "∞";
   if (n < 1e6) return withCommas(n);
-  const { tier, scaled } = tierOf(n);
+  const { tier, value } = scaleTo(n);
   const name = LARGE_UNITS[tier - 2];
-  return name ? `${trim(scaled.toFixed(3))} ${name}` : scientific(n);
+  return name ? `${value} ${name}` : scientific(n);
 };
 
-/** The exact whole number with commas (1,234,567,890), switching to formatCount only past a quadrillion. */
-export const formatWhole = (n: number) => (n < 1e15 ? withCommas(n) : formatCount(n));
+/** Like formatCount, but keeps up to two decimals below 1,000, for rates such as 0.3/s or 12.45/s. */
+export const formatRate = (n: number) => (n < 1_000 ? formatDecimal(n) : formatCount(n));
 
-/** Like formatCount, but keeps one decimal for small rates such as 0.3/s. */
-export const formatRate = (n: number) => (n < 10 ? trim(n.toFixed(1)) : formatCount(n));
-
-/** Short form for tight spaces: 1.2K, 3.4M, 5.6B, 7.8Qa. */
+/** Short form for tight spaces: 1.23K, 3.4M, 5.67B, 7.8T, 9.1Qa (two decimals, rounded down). */
 export const formatShort = (n: number) => {
   if (!Number.isFinite(n)) return "∞";
-  if (n < 1_000) return n < 10 ? formatRate(n) : withCommas(n);
-  let { tier, scaled } = tierOf(n);
-  // 999,999 rounds to "1000.0K"; carry it into the next unit instead.
-  if (Number(scaled.toFixed(1)) >= 1000) {
-    tier += 1;
-    scaled /= 1000;
-  }
+  if (n < 1_000) return formatDecimal(n);
+  const { tier, value } = scaleTo(n);
   const unit = SHORT_UNITS[tier - 1];
-  return unit ? `${trim(scaled.toFixed(1))}${unit}` : scientific(n);
+  return unit ? `${value}${unit}` : scientific(n);
 };
 
 export const formatDuration = (seconds: number) => {

@@ -1,17 +1,23 @@
+import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { useEffect } from "react";
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withTiming } from "react-native-reanimated";
+import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from "react-native-reanimated";
 
 const SWEEP_MS = 700;
 const PAUSE_MS = 2600;
 
 /** A light band that sweeps across its parent now and then. Parent needs overflow-hidden. */
 export function Shine() {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   const x = useSharedValue(0);
 
   useEffect(() => {
     if (reduceMotion) return;
+    x.set(0);
     x.set(withRepeat(withDelay(PAUSE_MS, withTiming(1, { duration: SWEEP_MS, easing: Easing.inOut(Easing.quad) })), -1, false));
+    return () => {
+      cancelAnimation(x);
+      x.set(0);
+    };
   }, [x, reduceMotion]);
 
   const style = useAnimatedStyle(() => ({

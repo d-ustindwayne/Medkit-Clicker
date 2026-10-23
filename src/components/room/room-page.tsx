@@ -1,24 +1,34 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { Pressable, ScrollView, Text, View, type GestureResponderEvent, type ImageSourcePropType } from "react-native";
-import Animated, { Easing, type SharedValue, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
+import Animated, { cancelAnimation, Easing, FadeIn, FadeInDown, FadeOut, SlideInDown, SlideOutDown, type SharedValue, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 
 import { ScenePage } from "@/components/scene-page";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { AnimatedSprite } from "@/components/ui/animated-sprite";
 import { PixelIcon } from "@/components/ui/pixel-icon";
 import { WardPatient } from "@/components/ward/ward-patient";
-import { CHARACTER_PX, DRAG_DEPTH, ITEM_PX, ROOMS, depth, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, unlockHint, type Placement, type RoomItem } from "@/constants/room";
+import { CHARACTER_PX, DRAG_DEPTH, ITEM_PX, ROOMS, depth, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, spotFor, unlockHint, type Placement, type RoomItem } from "@/constants/room";
 import { STAFF_FRAMES, WALK_FRAME_MS, WALK_SEQUENCE } from "@/constants/staff";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
+import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 const ART_W = 320;
 /** The decorate button: a pencil (src/media/photos/sprites/misc/decorate.aseprite). */
 const DECORATE_ICON = require("@/imgs/misc/decorate.png");
 /** Room buttons and the item tray draw above every placed item (DRAG_DEPTH included). */
 const CONTROLS_DEPTH = DRAG_DEPTH + 10;
+/** Holding a tray tile this long picks it up, so it can be dragged out in any direction. */
+const HOLD_MS = 220;
+/** Decorating: the top bar fades in and the item tray rises from the bottom (and back on Done). */
+const BAR_IN = FadeIn.duration(320);
+const BAR_OUT = FadeOut.duration(220);
+const TRAY_IN = SlideInDown.duration(420).easing(Easing.out(Easing.cubic));
+const TRAY_OUT = SlideOutDown.duration(280).easing(Easing.in(Easing.cubic));
+/** The first tiles rise one after another behind the tray; the rest are off screen anyway. */
+const TILE_STAGGER = 10;
 type Box = { x: number; y: number; w: number; h: number };
 
 /** One frame of a walk cycle: visible only on its steps (animated on the UI thread, no re-renders). */
@@ -33,15 +43,21 @@ function WalkFrame({ step, index, image, size }: { step: SharedValue<number>; in
 
 /** One staff member pacing the floor with a 3-frame walk cycle. */
 const Walker = memo(function Walker({ id, width, height, lane }: { id: string; width: number; height: number; lane: number }) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   const size = width * (CHARACTER_PX / ART_W);
   const x = useSharedValue(0);
   const step = useSharedValue(0);
   useEffect(() => {
     if (reduceMotion) return;
     // Each lane walks a different stretch at a different pace so they don't march in step.
+    x.set(0);
+    step.set(0);
     x.set(withRepeat(withTiming(1, { duration: 9000 + lane * 2600, easing: Easing.inOut(Easing.quad) }), -1, true));
     step.set(withRepeat(withTiming(WALK_SEQUENCE.length, { duration: WALK_SEQUENCE.length * WALK_FRAME_MS, easing: Easing.linear }), -1, false));
+    return () => {
+      cancelAnimation(x);
+      cancelAnimation(step);
+    };
   }, [x, step, lane, reduceMotion]);
   const span = width - size * 1.2;
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: (lane % 2 ? 1 - x.get() : x.get()) * span }] }));
@@ -63,34 +79,69 @@ function Staff({ ids, width, height }: { ids: string[]; width: number; height: n
   return ids.map((s, i) => <Walker key={s} id={s} width={width} height={height} lane={i} />);
 }
 
-/** A placed item; draggable (and removable) in edit mode. */
+/**
+ * A placed item; draggable (and removable) in edit mode. Its position lives in animation values, so
+ * a drag follows the finger without re-rendering, and a drop hands over to the new spot in the
+ * same frame (no jump back to the old one first).
+ */
 function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
   p: Placement; item: RoomItem; width: number; height: number; editing: boolean;
-  onMove: (x: number, y: number) => void; onRemove: () => void;
+  /** Where the item ends up if dropped at x, y (fractions of the room), or null if it can't go there. */
+  onMove: (x: number, y: number) => { x: number; y: number } | null; onRemove: () => void;
 }) {
   const size = width * (ITEM_PX / ART_W) * 1.5;
-  const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
+  const left = p.x * width - size / 2;
+  const top = p.y * height - size;
+  const baseX = useSharedValue(left);
+  const baseY = useSharedValue(top);
+  const dx = useSharedValue(0);
+  const dy = useSharedValue(0);
+  const [dragging, setDragging] = useState(false);
   const start = useRef<{ x: number; y: number } | null>(null);
   const last = useRef<{ x: number; y: number } | null>(null);
+  // The saved spot changed (dropped, snapped, or the room resized): move there and clear the drag.
+  useLayoutEffect(() => {
+    baseX.set(left);
+    baseY.set(top);
+    dx.set(0);
+    dy.set(0);
+  }, [left, top, baseX, baseY, dx, dy]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateX: baseX.get() + dx.get() }, { translateY: baseY.get() + dy.get() }] }));
   const finish = (x: number, y: number) => {
     const s0 = start.current;
     start.current = null;
     last.current = null;
-    setDrag(null);
-    if (s0) onMove(p.x + (x - s0.x) / width, p.y + (y - s0.y) / height);
+    setDragging(false);
+    if (!s0) return;
+    const spot = onMove(p.x + (x - s0.x) / width, p.y + (y - s0.y) / height);
+    if (!spot || (spot.x === p.x && spot.y === p.y)) {
+      // Not moved (or it can't go there): glide back.
+      dx.set(withTiming(0, { duration: 160 }));
+      dy.set(withTiming(0, { duration: 160 }));
+      return;
+    }
+    // Sit exactly on the snapped spot until the saved position catches up (then the layout effect
+    // swaps the offset for the new base without anything visible changing).
+    dx.set(spot.x * width - size / 2 - left);
+    dy.set(spot.y * height - size - top);
   };
   // View touch-responder props: refs are only read inside these event handlers.
   const dragHandlers = {
     onStartShouldSetResponder: () => true,
     onMoveShouldSetResponder: () => true,
     onResponderTerminationRequest: () => false,
+    // Returning true keeps the room from sliding while an item is dragged.
     onResponderGrant: (e: GestureResponderEvent) => {
       start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+      setDragging(true);
+      return true;
     },
     onResponderMove: (e: GestureResponderEvent) => {
-      if (!start.current) return;
+      const s0 = start.current;
+      if (!s0) return;
       last.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
-      setDrag({ dx: e.nativeEvent.pageX - start.current.x, dy: e.nativeEvent.pageY - start.current.y });
+      dx.set(e.nativeEvent.pageX - s0.x);
+      dy.set(e.nativeEvent.pageY - s0.y);
     },
     onResponderRelease: (e: GestureResponderEvent) => finish(e.nativeEvent.pageX, e.nativeEvent.pageY),
     // Taken away mid-drag: still drop it where the finger last was.
@@ -99,17 +150,17 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
       if (l) finish(l.x, l.y);
       else {
         start.current = null;
-        setDrag(null);
+        setDragging(false);
+        dx.set(0);
+        dy.set(0);
       }
     },
   };
-  const left = p.x * width - size / 2 + (drag?.dx ?? 0);
-  const top = p.y * height - size + (drag?.dy ?? 0);
   return (
-    <View
+    <Animated.View
       {...(editing ? dragHandlers : {})}
       accessibilityLabel={item.name}
-      style={{ position: "absolute", left, top, width: size, height: size, zIndex: drag ? DRAG_DEPTH : depth(p.y) }}
+      style={[{ position: "absolute", left: 0, top: 0, width: size, height: size, zIndex: dragging ? DRAG_DEPTH : depth(p.y) }, style]}
     >
       {item.frames ? <AnimatedSprite frames={item.frames} size={size} /> : <Image source={item.image} style={{ width: size, height: size }} contentFit="contain" />}
       {editing && (
@@ -120,7 +171,7 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
           </Pressable>
         </>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -133,7 +184,15 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
   const haptic = useHaptics();
   const room = ROOMS.find((r) => r.id === state.room.current) ?? ROOMS[0];
   const placed = state.room.placed[room.id] ?? [];
-  const height = width / room.aspect;
+  // While decorating, the room shrinks (centred) to fit between the top bar and the item tray, so
+  // the whole floor stays in view: an item placed low down is never hidden behind the tray.
+  const [box, setBox] = useState({ root: 0, bar: 0, tray: 0 });
+  const measured = (key: keyof typeof box) => (h: number) => setBox((b) => (b[key] === h ? b : { ...b, [key]: h }));
+  const roomW = editing && box.root ? Math.min(width, Math.max(width * 0.5, (box.root - box.bar - box.tray) * room.aspect)) : width;
+  const height = roomW / room.aspect;
+  // The room and its sides (a quarter of its width each), at least as wide as the page.
+  const stripW = Math.max(width, roomW * 1.5);
+  const panRef = useRef<ScrollView>(null);
   const rate = roomBonus(state.room, "rate"), tap = roomBonus(state.room, "tap");
 
   const cycleRoom = (delta: number) => {
@@ -163,12 +222,20 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
     // Spread new items out so they don't all land in one spot.
     const x = 0.15 + ((placed.length * 0.37) % 0.7);
     const y = item.place === "floor" ? ZONES.floor.maxY - 0.03 : (ZONES.wall.minY + ZONES.wall.maxY) / 2 + 0.06;
+    if (!spotFor(room, placed, item, x, y)) return wallFull(item);
     dispatch({ type: "placeItem", room: room.id, item: item.id, x, y });
     haptic.buy();
     playSfx("buy");
   };
 
-  const ghostSize = width * (ITEM_PX / ART_W) * 1.5;
+  /** Wall items can't hide each other, so a crowded wall can run out of space. */
+  const wallFull = (item: RoomItem) => {
+    haptic.denied();
+    playSfx("invalid");
+    pushToast({ kind: "info", title: "No space on the wall", body: `Move or put away a wall item to make room for the ${item.name}.`, image: item.image });
+  };
+
+  const ghostSize = roomW * (ITEM_PX / ART_W) * 1.5;
   // Drag-and-drop from the tray: drag a tile upward and a ghost follows the finger; drop it on the room.
   const rootRef = useRef<View>(null);
   const sceneRef = useRef<View>(null);
@@ -179,6 +246,8 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
   const [ghost, setGhost] = useState<{ item: RoomItem; left: number; top: number } | null>(null);
   /** A tile is being dragged: the tray stops scrolling so it doesn't slide along with the finger. */
   const [dragging, setDragging] = useState(false);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const held = useRef(false);
   const measure = () => {
     rootRef.current?.measureInWindow((x, y, w, h) => {
       const root = { x, y, w, h };
@@ -191,17 +260,29 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
     onTouchStart: (e: GestureResponderEvent) => {
       touch.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
       measure();
+      // Holding a tile still for a moment picks it up, whichever way it's then dragged.
+      if (holdTimer.current) clearTimeout(holdTimer.current);
+      held.current = false;
+      holdTimer.current = setTimeout(() => {
+        held.current = true;
+      }, HOLD_MS);
     },
-    // Only a mostly-upward drag picks the tile up; sideways drags scroll the tray.
+    // A held tile, or a mostly-upward drag, picks the tile up; quick sideways swipes scroll the tray.
     onMoveShouldSetResponderCapture: (e: GestureResponderEvent) => {
       const t = touch.current;
       if (!t) return false;
       const dx = e.nativeEvent.pageX - t.x, dy = e.nativeEvent.pageY - t.y;
-      const pick = dy < -10 && Math.abs(dy) > Math.abs(dx) * 0.8;
+      const pick = held.current || (dy < -6 && Math.abs(dy) > Math.abs(dx) * 0.6);
+      if (!pick && Math.abs(dx) > 8 && holdTimer.current) clearTimeout(holdTimer.current); // it's a scroll
       if (pick) setDragging(true);
       return pick;
     },
-    onResponderGrant: () => setDragging(true),
+    onStartShouldSetResponderCapture: () => held.current,
+    // Returning true keeps the tray from scrolling away with the dragged tile.
+    onResponderGrant: () => {
+      setDragging(true);
+      return true;
+    },
     onResponderTerminationRequest: () => false,
     onResponderMove: (e: GestureResponderEvent) => {
       const root = boxes.current?.root;
@@ -215,10 +296,18 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
       if (l) drop(item, l.x, l.y);
       else endDrag();
     },
-    onTouchEnd: () => setDragging(false),
-    onTouchCancel: () => setDragging(false),
+    onTouchEnd: () => letGo(),
+    onTouchCancel: () => letGo(),
   });
+  /** The finger lifted: a tap still places the item (the tile's own onPress). */
+  const letGo = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    held.current = false;
+    setDragging(false);
+  };
   const endDrag = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    held.current = false;
     setGhost(null);
     setDragging(false);
     touch.current = null;
@@ -235,6 +324,7 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
     // Items stand on their feet, so the drop point is the bottom of the item.
     const fx = Math.min(0.95, Math.max(0.05, (pageX - b.x) / b.w));
     const fy = Math.min(1, Math.max(0, (pageY - b.y) / b.h + 0.045));
+    if (!spotFor(room, placed, item, fx, fy)) return wallFull(item);
     dispatch({ type: "placeItem", room: room.id, item: item.id, x: fx, y: fy });
     haptic.buy();
     playSfx("buy");
@@ -258,10 +348,11 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
     </HardShadow>
   );
   return (
-    <View ref={rootRef} className="flex-1">
+    <View ref={rootRef} className="flex-1" onLayout={(e) => measured("root")(e.nativeEvent.layout.height)}>
       {/* Decorating: the room switcher and Done button sit in a row above the room, never over it. */}
       {editing && (
-        <View className="flex-row items-center justify-between gap-2 px-3 pb-2" style={{ zIndex: CONTROLS_DEPTH }}>
+        <Animated.View entering={BAR_IN} exiting={BAR_OUT} style={{ zIndex: CONTROLS_DEPTH }} onLayout={(e) => measured("bar")(e.nativeEvent.layout.height)}>
+        <View className="flex-row items-center justify-between gap-2 px-3 pb-2">
           <View className="flex-1 flex-row items-center self-stretch border-2 border-outline bg-surface">
             <Pressable accessibilityRole="button" accessibilityLabel="Previous room" onPress={() => cycleRoom(-1)} className="h-9 w-8 items-center justify-center">
               <PixelIcon name="left" size={12} />
@@ -278,29 +369,75 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
           </View>
           {toggle}
         </View>
+        </Animated.View>
       )}
 
-      {/* While decorating, the room sits at the top so the item tray fits in the space below it. */}
-      <ScenePage scene={editing ? { ...room, anchor: 0 } : room} width={width} contentRef={sceneRef}>
-        {placedSorted.map((p) => {
-          const item = ROOM_ITEMS.find((i) => i.id === p.item);
-          if (!item) return null;
-          return (
-            <PlacedItem
-              key={p.item}
-              p={p}
-              item={item}
-              width={width}
-              height={height}
-              editing={editing}
-              onMove={(x, y) => dispatch({ type: "placeItem", room: room.id, item: p.item, x, y })}
-              onRemove={() => dispatch({ type: "removeItem", room: room.id, item: p.item })}
-            />
-          );
-        })}
-        {!editing && <Staff ids={room.staff} width={width} height={height} />}
-        {!editing && <WardPatient width={width} height={height} />}
-      </ScenePage>
+      {/* While decorating, the room sits at the top so the item tray fits in the space below it, and
+          its side art carries on left and right: slide to see it (it starts centred on the room). */}
+      {editing ? (
+        <ScrollView
+          ref={panRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={!dragging}
+          contentContainerStyle={{ width: stripW }}
+          onContentSizeChange={(w) => panRef.current?.scrollTo({ x: Math.max(0, (w - width) / 2), animated: false })}
+        >
+          <View style={{ width: stripW }}>
+          <ScenePage scene={editing ? { ...room, anchor: 0 } : room} width={roomW} contentRef={sceneRef} sides={editing ? room.sides : undefined}>
+            {placedSorted.map((p) => {
+              const item = ROOM_ITEMS.find((i) => i.id === p.item);
+              if (!item) return null;
+              return (
+                <PlacedItem
+                  key={p.item}
+                  p={p}
+                  item={item}
+                  width={roomW}
+                  height={height}
+                  editing={editing}
+                  onMove={(x, y) => {
+                    const spot = spotFor(room, placed, item, x, y);
+                    if (spot) dispatch({ type: "placeItem", room: room.id, item: p.item, x, y });
+                    else wallFull(item);
+                    return spot;
+                  }}
+                  onRemove={() => dispatch({ type: "removeItem", room: room.id, item: p.item })}
+                />
+              );
+            })}
+            {!editing && <Staff ids={room.staff} width={width} height={height} />}
+            {!editing && <WardPatient width={width} height={height} />}
+          </ScenePage>
+          </View>
+        </ScrollView>
+      ) : (
+        <ScenePage scene={editing ? { ...room, anchor: 0 } : room} width={roomW} contentRef={sceneRef} sides={editing ? room.sides : undefined}>
+          {placedSorted.map((p) => {
+            const item = ROOM_ITEMS.find((i) => i.id === p.item);
+            if (!item) return null;
+            return (
+              <PlacedItem
+                key={p.item}
+                p={p}
+                item={item}
+                width={roomW}
+                height={height}
+                editing={editing}
+                onMove={(x, y) => {
+                  const spot = spotFor(room, placed, item, x, y);
+                  if (spot) dispatch({ type: "placeItem", room: room.id, item: p.item, x, y });
+                  else wallFull(item);
+                  return spot;
+                }}
+                onRemove={() => dispatch({ type: "removeItem", room: room.id, item: p.item })}
+              />
+            );
+          })}
+          {!editing && <Staff ids={room.staff} width={width} height={height} />}
+          {!editing && <WardPatient width={width} height={height} />}
+        </ScenePage>
+      )}
 
       {/* Decorate button, drawn above everything in the room. */}
       {!editing && !hideControls && (
@@ -311,15 +448,16 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
 
       {/* Item tray: a swipe row under the room. Drag a tile up into the room, or tap it. */}
       {editing && (
-        <View className="border-t-2 border-outline bg-surface py-1.5" style={{ zIndex: CONTROLS_DEPTH }} accessibilityHint={`Drag placed items to move them. Bonuses are capped at +${Math.round(ROOM_BONUS_CAP * 100)}% each.`}>
+        <Animated.View entering={TRAY_IN} exiting={TRAY_OUT} style={{ zIndex: CONTROLS_DEPTH }} onLayout={(e) => measured("tray")(e.nativeEvent.layout.height)}>
+        <View className="border-t-2 border-outline bg-surface py-1.5" accessibilityHint={`Drag placed items to move them. Bonuses are capped at +${Math.round(ROOM_BONUS_CAP * 100)}% each.`}>
           <ScrollView horizontal scrollEnabled={!dragging} showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-3">
-            {ROOM_ITEMS.map((item) => {
+            {ROOM_ITEMS.map((item, i) => {
               const open = isUnlocked(item.unlock, state);
               const here = placed.some((p) => p.item === item.id);
               const elsewhere = !here && Object.entries(state.room.placed).some(([rid, list]) => rid !== room.id && list.some((p) => p.item === item.id));
               const bonus = item.bonus.rate ? `+${Math.round(item.bonus.rate * 100)}%/s` : `+${Math.round((item.bonus.tap ?? 0) * 100)}%/tap`;
               return (
-                <View key={item.id} {...dragHandlers(item)}>
+                <Animated.View key={item.id} entering={i < TILE_STAGGER ? FadeInDown.delay(120 + i * 45).duration(360) : undefined} {...dragHandlers(item)}>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={open ? `${item.name}, ${bonus}${here ? ", placed" : ""}` : `${item.name}, locked: ${unlockHint(item.unlock)}`}
@@ -334,11 +472,12 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
                     {elsewhere && <Text className="absolute left-0.5 top-0.5 font-pixel text-[7px] text-ink">IN USE</Text>}
                     {!open && <View className="absolute right-0.5 top-0.5"><PixelIcon name="lock" size={8} /></View>}
                   </Pressable>
-                </View>
+                </Animated.View>
               );
             })}
           </ScrollView>
         </View>
+        </Animated.View>
       )}
 
       {ghost && (

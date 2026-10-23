@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Animated, { FadeIn, SlideInLeft } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -53,7 +53,11 @@ function MenuLink({ label, detail, onPress }: { label: string; detail?: string; 
 }
 
 export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const [page, setPage] = useState<Page>("menu");
+  // Pages opened from other pages stack up, so Back returns to the one before (About -> Code -> Rewards).
+  const [history, setHistory] = useState<Page[]>(["menu"]);
+  const page = history[history.length - 1];
+  const setPage = (next: Page) => setHistory((h) => [...h, next]);
+  const back = () => setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h));
   const { theme } = useSettings();
   // A slice, not the whole state: the drawer is always mounted and shouldn't redraw on every tick.
   const { achievements, unlockedSections, rebirths, fame } = useGameSelector((s) => ({ achievements: s.achievements, unlockedSections: s.unlockedSections, rebirths: s.rebirths, fame: s.fame }));
@@ -65,11 +69,11 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
   const { width } = useWindowDimensions();
   const close = () => {
     onClose();
-    setPage("menu");
+    setHistory(["menu"]);
   };
 
   return (
-    <Modal transparent statusBarTranslucent navigationBarTranslucent visible={visible} animationType="none" onRequestClose={() => (page === "menu" ? close() : setPage("menu"))}>
+    <Modal transparent statusBarTranslucent navigationBarTranslucent visible={visible} animationType="none" onRequestClose={() => (page === "menu" ? close() : back())}>
       <View style={themeVars[theme]} className="flex-1 flex-row">
         <Animated.View entering={FadeIn.duration(150)} style={StyleSheet.absoluteFill}>
           <Pressable accessibilityLabel="Close menu" onPress={close} className="flex-1 bg-black/50" />
@@ -79,8 +83,8 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
           <View className="flex-1 border-r-[3px] border-outline bg-backdrop" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
           <View className="flex-row items-center gap-3 bg-primary px-4 py-4">
             <PixelButton
-              accessibilityLabel={page === "menu" ? "Close menu" : "Back to menu"}
-              onPress={page === "menu" ? close : () => setPage("menu")}
+              accessibilityLabel={page === "menu" ? "Close menu" : "Back"}
+              onPress={page === "menu" ? close : back}
               className="w-11"
             >
               <PixelIcon name={page === "menu" ? "close" : "left"} size={16} />
@@ -98,7 +102,6 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
                 ))}
                 <MenuLink label="Achievements" detail={`${shownAch.filter((a) => achievements[a.id] !== undefined).length}/${shownAch.length}`} onPress={() => setPage("achievements")} />
                 <MenuLink label="Settings" onPress={() => setPage("settings")} />
-                <MenuLink label="Visit website" onPress={() => Linking.openURL(APP_INFO.website)} />
                 <MenuLink label="About" onPress={() => setPage("about")} />
                 {rebirths >= FAME_REBIRTHS && fame !== "sent" && (
                   <MenuLink

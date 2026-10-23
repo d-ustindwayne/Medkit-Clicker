@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Image } from "@/components/ui/image";
 import Constants from "expo-constants";
-import { Pressable, Text, View } from "react-native";
+import { Linking, Pressable, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import { HardShadow } from "@/components/ui/hard-shadow";
@@ -80,12 +80,16 @@ export function AboutPage({ onSecret }: { onSecret?: () => void }) {
         Tap the medkit to heal patients. Spend them in the shop on supplies that keep healing for you. Your progress saves on
         its own, and your team keeps working for up to 4 hours while the app is closed.
       </Text>
-      <PixelButton label="How to play" onPress={() => dispatch({ type: "setIntroSeen", seen: false })} />
+      <View className="flex-row gap-3">
+        <PixelButton label="How to play" onPress={() => dispatch({ type: "setIntroSeen", seen: false })} className="flex-1" />
+        <PixelButton label="Visit website" onPress={() => Linking.openURL(APP_INFO.website)} className="flex-1" />
+      </View>
 
       <HardShadow offset={5}>
       <View className="border-2 border-outline bg-surface px-3 py-1">
         <Stat label="Patients healed, all time" value={formatCount(s.totalHealed)} />
         <Stat label="Medkit taps" value={formatCount(s.taps)} />
+        <Stat label="Ward patients treated" value={formatCount(s.treated)} />
         <Stat label="Rebirths" value={formatCount(s.rebirths)} />
         <Stat label="Time played" value={formatDuration(s.playSeconds)} />
         <Stat label="Playing since" value={new Date(s.startedAt).toLocaleDateString()} />

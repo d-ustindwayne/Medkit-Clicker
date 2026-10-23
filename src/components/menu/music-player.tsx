@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
+import { useSlide } from "@/components/ui/controls";
 import { PixelIcon, type PixelIconName } from "@/components/ui/pixel-icon";
 import { useAudio, useMusic } from "@/hooks/use-audio";
 
@@ -30,7 +32,31 @@ function ControlButton({ icon, label, onPress, primary }: { icon: PixelIconName;
 export function MusicPlayer() {
   const m = useMusic();
   const [barWidth, setBarWidth] = useState(0);
-  const progress = m.duration > 0 ? Math.min(1, m.currentTime / m.duration) : 0;
+  /** While dragging: the second the finger points at (the song jumps there on release). */
+  const [dragSec, setDragSec] = useState<number | null>(null);
+  const dragging = dragSec !== null;
+  // The fill and thumb follow the finger on the UI thread; only the time text re-renders, once a second.
+  const pos = useSharedValue(0);
+  const grow = useSharedValue(0);
+  const playing = m.duration > 0 ? Math.min(1, m.currentTime / m.duration) : 0;
+  useEffect(() => {
+    if (!dragging) pos.set(playing);
+  }, [playing, dragging, pos]);
+  const slide = useSlide(barWidth, (k, done) => {
+    pos.set(k);
+    if (!done) {
+      grow.set(withTiming(1, { duration: 120 }));
+      return setDragSec(Math.floor(k * m.duration));
+    }
+    grow.set(withTiming(0, { duration: 160 }));
+    setDragSec(null);
+    if (m.duration > 0) m.seek(k * m.duration);
+  });
+  const fill = useAnimatedStyle(() => ({ transform: [{ scaleX: pos.get() }] }));
+  const track = useAnimatedStyle(() => ({ transform: [{ scaleY: 1 + grow.get() * 0.4 }] }));
+  const thumb = useAnimatedStyle(() => ({
+    transform: [{ translateX: pos.get() * barWidth - 6 }, { scale: 1 + grow.get() * 0.5 }],
+  }));
 
   return (
     <View className="gap-3 border-[1.5px] border-outline bg-backdrop p-3">
@@ -43,27 +69,31 @@ export function MusicPlayer() {
         </View>
       </View>
 
-      {/* Tap anywhere on the bar to jump to that point in the song. */}
-      <Pressable
+      {/* Tap anywhere on the bar to jump there, or press and drag the thumb (the song jumps on release). */}
+      <View
+        {...slide}
         accessibilityRole="adjustable"
         accessibilityLabel="Song position"
         accessibilityValue={{ min: 0, max: Math.round(m.duration), now: Math.round(m.currentTime) }}
+        accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+        onAccessibilityAction={(e) => m.seek(Math.max(0, Math.min(m.duration, m.currentTime + (e.nativeEvent.actionName === "increment" ? 10 : -10))))}
         onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
-        onPress={(e) => barWidth > 0 && m.duration > 0 && m.seek((e.nativeEvent.locationX / barWidth) * m.duration)}
-        hitSlop={{ top: 10, bottom: 10 }}
-        className="h-4 justify-center"
+        hitSlop={{ top: 12, bottom: 12 }}
+        className="h-6 justify-center"
       >
-        <View pointerEvents="none" className="h-2.5 border-[1.5px] border-outline bg-surface">
-          <View className="h-full bg-primary" style={{ width: `${progress * 100}%` }} />
-        </View>
-        <View
-          pointerEvents="none"
-          className="absolute h-4 w-2.5 border-[1.5px] border-outline bg-ink"
-          style={{ left: Math.max(0, progress * barWidth - 5) }}
-        />
-      </Pressable>
+        <Animated.View pointerEvents="none" style={track}>
+          <View className="h-2.5 overflow-hidden border-[1.5px] border-outline bg-surface">
+            <Animated.View style={[{ height: "100%", width: "100%", transformOrigin: "left" }, fill]}>
+              <View className="h-full w-full bg-primary" />
+            </Animated.View>
+          </View>
+        </Animated.View>
+        <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0 }, thumb]}>
+          <View className={`h-4 w-3 border-[1.5px] border-outline ${dragging ? "bg-primary" : "bg-ink"}`} />
+        </Animated.View>
+      </View>
       <View className="flex-row justify-between">
-        <Text className="font-number text-sm text-ink">{clock(m.currentTime)}</Text>
+        <Text className="font-number text-sm text-ink">{clock(dragging ? dragSec : m.currentTime)}</Text>
         <Text className="font-number text-sm text-ink">{clock(m.duration)}</Text>
       </View>
 

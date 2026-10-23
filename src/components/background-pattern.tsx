@@ -1,12 +1,26 @@
-import { memo, useEffect } from "react";
+import { createContext, memo, use, useEffect, useState } from "react";
 import { Image } from "@/components/ui/image";
-import { StyleSheet, View } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+import { AppState, StyleSheet, View } from "react-native";
+import Animated, {
+  cancelAnimation,
+  Easing,
+  SensorType,
+  useAnimatedReaction,
+  useAnimatedSensor,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+  type SharedValue,
+} from "react-native-reanimated";
 import Svg, { Circle, Defs, G, LinearGradient, Path, Pattern, Rect, Stop } from "react-native-svg";
 
 import { pixelPath } from "@/components/ui/pixel-icon";
 import { BACKGROUNDS, type AnimatedKind, type Colors, type PatternKind } from "@/constants/backgrounds";
 import type { ThemeName } from "@/constants/theme";
+import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 const TILE = 28;
 /** Time to drift one tile diagonally; the loop is seamless because the pattern repeats every tile. */
@@ -29,6 +43,47 @@ const noise = (i: number, salt = 1) => {
   const x = Math.sin(i * 12.9898 * salt + salt * 78.233) * 43758.5453;
   return x - Math.floor(x);
 };
+
+/** Tilting the phone: -1 to 1 each way, eased, relative to how the phone is usually held. */
+type Tilt = SharedValue<{ x: number; y: number }>;
+const TiltContext = createContext<Tilt | null>(null);
+/** The backdrop is drawn this much bigger on every side, so shifting it never shows an edge. */
+const TILT_PAD = 28;
+/** How far the whole backdrop shifts at full tilt. */
+const TILT_BASE_PX = 12;
+/** How far a layer shifts on top of that at full tilt, times its depth (0 far, 1 near). */
+const TILT_LAYER_PX = 16;
+/** A layer's extra tilt shift; call inside an animated style. */
+const tiltShift = (tilt: Tilt | null, depth: number) => {
+  "worklet";
+  const t = tilt ? tilt.get() : { x: 0, y: 0 };
+  return [{ translateX: t.x * depth * TILT_LAYER_PX }, { translateY: t.y * depth * TILT_LAYER_PX }];
+};
+
+/**
+ * Reads the gravity sensor into `tilt`. The rest position slowly follows how the phone is held, so
+ * only tilting it moves the backdrop. Mounted only while motion is allowed.
+ */
+function TiltSensor({ tilt }: { tilt: Tilt }) {
+  const sensor = useAnimatedSensor(SensorType.GRAVITY);
+  const rest = useSharedValue<{ x: number; y: number } | null>(null);
+  useAnimatedReaction(
+    () => sensor.sensor.get(),
+    (g) => {
+      const r0 = rest.get() ?? { x: g.x, y: g.y };
+      const r = { x: r0.x + (g.x - r0.x) * 0.004, y: r0.y + (g.y - r0.y) * 0.004 };
+      rest.set(r);
+      // About 25 degrees of tilt is full tilt. (Written out, not as a helper: a function made here
+      // can end up outside the worklet and crash the UI thread.)
+      const tx = Math.max(-1, Math.min(1, (r.x - g.x) / 4));
+      const ty = Math.max(-1, Math.min(1, (g.y - r.y) / 4));
+      const t = tilt.get();
+      tilt.set({ x: t.x + (tx - t.x) * 0.15, y: t.y + (ty - t.y) * 0.15 });
+    },
+  );
+  useEffect(() => () => tilt.set({ x: 0, y: 0 }), [tilt]);
+  return null;
+}
 
 function Tile({ kind, color }: { kind: PatternKind; color: string }) {
   const h = TILE / 2;
@@ -90,7 +145,9 @@ const Drop = memo(function Drop({ i, height, left, color }: { i: number; height:
   useEffect(() => {
     y.set(withDelay(noise(i, 4) * ms, withRepeat(withTiming(1, { duration: ms, easing: Easing.linear }), -1, false)));
   }, [y, i, ms]);
-  const style = useAnimatedStyle(() => ({ transform: [{ translateY: -len + y.get() * (height + len * 2) }] }));
+  const tilt = use(TiltContext);
+  const depth = (len - 10) / 14;
+  const style = useAnimatedStyle(() => ({ transform: [...tiltShift(tilt, depth), { translateY: -len + y.get() * (height + len * 2) }] }));
   return <Animated.View style={[{ position: "absolute", left, top: 0, width: 2, height: len, backgroundColor: color, opacity: 0.35 + noise(i, 5) * 0.5 }, style]} />;
 });
 
@@ -101,26 +158,50 @@ const Star = memo(function Star({ i, left, top, color }: { i: number; left: numb
   useEffect(() => {
     o.set(withDelay(noise(i, 7) * ms, withRepeat(withTiming(1, { duration: ms, easing: Easing.inOut(Easing.quad) }), -1, true)));
   }, [o, i, ms]);
-  const style = useAnimatedStyle(() => ({ opacity: o.get() }));
+  const tilt = use(TiltContext);
   const s = noise(i, 8) > 0.8 ? 4 : 2;
+  const style = useAnimatedStyle(() => ({ opacity: o.get(), transform: tiltShift(tilt, s === 4 ? 0.25 : 0.1) }));
   return <Animated.View style={[{ position: "absolute", left, top, width: s, height: s, backgroundColor: color }, style]} />;
 });
 
-/** Blood Stream: a red cell drifting across with a gentle wobble. */
+/**
+ * Blood Stream: a red blood cell drifting across with a gentle wobble. It's a disc with a darker rim
+ * and a pale dimple in the middle, and it slowly tumbles (squashing to its edge and back). Smaller
+ * cells are fainter and slower, so they read as further away.
+ */
 const Cell = memo(function Cell({ i, width, top, colors }: { i: number; width: number; top: number; colors: Colors }) {
   const x = useSharedValue(noise(i, 13));
-  const r = 7 + noise(i, 11) * 6;
-  const ms = 9000 + noise(i, 12) * 9000;
+  const turn = useSharedValue(0);
+  const depth = noise(i, 11);
+  const r = 6 + depth * 9;
+  const ms = (9000 + noise(i, 12) * 9000) * (1.4 - depth * 0.6);
   useEffect(() => {
     // Start part-way across, then loop from the left edge.
     const start = noise(i, 13);
     x.set(withSequence(withTiming(1, { duration: ms * (1 - start), easing: Easing.linear }), withRepeat(withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: ms, easing: Easing.linear })), -1, false)));
-  }, [x, i, ms]);
-  const style = useAnimatedStyle(() => ({ transform: [{ translateX: -r * 3 + x.get() * (width + r * 6) }, { translateY: Math.sin(x.get() * 12.56 + i) * 8 }] }));
+    turn.set(withDelay(noise(i, 15) * 3000, withRepeat(withTiming(1, { duration: 2600 + noise(i, 16) * 2600, easing: Easing.inOut(Easing.sin) }), -1, true)));
+  }, [x, turn, i, ms]);
+  const angle = (noise(i, 17) - 0.5) * 70;
+  const tilt = use(TiltContext);
+  const style = useAnimatedStyle(() => ({
+    transform: [
+      ...tiltShift(tilt, depth),
+      { translateX: -r * 3 + x.get() * (width + r * 6) },
+      { translateY: Math.sin(x.get() * 12.56 + i) * 8 },
+      { rotate: `${angle}deg` },
+      { scaleX: 1 - turn.get() * 0.55 },
+    ],
+  }));
+  const d = r * 2;
   return (
-    <Animated.View style={[{ position: "absolute", left: 0, top, width: r * 2.4, height: r * 1.6 }, style]}>
-      <View style={{ flex: 1, borderRadius: r, backgroundColor: colors.line, alignItems: "center", justifyContent: "center", opacity: 0.75 }}>
-        <View style={{ width: r * 1.1, height: r * 0.55, borderRadius: r, backgroundColor: colors.accent }} />
+    <Animated.View style={[{ position: "absolute", left: 0, top, width: d, height: d, opacity: 0.45 + depth * 0.45 }, style]}>
+      <View style={{ width: d, height: d, borderRadius: r, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ width: d * 0.74, height: d * 0.74, borderRadius: r, backgroundColor: colors.line, alignItems: "center", justifyContent: "center" }}>
+          {/* The dimple: paler still in the middle. */}
+          <View style={{ width: d * 0.38, height: d * 0.38, borderRadius: r, backgroundColor: "#ffffff", opacity: 0.22 }} />
+        </View>
+        {/* A small shine on the upper rim. */}
+        <View style={{ position: "absolute", left: d * 0.2, top: d * 0.12, width: d * 0.22, height: d * 0.1, borderRadius: r, backgroundColor: "#ffffff", opacity: 0.35 }} />
       </View>
     </Animated.View>
   );
@@ -134,10 +215,13 @@ const Faller = memo(function Faller({ i, width, height, image, px, wind, spin }:
     y.set(withDelay(noise(i, 22) * ms, withRepeat(withTiming(1, { duration: ms, easing: Easing.linear }), -1, false)));
   }, [y, i, ms]);
   const x0 = noise(i, 23) * width;
+  const tilt = use(TiltContext);
+  const depth = noise(i, 24);
   const style = useAnimatedStyle(() => {
     const k = y.get();
     return {
       transform: [
+        ...tiltShift(tilt, depth),
         { translateX: x0 + wind * k * width * 0.35 + Math.sin(k * 6.28 * 2 + i) * 14 },
         { translateY: -px + k * (height + px * 2) },
         { rotate: spin ? `${k * 360 * (i % 2 ? 1 : -1)}deg` : "0deg" },
@@ -164,9 +248,11 @@ const Firefly = memo(function Firefly({ i, width, height }: { i: number; width: 
   const cy = height * (0.3 + noise(i, 35) * 0.65);
   const rx = 30 + noise(i, 36) * 50;
   const ry = 20 + noise(i, 37) * 30;
+  const tilt = use(TiltContext);
+  const depth = 0.3 + noise(i, 38) * 0.7;
   const style = useAnimatedStyle(() => ({
     opacity: glow.get(),
-    transform: [{ translateX: cx + Math.cos(t.get() * 6.28 + i) * rx }, { translateY: cy + Math.sin(t.get() * 6.28 * 1.5 + i) * ry }, { scale: 0.8 + glow.get() * 0.5 }],
+    transform: [...tiltShift(tilt, depth), { translateX: cx + Math.cos(t.get() * 6.28 + i) * rx }, { translateY: cy + Math.sin(t.get() * 6.28 * 1.5 + i) * ry }, { scale: 0.8 + glow.get() * 0.5 }],
   }));
   return (
     <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: 18, height: 18 }, style]}>
@@ -181,36 +267,93 @@ const AuroraBand = memo(function AuroraBand({ i, width, height, color }: { i: nu
   useEffect(() => {
     t.set(withRepeat(withTiming(1, { duration: 9000 + i * 2500, easing: Easing.inOut(Easing.sin) }), -1, true));
   }, [t, i]);
+  const tilt = use(TiltContext);
   const style = useAnimatedStyle(() => ({
     opacity: 0.18 + 0.22 * t.get(),
-    transform: [{ translateX: -width * 0.25 + t.get() * width * 0.25 * (i % 2 ? -1 : 1) }, { rotate: `${-12 + i * 9 + t.get() * 6}deg` }, { scaleY: 0.8 + t.get() * 0.4 }],
+    transform: [...tiltShift(tilt, 0.15 + i * 0.2), { translateX: -width * 0.25 + t.get() * width * 0.25 * (i % 2 ? -1 : 1) }, { rotate: `${-12 + i * 9 + t.get() * 6}deg` }, { scaleY: 0.8 + t.get() * 0.4 }],
   }));
   return <Animated.View style={[{ position: "absolute", left: -width * 0.25, top: height * (0.12 + i * 0.13), width: width * 1.5, height: height * 0.14, borderRadius: height * 0.07, backgroundColor: color }, style]} />;
 });
 
-const ECG_PERIOD = 160;
-/** One heartbeat of trace from x0: flat, P wave, QRS spike, T wave, flat. `spike` sets the R height. */
-const beatPath = (x0: number, y: number, spike: number) =>
-  `L ${x0 + 30} ${y} Q ${x0 + 38} ${y - 8} ${x0 + 46} ${y} L ${x0 + 56} ${y} L ${x0 + 60} ${y + 6} L ${x0 + 66} ${y - spike} L ${x0 + 72} ${y + 16} L ${x0 + 77} ${y} L ${x0 + 92} ${y} Q ${x0 + 104} ${y - 14} ${x0 + 116} ${y} L ${x0 + ECG_PERIOD} ${y}`;
+/** How fast the monitor's cursor sweeps across, in px per second (about 70 bpm at the usual beat gap). */
+const ECG_SPEED = 190;
+type Trace = { d: string; d2: string; spikes: number[] };
 
-/** Heart Monitor: a scrolling ECG trace over a monitor grid, with a heart pulsing on each beat. */
-function Ecg({ width, height, colors }: { width: number; height: number; colors: Colors }) {
-  const t = useSharedValue(0);
-  const beat = useSharedValue(1);
-  useEffect(() => {
-    // ~70 bpm: one period per beat.
-    t.set(withRepeat(withTiming(1, { duration: 860, easing: Easing.linear }), -1, false));
-    beat.set(withRepeat(withSequence(withTiming(1.15, { duration: 120 }), withTiming(1, { duration: 740 })), -1, false));
-  }, [t, beat]);
-  const scroll = useAnimatedStyle(() => ({ transform: [{ translateX: -ECG_PERIOD * t.get() }] }));
-  const pulse = useAnimatedStyle(() => ({ transform: [{ scale: beat.get() }] }));
-  const w = width + ECG_PERIOD * 2;
-  const y1 = height * 0.42, y2 = height * 0.8;
+/** One heartbeat of trace from x0: flat, P wave, QRS spike, T wave. `spike` sets the R height; `t` the T wave's. */
+const beatPath = (x0: number, y: number, spike: number, t: number) =>
+  `L ${x0} ${y} Q ${x0 + 8} ${y - 8} ${x0 + 16} ${y} L ${x0 + 26} ${y} L ${x0 + 30} ${y + 6} L ${x0 + 36} ${y - spike} L ${x0 + 42} ${y + spike * 0.38} L ${x0 + 47} ${y} L ${x0 + 62} ${y} Q ${x0 + 74} ${y - t} ${x0 + 86} ${y}`;
+
+/**
+ * One sweep's trace, made up fresh each time: beats come at uneven gaps (now and then a quick extra
+ * one), each with its own height, so the monitor never repeats a loop.
+ */
+function makeTrace(width: number, y1: number, y2: number): Trace {
   let d = `M 0 ${y1}`, d2 = `M 0 ${y2}`;
-  for (let x = 0; x < w; x += ECG_PERIOD) {
-    d += " " + beatPath(x, y1, 42);
-    d2 += " " + beatPath(x, y2, 20);
+  const spikes: number[] = [];
+  let x = 20 + Math.random() * 80;
+  while (x < width) {
+    const spike = 26 + Math.random() * 30;
+    const t = 9 + Math.random() * 9;
+    d += " " + beatPath(x, y1, spike, t);
+    d2 += " " + beatPath(x, y2, spike * 0.45, t * 0.6);
+    spikes.push(x + 36);
+    // Usually 120-200 px to the next beat; sometimes an early one.
+    x += Math.random() < 0.12 ? 95 + Math.random() * 15 : 120 + Math.random() * 80;
   }
+  d += ` L ${width} ${y1}`;
+  d2 += ` L ${width} ${y2}`;
+  return { d, d2, spikes };
+}
+
+/** One sweep of trace, clipped to one side of the cursor (screen x, read on the UI thread). */
+function TraceLayer({ trace, width, height, color, side, cursor }: { trace: Trace; width: number; height: number; color: string; side: "new" | "old"; cursor: SharedValue<number> }) {
+  // The new sweep shows left of the cursor and the old one right of it, meeting with no gap. The
+  // outer view slides to the edge and clips; the inner one slides back so the trace stays put on screen.
+  const outer = useAnimatedStyle(() => ({ transform: [{ translateX: side === "new" ? cursor.get() - width : cursor.get() }] }));
+  const inner = useAnimatedStyle(() => ({ transform: [{ translateX: side === "new" ? width - cursor.get() : -cursor.get() }] }));
+  return (
+    <Animated.View style={[{ position: "absolute", left: 0, top: 0, width, height, overflow: "hidden" }, outer]}>
+      <Animated.View style={inner}>
+        <Svg width={width} height={height}>
+          <Path d={trace.d} fill="none" stroke={color} strokeWidth={3} strokeLinejoin="round" />
+          <Path d={trace.d2} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" opacity={0.4} />
+        </Svg>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+/**
+ * Heart Monitor: a bedside monitor. A cursor sweeps left to right drawing a fresh trace over the
+ * last one, with uneven beats, and the heart behind it pulses as each spike is drawn.
+ */
+function Ecg({ width, height, colors }: { width: number; height: number; colors: Colors }) {
+  const y1 = height * 0.42, y2 = height * 0.8;
+  const [traces, setTraces] = useState(() => ({ old: makeTrace(width, y1, y2), now: makeTrace(width, y1, y2) }));
+  const cursor = useSharedValue(0);
+  const spikes = useSharedValue<number[]>([]);
+  // The sweep covers only what can be seen (the backdrop runs past the screen for tilting), so one
+  // pass follows the next with no pause off-screen.
+  const from = TILT_PAD - TILT_BASE_PX;
+  const to = width - from;
+  const ms = ((to - from) / ECG_SPEED) * 1000;
+  const tilt = use(TiltContext);
+  useEffect(() => {
+    spikes.set(traces.now.spikes);
+    cursor.set(from);
+    cursor.set(withTiming(to, { duration: ms, easing: Easing.linear }));
+    // At the end of the sweep this one becomes the old trace and a new one starts.
+    const id = setTimeout(() => setTraces((tr) => ({ old: tr.now, now: makeTrace(width, y1, y2) })), ms);
+    return () => clearTimeout(id);
+  }, [traces, cursor, spikes, width, ms, y1, y2, from, to]);
+  // The heart swells as the cursor draws a spike and settles over the next ~100 px.
+  const pulse = useAnimatedStyle(() => {
+    const c = cursor.get();
+    let k = 0;
+    for (const s of spikes.get()) if (c >= s && c - s < 100) k = Math.max(k, 1 - (c - s) / 100);
+    return { transform: [...tiltShift(tilt, 0.25), { scale: 1 + 0.15 * k * k }] };
+  });
+  const traceShift = useAnimatedStyle(() => ({ transform: tiltShift(tilt, 0.7) }));
   const hs = Math.min(width, height) * 0.05;
   return (
     <>
@@ -229,11 +372,9 @@ function Ecg({ width, height, colors }: { width: number; height: number; colors:
           </G>
         </Svg>
       </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, scroll]}>
-        <Svg width={w} height={height}>
-          <Path d={d} fill="none" stroke={colors.line} strokeWidth={3} strokeLinejoin="round" />
-          <Path d={d2} fill="none" stroke={colors.line} strokeWidth={2} strokeLinejoin="round" opacity={0.4} />
-        </Svg>
+      <Animated.View style={[StyleSheet.absoluteFill, traceShift]}>
+        <TraceLayer trace={traces.old} width={width} height={height} color={colors.line} side="old" cursor={cursor} />
+        <TraceLayer trace={traces.now} width={width} height={height} color={colors.line} side="new" cursor={cursor} />
       </Animated.View>
     </>
   );
@@ -322,37 +463,62 @@ type Props = { index: number; theme: ThemeName; width: number; height: number };
 export const BackgroundPattern = memo(function BackgroundPattern({ index, theme, width, height }: Props) {
   const preset = BACKGROUNDS[index % BACKGROUNDS.length];
   const colors = preset[theme];
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
+  // The tilt sensor only runs while the game is on screen, not in the background.
+  const [active, setActive] = useState(AppState.currentState === "active");
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (s) => setActive(s === "active"));
+    return () => sub.remove();
+  }, []);
   const drift = useSharedValue(0);
+  const tilt = useSharedValue({ x: 0, y: 0 });
+  const base = useAnimatedStyle(() => ({ transform: [{ translateX: tilt.get().x * TILT_BASE_PX }, { translateY: tilt.get().y * TILT_BASE_PX }] }));
 
   useEffect(() => {
     if (reduceMotion) return;
+    // Always from 0: a loop restarted part-way would only cover the rest of the tile and look stuck.
+    drift.set(0);
     drift.set(withRepeat(withTiming(1, { duration: DRIFT_MS, easing: Easing.linear }), -1, false));
+    return () => {
+      cancelAnimation(drift);
+      drift.set(0);
+    };
   }, [drift, reduceMotion]);
 
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: -TILE * drift.get() }, { translateY: -TILE * drift.get() }],
   }));
 
-  // Oversized by one tile so the drift never exposes an edge.
-  const w = width + TILE;
-  const h = height + TILE;
+  // The backdrop is drawn past every edge (TILT_PAD) so tilting never shows one; the tiled pattern
+  // is one tile bigger again so its drift doesn't either.
+  const bw = width + TILT_PAD * 2;
+  const bh = height + TILT_PAD * 2;
+  const w = bw + TILE;
+  const h = bh + TILE;
   const pattern = preset.pattern;
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: "hidden", backgroundColor: colors.bg }]}>
-      {isAnimated(pattern) && !reduceMotion && <AnimatedBackdrop kind={pattern} width={width} height={height} colors={colors} />}
-      {!isAnimated(pattern) && pattern !== "plain" && (
-        <Animated.View style={style}>
-          <Svg width={w} height={h}>
-            <Defs>
-              <Pattern id="bg" width={TILE} height={TILE} patternUnits="userSpaceOnUse">
-                <Tile kind={pattern} color={colors.line} />
-              </Pattern>
-            </Defs>
-            <Rect width={w} height={h} fill="url(#bg)" />
-          </Svg>
+      {!reduceMotion && active && <TiltSensor tilt={tilt} />}
+      <TiltContext value={tilt}>
+        <Animated.View style={[{ position: "absolute", left: -TILT_PAD, top: -TILT_PAD, width: bw, height: bh }, base]}>
+          {isAnimated(pattern) && !reduceMotion && <AnimatedBackdrop kind={pattern} width={bw} height={bh} colors={colors} />}
+          {!isAnimated(pattern) && pattern !== "plain" && (
+            // Drawn once into a texture on Android and then only moved, not redrawn every frame. The view
+            // is sized to the whole pattern: the texture is cut to the view, and a screen-sized one left a
+            // bare strip on the right as the pattern drifted left.
+            <Animated.View style={[{ width: w, height: h }, style]} renderToHardwareTextureAndroid>
+              <Svg width={w} height={h}>
+                <Defs>
+                  <Pattern id="bg" width={TILE} height={TILE} patternUnits="userSpaceOnUse">
+                    <Tile kind={pattern} color={colors.line} />
+                  </Pattern>
+                </Defs>
+                <Rect width={w} height={h} fill="url(#bg)" />
+              </Svg>
+            </Animated.View>
+          )}
         </Animated.View>
-      )}
+      </TiltContext>
     </View>
   );
 });

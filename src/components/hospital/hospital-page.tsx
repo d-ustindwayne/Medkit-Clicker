@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { Pressable, Text, View, type ImageSourcePropType } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
 import Svg, { Defs, LinearGradient, Polygon, Stop } from "react-native-svg";
 
@@ -37,6 +37,7 @@ import { useHaptics } from "@/hooks/use-haptics";
 import { useNow } from "@/hooks/use-now";
 import { formatCount } from "@/lib/format";
 import { emergencyReward } from "@/lib/game";
+import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 const ART_W = 320;
 const ART_H = 240;
@@ -55,7 +56,7 @@ function Cloud({ cloud, width }: { cloud: (typeof CLOUDS)[number]; width: number
   const w = cloud.w * px;
   const span = width + w;
   const x = useSharedValue(cloud.start * span - w);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
     if (reduceMotion) return;
     const full = cloud.seconds * 1000;
@@ -65,6 +66,7 @@ function Cloud({ cloud, width }: { cloud: (typeof CLOUDS)[number]; width: number
         withRepeat(withSequence(withTiming(-w, { duration: 0 }), withTiming(width, { duration: full, easing: Easing.linear })), -1, false),
       ),
     );
+    return () => cancelAnimation(x);
   }, [x, width, w, cloud, reduceMotion]);
   const move = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
   return (

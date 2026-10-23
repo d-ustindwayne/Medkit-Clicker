@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { memo, useImperativeHandle, useState, type Ref } from "react";
 import { Image } from "@/components/ui/image";
 import { Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from "react-native-reanimated";
@@ -16,15 +16,41 @@ const EFFECTS = {
 } as const;
 type Motion = "float" | "burst" | "rise";
 
-/** One tap's worth of feedback: a shockwave ring, pixel crosses flying out, and the "+N" number. */
-export function TapBurst({ size, x, y, label, seed, effect = null }: { size: number; x: number; y: number; label: string; seed: number; effect?: string | null }) {
+/** Starts a burst at x, y (inside the medkit) showing `label`. */
+export type BurstHandle = { fire: (x: number, y: number, label: string) => void };
+
+/**
+ * One tap's worth of feedback: a shockwave ring, pixel crosses flying out, and the "+N" number.
+ * A few of these stay mounted (invisible when finished) and the medkit fires them in turn through
+ * `ref`. Firing only sets animation values, so a tap doesn't re-render anything; the label is
+ * React state but only changes when the number shown does.
+ */
+export const TapBurst = memo(function TapBurst({ ref, slot, size, effect = null }: { ref: Ref<BurstHandle>; slot: number; size: number; effect?: string | null }) {
   const fx = effect && effect in EFFECTS ? EFFECTS[effect as keyof typeof EFFECTS] : null;
   const palette = usePalette();
-  const t = useSharedValue(0);
+  // 1 = finished (everything faded out), so an unfired slot shows nothing.
+  const t = useSharedValue(1);
+  const px = useSharedValue(0);
+  const py = useSharedValue(0);
+  // Each tap turns the particle pattern a different way, so bursts don't look stamped.
+  const turn = useSharedValue(0);
+  const seed = slot;
+  const [label, setLabel] = useState("");
 
-  useEffect(() => {
-    t.set(withTiming(1, { duration: BURST_MS, easing: Easing.out(Easing.cubic) }));
-  }, [t]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      fire: (x, y, text) => {
+        setLabel(text);
+        px.set(x);
+        py.set(y);
+        turn.set(Math.random() * 360);
+        t.set(0);
+        t.set(withTiming(1, { duration: BURST_MS, easing: Easing.out(Easing.cubic) }));
+      },
+    }),
+    [t, px, py, turn],
+  );
 
   const ring = useAnimatedStyle(() => ({
     opacity: 0.55 * (1 - t.get()),
@@ -32,8 +58,9 @@ export function TapBurst({ size, x, y, label, seed, effect = null }: { size: num
   }));
   const number = useAnimatedStyle(() => ({
     opacity: t.get() < 0.6 ? 1 : 1 - (t.get() - 0.6) / 0.4,
-    transform: [{ translateY: -110 * t.get() }, { scale: 1 + 0.25 * Math.sin(Math.min(t.get() * 6, Math.PI)) }],
+    transform: [{ translateX: px.get() - 60 }, { translateY: py.get() - 24 - 110 * t.get() }, { scale: 1 + 0.25 * Math.sin(Math.min(t.get() * 6, Math.PI)) }],
   }));
+  const spin = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.get()}deg` }] }));
 
   return (
     <>
@@ -41,14 +68,16 @@ export function TapBurst({ size, x, y, label, seed, effect = null }: { size: num
         pointerEvents="none"
         style={[{ position: "absolute", width: size, height: size, borderRadius: size / 2, borderWidth: 8, borderColor: palette.glow }, ring]}
       />
-      {fx
-        ? Array.from({ length: fx.count }, (_, i) => (
-            <SpriteParticle key={i} t={t} size={size} i={i} seed={seed} count={fx.count} image={fx.image} motion={fx.motion} />
-          ))
-        : Array.from({ length: PARTICLES }, (_, i) => (
-            <Particle key={i} t={t} size={size} angle={((i + (seed % 7) / 7) / PARTICLES) * Math.PI * 2} color={i % 2 ? palette.primary : palette.success} />
-          ))}
-      <Animated.View pointerEvents="none" style={[{ position: "absolute", left: x - 60, top: y - 24, width: 120 }, number]}>
+      <Animated.View pointerEvents="none" style={[{ position: "absolute", width: size, height: size }, fx?.motion === "rise" ? null : spin]}>
+        {fx
+          ? Array.from({ length: fx.count }, (_, i) => (
+              <SpriteParticle key={i} t={t} size={size} i={i} seed={seed} count={fx.count} image={fx.image} motion={fx.motion} />
+            ))
+          : Array.from({ length: PARTICLES }, (_, i) => (
+              <Particle key={i} t={t} size={size} angle={((i + (seed % 7) / 7) / PARTICLES) * Math.PI * 2} color={i % 2 ? palette.primary : palette.success} />
+            ))}
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0, top: 0, width: 120 }, number]}>
         <Text
           className="text-center font-display text-3xl text-ink"
           style={{ textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0.1 }}
@@ -58,7 +87,7 @@ export function TapBurst({ size, x, y, label, seed, effect = null }: { size: num
       </Animated.View>
     </>
   );
-}
+});
 
 function Particle({ t, size, angle, color }: { t: SharedValue<number>; size: number; angle: number; color: string }) {
   const start = size * 0.42;

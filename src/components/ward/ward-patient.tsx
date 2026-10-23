@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { Pressable, Text, View } from "react-native";
 import { depth } from "@/constants/room";
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
 import { TreatModal } from "@/components/ward/treat-modal";
 import { SICK_PATIENTS, type SickPatient } from "@/constants/patients";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameSelector } from "@/hooks/use-game";
+import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 /** Where waiting patients stand (fractions of the room art), first to arrive on the right. */
 const SPOTS = [
@@ -22,11 +23,16 @@ export function WardPatient({ width, height }: { width: number; height: number }
   const { playSfx, unlock } = useAudio();
   // Kept separately so the result screen stays up after the patient is treated and leaves.
   const [treating, setTreating] = useState<{ patient: SickPatient; arrivedAt: number } | null>(null);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   const bob = useSharedValue(0);
   useEffect(() => {
     if (reduceMotion) return;
+    bob.set(0);
     bob.set(withRepeat(withSequence(withTiming(-4, { duration: 450 }), withTiming(0, { duration: 450 })), -1, false));
+    return () => {
+      cancelAnimation(bob);
+      bob.set(0);
+    };
   }, [bob, reduceMotion]);
   const bubble = useAnimatedStyle(() => ({ transform: [{ translateY: bob.get() }] }));
 

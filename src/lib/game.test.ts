@@ -2,12 +2,12 @@ import { describe, expect, test } from "bun:test";
 
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { BOOSTS, boostMultiplier } from "@/constants/boosts";
-import { SHOP_ITEMS, itemCost, perSecond } from "@/constants/items";
+import { SHOP_ITEMS, itemCost, itemMultiplier, perSecond } from "@/constants/items";
 import { SICK_PATIENTS, minigameLevel, minigameTuning } from "@/constants/patients";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, dayPhase, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
-import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, canPlace, roomBonus, snapPlacement } from "@/constants/room";
-import { formatCount, formatShort } from "@/lib/format";
+import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, canPlace, roomBonus, snapPlacement, spotFor } from "@/constants/room";
+import { formatCount, formatMult, formatRate, formatShort } from "@/lib/format";
 import { bulkCost, cooldownLeft, coinBalance, coinsEarned, emergencyReward, maxAwaySeconds, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
 
 const run = (s: GameState, ...actions: GameAction[]) => actions.reduce(gameReducer, s);
@@ -88,6 +88,10 @@ describe("boosts", () => {
   test("Adrenaline Shot doubles taps, and buying again extends it", () => {
     const s = run(withCoins(), { type: "useBoost", id: "adrenaline" });
     expect(boostMultiplier(s.boosts, "tap")).toBe(2);
+    // Tap boosts add up: Adrenaline (x2) with Code Blue (x5) and Lucky Stethoscope (x10) is x17.
+    const now = Date.now();
+    expect(boostMultiplier({ adrenaline: now + 1000, code_blue: now + 1000 }, "tap", now, [10])).toBe(17);
+    expect(boostMultiplier({ double_shift: now + 1000, flu_season: now + 1000 }, "rate", now)).toBe(9);
     const first = s.boosts.adrenaline;
     const again = run(s, { type: "useBoost", id: "adrenaline" });
     expect(again.boosts.adrenaline).toBeGreaterThan(first + 170_000);
@@ -105,6 +109,14 @@ describe("boosts", () => {
     const plain = tapValue({ owned: s.owned, rebirths: s.rebirths });
     expect(tapValue(s)).toBe(plain * 10);
     expect(run(s, { type: "tap" }).luckyTaps).toBe(49);
+    // A batch of fast taps uses the lucky ones first.
+    // With another tap boost, a lucky tap pays exactly what the medkit shows: the boosts add up.
+    const both = { ...s, luckyTaps: 1, boosts: { adrenaline: Date.now() + 60_000 } };
+    expect(run(both, { type: "tap" }).healed - both.healed).toBeCloseTo(tapValue(both));
+    const batch = run({ ...s, luckyTaps: 2 }, { type: "tap", count: 5 });
+    expect(batch.luckyTaps).toBe(0);
+    expect(batch.taps).toBe(s.taps + 5);
+    expect(batch.healed - s.healed).toBeCloseTo(plain * (2 * 10 + 3));
   });
 
   test("instant boosts pay out patients", () => {
@@ -121,7 +133,7 @@ describe("ward patients", () => {
     const won = run(s, { type: "treat", won: true, arrivedAt: s.patients[0].arrivedAt });
     expect(won.patients).toEqual([]);
     expect(won.treated).toBe(1);
-    expect(won.bonusCoins).toBe(1);
+    expect(won.bonusCoins).toBe(2);
     expect(won.healed).toBeGreaterThan(s.healed);
   });
 
@@ -260,6 +272,28 @@ describe("huge numbers", () => {
   });
 });
 
+describe("rounding", () => {
+  test("decimals stop at two places, in words and in short units", () => {
+    expect(formatCount(350_232_000)).toBe("350.23 million");
+    expect(formatCount(999_999_999)).toBe("999.99 million");
+    expect(formatShort(1234)).toBe("1.23K");
+    // Rounded down, never up: the chip doesn't show more than there is.
+    expect(formatShort(1_492)).toBe("1.49K");
+    expect(formatShort(1_683_525)).toBe("1.68M");
+    expect(formatShort(999_999)).toBe("999.99K");
+    expect(formatShort(2_300)).toBe("2.3K");
+    expect(formatShort(4.5e12)).toBe("4.5T");
+    expect(formatShort(12)).toBe("12");
+    expect(formatRate(0.1)).toBe("0.1");
+    expect(formatRate(12.456)).toBe("12.46");
+  });
+  test("milestone multipliers are exact", () => {
+    expect(itemMultiplier(225)).toBe(3.7);
+    expect(formatMult(itemMultiplier(225))).toBe("x3.7");
+    expect(formatMult(1.005 + 0.3)).toBe("x1.31");
+  });
+});
+
 describe("bulk buying", () => {
   test("x10 costs the next ten prices together and is all-or-nothing", () => {
     const bandage = SHOP_ITEMS[0];
@@ -323,10 +357,18 @@ describe("minigame difficulty", () => {
     expect(hard.wraps).toBeGreaterThan(easy.wraps);
     expect(hard.pulseBeats).toBeGreaterThan(easy.pulseBeats);
     expect(hard.pillsMs).toBeLessThan(easy.pillsMs);
-    expect(hard.bones).toBe(12);
+    expect(hard.bones).toBe(16);
+    expect(hard.pillColors).toBe(6);
+    expect(hard.pills).toBe(25);
+    // Pulse Check counts 5-7 beats for a new player and 20-30 at the top.
+    expect([easy.pulseBeats, easy.pulseBeats + easy.pulseSpread]).toEqual([5, 7]);
+    expect([hard.pulseBeats, hard.pulseBeats + hard.pulseSpread]).toEqual([20, 30]);
+    expect(hard.rewardMult).toBe(2);
     expect(hard.germShowMs).toBeLessThan(easy.germShowMs);
     expect(hard.breathHigh - hard.breathLow).toBeLessThan(easy.breathHigh - easy.breathLow);
-    expect(hard.pairs).toBe(4);
+    expect(hard.pairs).toBe(10);
+    expect(hard.germCells).toBe(16);
+    expect(hard.xrayFilms).toBeGreaterThan(easy.xrayFilms);
     // Pulse beats still leave at least 0.1 s of rest between them (each beat animates for 240 ms).
     expect(hard.pulseGapMs - 240).toBeGreaterThanOrEqual(100);
   });
@@ -410,6 +452,33 @@ describe("room placement rules", () => {
     expect(Math.abs(p.x - 0.16) + Math.abs(p.y - 0.4)).toBeLessThan(0.2);
     const floor = run(s, { type: "placeItem", room: "reception", item: "potted_plant", x: 0.15, y: 0.75 }).room.placed.reception.find((q) => q.item === "potted_plant")!;
     expect(canPlace(reception, "floor", floor.x, floor.y)).toBe(true);
+  });
+});
+
+describe("wall items", () => {
+  test("can overlap a little at the edges but never hide each other", () => {
+    let s = run(newGame(), { type: "devUnlockAll" }, { type: "placeItem", room: "empty", item: "sanitizer", x: 0.4, y: 0.5 });
+    // Dropped right on top of the sanitizer: the clock slides along the wall instead.
+    s = run(s, { type: "placeItem", room: "empty", item: "wall_clock", x: 0.4, y: 0.5 });
+    const [a, b] = s.room.placed.empty;
+    expect(b.item).toBe("wall_clock");
+    expect(Math.abs(a.x - b.x) >= 0.11 || Math.abs(a.y - b.y) >= 0.15).toBe(true);
+    // Overlapping by less than a fifth is fine.
+    const near = run(s, { type: "placeItem", room: "empty", item: "wall_clock", x: 0.53, y: 0.5 }).room.placed.empty.find((p) => p.item === "wall_clock")!;
+    expect(near.x).toBeCloseTo(0.53);
+  });
+  test("a full wall refuses another wall item", () => {
+    const empty = ROOMS.find((r) => r.id === "empty")!;
+    const wall = ROOM_ITEMS.filter((i) => i.place === "wall");
+    // Fill the free wall with copies of one item's box until nothing fits.
+    const placed: { item: string; x: number; y: number }[] = [];
+    for (const item of wall) {
+      const spot = spotFor(empty, placed, item, 0.5, 0.45);
+      if (!spot) break;
+      placed.push({ item: item.id, ...spot });
+    }
+    expect(placed.length).toBeGreaterThan(2);
+    expect(placed.length).toBeLessThan(wall.length);
   });
 });
 

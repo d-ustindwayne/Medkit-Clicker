@@ -1,22 +1,26 @@
 import { memo, useEffect } from "react";
 import { Image } from "@/components/ui/image";
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 
 import { SHOP_ITEMS, type ItemId } from "@/constants/items";
+import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 const MAX_SPRITES = 16;
 const SPRITE = 30;
 const ORBIT_MS = 45_000;
 
 /** Owned supplies circling the medkit, Cookie Clicker style. One sprite per unit, up to MAX_SPRITES. */
-export const Orbit = memo(function Orbit({ size, owned }: { size: number; owned: Record<ItemId, number> }) {
-  const reduceMotion = useReducedMotion();
+export const Orbit = memo(function Orbit({ size, owned, active = true }: { size: number; owned: Record<ItemId, number>; active?: boolean }) {
+  const reduceMotion = useReduceMotion();
   const rotation = useSharedValue(0);
 
   useEffect(() => {
-    if (reduceMotion) return;
-    rotation.set(withRepeat(withTiming(360, { duration: ORBIT_MS, easing: Easing.linear }), -1, false));
-  }, [reduceMotion, rotation]);
+    if (reduceMotion || !active) return;
+    const from = rotation.get() % 360;
+    rotation.set(from);
+    rotation.set(withRepeat(withTiming(from + 360, { duration: ORBIT_MS, easing: Easing.linear }), -1, false));
+    return () => cancelAnimation(rotation);
+  }, [reduceMotion, rotation, active]);
 
   const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.get()}deg` }] }));
 
@@ -31,7 +35,7 @@ export const Orbit = memo(function Orbit({ size, owned }: { size: number; owned:
 
   const radius = size / 2;
   return (
-    <Animated.View pointerEvents="none" style={[{ position: "absolute", width: size, height: size }, style]}>
+    <Animated.View pointerEvents="none" renderToHardwareTextureAndroid style={[{ position: "absolute", width: size, height: size }, style]}>
       {sprites.map((item, i) => {
         const a = (i / sprites.length) * Math.PI * 2;
         return (

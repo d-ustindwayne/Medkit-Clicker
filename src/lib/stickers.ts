@@ -60,7 +60,7 @@ export async function askPhotosOnce() {
  *    directly, so no photo permission is needed. The folder is remembered for next time.
  * Returns where it went, or "cancelled" if no folder was picked.
  */
-export async function saveSticker(id: string, name: string): Promise<"photos" | "folder" | "cancelled"> {
+export async function saveSticker(id: string, name: string): Promise<"photos" | "folder" | "download" | "cancelled"> {
   const bytes = stickerBytes(id);
   const fileName = `medkit-clicker-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   let problem: unknown = null;

@@ -14,6 +14,7 @@ import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
 import { useNow } from "@/hooks/use-now";
 import { COIN } from "@/constants/boosts";
 import { coinBalance } from "@/lib/game";
+import { appIcon } from "@/lib/app-icon";
 import { cloudEnabled } from "@/lib/cloud";
 import { exportSave, importSave, type SaveFormat } from "@/lib/save-file";
 import { VOLUME_STEPS } from "@/lib/storage";
@@ -33,7 +34,7 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
 
   const onExport = async (format: SaveFormat) => {
     try {
-      const saved = await exportSave(state, format);
+      const saved = await exportSave({ state, settings, appIcon: appIcon() }, format);
       if (!saved) return;
       dispatch({ type: "exported" });
       pushToast({ kind: "info", title: "Save exported", body: `Saved your progress as a .${format} file.` });
@@ -46,7 +47,10 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
     try {
       const save = await importSave();
       if (!save) return;
-      replaceSave(save);
+      // The icon switches when the app is left, like one chosen in the Gem Shop.
+      const icon = save.appIcon === undefined || save.appIcon === appIcon() ? null : (save.appIcon ?? "default");
+      replaceSave({ ...save.state, pendingIcon: icon ?? save.state.pendingIcon });
+      if (save.settings) updateSettings(save.settings);
       pushToast({ kind: "info", title: "Save imported", body: "Your progress has been restored." });
       onDone();
     } catch (e) {
@@ -128,6 +132,13 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
           </View>
         )}
         <Toggle label="Dark mode" icon="moon" value={settings.theme === "dark"} onChange={(dark) => setTheme(dark ? "dark" : "light")} />
+      </SettingsGroup>
+
+      <SettingsGroup title="ACCESSIBILITY" icon="eye">
+        <Toggle label="Reduce motion" value={settings.reduceMotion} onChange={(reduceMotion) => updateSettings({ reduceMotion })} />
+        <Text className="font-body text-xs text-ink opacity-70">Stops animated backgrounds, spinning rays, confetti and screen shakes. On by itself if your phone asks for less motion.</Text>
+        <Toggle label="Colour labels" value={settings.colorLabels} onChange={(colorLabels) => updateSettings({ colorLabels })} />
+        <Text className="font-body text-xs text-ink opacity-70">Puts a letter on each pill colour in the minigames, for colour-blind players.</Text>
       </SettingsGroup>
 
       <SettingsGroup title="SAVE DATA" icon="save">

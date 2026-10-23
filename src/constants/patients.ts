@@ -57,30 +57,47 @@ export const minigameTuning = (level: number) => {
     beatsNeeded: Math.round(mix(6, 8)),
     // Bandage: more wraps in the same 5 seconds.
     wraps: Math.round(mix(25, 38)),
-    // Pulse Check: more beats, closer together.
-    pulseBeats: 5 + Math.round(d * 4),
+    // Pulse Check: more beats, closer together: 5-7 for a new player, 20-30 at the top.
+    pulseBeats: Math.round(mix(5, 20)),
+    pulseSpread: Math.round(mix(2, 10)),
     pulseGapMs: Math.round(mix(620, 380)),
-    // Sort the Meds: less time.
-    pillsMs: Math.round(mix(6000, 3500)),
-    // Spot the Fracture: 6, 9 or 12 bones, less time.
-    bones: d < 0.34 ? 6 : d < 0.67 ? 9 : 12,
-    xrayMs: Math.round(mix(5000, 3500)),
-    // Germ Buster: germs vanish sooner and more must be caught.
-    germShowMs: Math.round(mix(950, 520)),
+    // Sort the Meds: 4 of the 6 colours at first, all 6 from halfway; 9 pills, growing to a 5x5 grid
+    // of 25 at the top; less time.
+    pillColors: d < 0.5 ? 4 : 6,
+    pills: d < 0.3 ? 9 : d < 0.5 ? 12 : d < 0.7 ? 16 : d < 0.85 ? 20 : 25,
+    pillsMs: Math.round(mix(6500, 4500)),
+    // X-ray: a few films in a row (each with its own twist), 6 up to 16 smaller bones, less time per
+    // film; from halfway every film must be read right.
+    bones: d < 0.25 ? 6 : d < 0.5 ? 9 : d < 0.75 ? 12 : 16,
+    xrayMs: Math.round(mix(5500, 4000)),
+    xrayFilms: d < 0.4 ? 3 : 4,
+    xrayMisses: d < 0.5 ? 1 : 0,
+    // Germ Buster: germs vanish sooner and more must be caught; a 4x4 grid from two-thirds up.
+    germShowMs: Math.round(mix(950, 560)),
     germsNeeded: Math.round(mix(7, 8)),
+    germCells: d < 0.66 ? 9 : 16,
     // Deep Breaths: a quicker breath with a narrower "full" band.
     breathMs: Math.round(mix(1700, 1150)),
     breathLow: mix(0.82, 0.88),
     breathHigh: mix(1.08, 1.03),
-    // Match the Meds: a fourth pair from halfway, and less time.
-    pairs: d < 0.5 ? 3 : 4,
-    memoryMs: Math.round(mix(15000, 11000)) + (d < 0.5 ? 0 : 3000),
+    // Match the Meds: 3 pairs, then 4, 6, 8 and 10 (20 cards); each extra pair adds time, the level
+    // takes some away.
+    pairs: d < 0.2 ? 3 : d < 0.4 ? 4 : d < 0.6 ? 6 : d < 0.8 ? 8 : 10,
+    memoryMs: Math.round(mix(15000, 11000)) + ((d < 0.2 ? 3 : d < 0.4 ? 4 : d < 0.6 ? 6 : d < 0.8 ? 8 : 10) - 3) * 3200,
+    // Harder games pay more: a win at the top level pays twice as much.
+    rewardMult: 1 + d,
   };
 };
 export type MinigameTuning = ReturnType<typeof minigameTuning>;
 /** How long a patient waits before being transferred elsewhere (no penalty). */
 export const PATIENT_WAIT_MS = 3 * 60 * 1000;
-/** Rewards: a win pays this many seconds of production (at least 50 taps) and Care Coins. */
-export const WIN_SECONDS = 150;
-export const WIN_COINS = 1;
-export const LOSE_SECONDS = 10;
+/**
+ * Rewards: a win pays this many seconds of production (at least WIN_TAPS taps), times the level's
+ * rewardMult, plus Care Coins (one more from halfway up the difficulty).
+ */
+export const WIN_SECONDS = 300;
+export const WIN_TAPS = 150;
+export const WIN_COINS = 2;
+export const winCoins = (level: number) => WIN_COINS + (level >= 0.5 ? 1 : 0);
+export const LOSE_SECONDS = 30;
+export const LOSE_TAPS = 15;

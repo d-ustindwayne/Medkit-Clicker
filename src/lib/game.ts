@@ -2,11 +2,11 @@ import { ACHIEVEMENTS, type AchievementId } from "@/constants/achievements";
 import { gemsForRebirth, healingRate, rebirthMultiplier } from "@/constants/rebirth";
 import { BACKGROUNDS } from "@/constants/backgrounds";
 import { BOOSTS, LUCKY_MULT, boostMultiplier } from "@/constants/boosts";
-import { LOSE_SECONDS, WIN_COINS, WIN_SECONDS } from "@/constants/patients";
+import { LOSE_SECONDS, LOSE_TAPS, WIN_SECONDS, WIN_TAPS, minigameLevel, minigameTuning, winCoins } from "@/constants/patients";
 import { GEM_ITEMS, GEM_LEVEL_COSTS, GEM_UPGRADES, gemBalance, gemLevel, type GemUpgradeId } from "@/constants/gems";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS } from "@/constants/hospital";
 import { REWARD_SECTIONS } from "@/constants/rewards";
-import { ROOMS, ROOM_ITEMS, fromOldArt, isUnlocked, roomBonus, snapPlacement, type RoomState } from "@/constants/room";
+import { ROOMS, ROOM_ITEMS, fromOldArt, isUnlocked, roomBonus, snapPlacement, spotFor, type RoomState } from "@/constants/room";
 import { SHOP_ITEMS, TAP_RATE_BONUS, itemCost, perSecond, type ItemId } from "@/constants/items";
 
 export type GameState = {
@@ -80,7 +80,8 @@ export type GameState = {
 };
 
 export type GameAction =
-  | { type: "tap" }
+  /** `count` taps at once (fast taps are batched; default 1). */
+  | { type: "tap"; count?: number }
   | { type: "tick"; seconds: number }
   | { type: "buy"; item: ItemId; count?: number }
   | { type: "earn"; amount: number }
@@ -182,8 +183,7 @@ export const tapValue = (s: { owned: Record<ItemId, number>; rebirths: number; b
   rebirthMultiplier(s.rebirths) *
   gemMult(s, "steady_hands", 0.1) *
   (1 + roomBonus(s.room, "tap")) *
-  boostMultiplier(s.boosts, "tap") *
-  ((s.luckyTaps ?? 0) > 0 ? LUCKY_MULT : 1);
+  boostMultiplier(s.boosts, "tap", Date.now(), (s.luckyTaps ?? 0) > 0 ? [LUCKY_MULT] : []);
 
 /** Care Coins: every unlocked achievement pays its reward. */
 export const coinsEarned = (s: Pick<GameState, "achievements">) =>
@@ -205,12 +205,25 @@ export const redeemedThisYear = (times: number[], now = Date.now()) => {
 /** At most this many sick patients wait in My Room at once. */
 export const MAX_PATIENTS = 3;
 
-/** Patients paid for treating a ward patient: minutes of production, with a floor early in the game. */
-export const treatReward = (s: { owned: Record<ItemId, number>; rebirths: number; gemUpgrades?: Record<string, number> }, won: boolean) => {
+type TreatState = { owned: Record<ItemId, number>; rebirths: number; treated: number; gemUpgrades?: Record<string, number> };
+
+/** How hard this player's minigames are (0-1); the treat modal and the rewards both use it. */
+export const wardLevel = (s: TreatState) => minigameLevel(s.treated, healingRate({ owned: s.owned, rebirths: s.rebirths }));
+
+/**
+ * Patients paid for treating a ward patient: minutes of production (more for harder games), with a
+ * floor early in the game. A loss still pays a little.
+ */
+export const treatReward = (s: TreatState, won: boolean) => {
   const base = { owned: s.owned, rebirths: s.rebirths };
-  const amount = won ? Math.max(healingRate(base) * WIN_SECONDS, tapValue(base) * 50) : Math.max(healingRate(base) * LOSE_SECONDS, tapValue(base) * 5);
+  const amount = won
+    ? Math.max(healingRate(base) * WIN_SECONDS, tapValue(base) * WIN_TAPS) * minigameTuning(wardLevel(s)).rewardMult
+    : Math.max(healingRate(base) * LOSE_SECONDS, tapValue(base) * LOSE_TAPS);
   return amount * gemMult(s, "bedside_manner", 0.2);
 };
+
+/** Care Coins for a ward win. */
+export const treatCoins = (s: TreatState) => winCoins(wardLevel(s));
 
 /** Patients admitted by tapping the emergency ambulance on the Hospital page. */
 export const emergencyReward = (s: { owned: Record<ItemId, number>; rebirths: number; gemUpgrades?: Record<string, number> }) => {
@@ -258,8 +271,14 @@ const withAchievements = (state: GameState): GameState => {
 
 const apply = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
-    case "tap":
-      return { ...earn(state, tapValue(state)), taps: state.taps + 1, luckyTaps: Math.max(0, state.luckyTaps - 1) };
+    case "tap": {
+      const count = Math.max(1, Math.floor(action.count ?? 1));
+      // Lucky Stethoscope taps are used up first; the rest heal the normal amount.
+      const lucky = Math.min(count, state.luckyTaps);
+      // Each kind of tap is worth what tapValue shows for it (Lucky adds to other tap boosts, like they add up).
+      const amount = tapValue({ ...state, luckyTaps: 0 }) * (count - lucky) + tapValue({ ...state, luckyTaps: 1 }) * lucky;
+      return { ...earn(state, amount), taps: state.taps + count, luckyTaps: state.luckyTaps - lucky };
+    }
     case "tick": {
       const next = earn(state, healingRate(state) * action.seconds);
       return { ...next, playSeconds: state.playSeconds + action.seconds };
@@ -356,7 +375,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
       if (!state.patients.some((p) => p.arrivedAt === action.arrivedAt)) return state;
       const amount = treatReward(state, action.won);
       const done = { ...state, patients: state.patients.filter((p) => p.arrivedAt !== action.arrivedAt) };
-      return earn(action.won ? { ...done, treated: state.treated + 1, bonusCoins: state.bonusCoins + WIN_COINS } : done, amount);
+      return earn(action.won ? { ...done, treated: state.treated + 1, bonusCoins: state.bonusCoins + treatCoins(state) } : done, amount);
     }
     case "buyBackground": {
       const bg = BACKGROUNDS.find((b) => b.id === action.id);
@@ -438,8 +457,11 @@ const apply = (state: GameState, action: GameAction): GameState => {
       const placed = Object.fromEntries(Object.entries(state.room.placed).map(([k, v]) => [k, v.filter((p) => p.item !== item.id)]));
       const here = placed[room.id] ?? [];
       if (here.length >= room.limit) return state;
-      // Kept inside its zone and off the room's signs, windows and furniture (snaps to the nearest free spot).
-      const { x, y } = snapPlacement(room, item.place, action.x, action.y);
+      // Kept inside its zone, off the room's signs, windows and furniture, and (on the wall) off the
+      // other wall items: it snaps to the nearest free spot, or stays put if the wall is full.
+      const spot = spotFor(room, here, item, action.x, action.y);
+      if (!spot) return state;
+      const { x, y } = spot;
       return { ...state, room: { ...state.room, placed: { ...placed, [room.id]: [...here, { item: item.id, x, y }] } } };
     }
     case "removeItem": {

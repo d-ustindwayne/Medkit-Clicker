@@ -17,6 +17,10 @@ export type Settings = {
   theme: ThemeName;
   /** Vibration on taps, purchases and achievements. */
   haptics: boolean;
+  /** Calmer screens: no animated backgrounds, spinning rays, confetti or shakes (on top of the phone's own setting). */
+  reduceMotion: boolean;
+  /** Letters on coloured pills in the minigames, for colour-blind players. */
+  colorLabels: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -26,6 +30,8 @@ export const DEFAULT_SETTINGS: Settings = {
   background: 0,
   theme: "light",
   haptics: true,
+  reduceMotion: false,
+  colorLabels: false,
 };
 
 type StoredGame = { state: GameState; savedAt: number };

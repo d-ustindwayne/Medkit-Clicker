@@ -84,6 +84,10 @@ function ActiveBoosts() {
   );
 }
 
+/** Inter Bold averages a little under this many ems per character. */
+const CHAR_EM = 0.64;
+const COUNTER_PX = 48;
+
 function Counter({ compact }: { compact: boolean }) {
   const { healed, owned, rebirths, boosts, room } = useGameSelector((s) => ({ healed: s.healed, owned: s.owned, rebirths: s.rebirths, boosts: s.boosts, room: s.room }));
   const palette = usePalette();
@@ -91,14 +95,19 @@ function Counter({ compact }: { compact: boolean }) {
   const label = `${Math.floor(healed) === 1 ? "Patient" : "Patients"} Healed`;
   // Hard pixel drop shadow; NativeWind has no text-shadow utilities.
   const shadow = { textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 };
+  // The count shrinks to fit by its length. adjustsFontSizeToFit would re-measure the text on every
+  // change, many times a second while tapping, which costs frames on slower phones.
+  const [boxW, setBoxW] = useState(0);
+  const count = formatCount(healed);
+  const countPx = boxW ? Math.min(COUNTER_PX, Math.floor(boxW / (count.length * CHAR_EM))) : COUNTER_PX;
   return (
-    // Side padding clears the menu button (left) and the currency chips (right). The medkit's shine
-    // (in the pager, drawn after this) passes over the text.
-    <View className={`items-center ${compact ? "px-24" : "px-28"}`} accessibilityLiveRegion="none">
+    // Side padding clears the menu button (left) and the currency chips (right). The counter draws
+    // above the pager, so the medkit and its orbit never cover the numbers (the shine goes behind them).
+    <View className={`z-10 items-center ${compact ? "px-24" : "px-28"}`} accessibilityLiveRegion="none">
       {compact ? (
-        <View accessibilityRole="header" className="items-center">
-          <Text className="text-center font-display text-5xl text-ink" style={shadow} adjustsFontSizeToFit numberOfLines={1}>
-            {formatCount(healed)}
+        <View accessibilityRole="header" className="items-center self-stretch" onLayout={(e) => setBoxW(e.nativeEvent.layout.width)}>
+          <Text className="text-center font-display text-ink" style={[shadow, { fontSize: countPx, lineHeight: countPx }]} numberOfLines={1}>
+            {count}
           </Text>
           <Text className="text-center font-display text-xl text-ink">{label}</Text>
         </View>
@@ -107,9 +116,10 @@ function Counter({ compact }: { compact: boolean }) {
           {formatCount(healed)} {label}
         </Text>
       )}
-      <View className="mt-2 flex-row items-center gap-2">
-        <View className="rounded-full border-[1.5px] border-outline bg-surface px-4 py-1">
-          <Text className={`text-center font-display text-ink ${compact ? "text-sm" : "text-lg"}`}>
+      <View className="mt-2 max-w-full flex-row items-center gap-2">
+        <View className="max-w-full rounded-full border-[1.5px] border-outline bg-surface px-4 py-1">
+          {/* One line that shrinks to fit, so a long rate ("350.23 million") is never cut off. */}
+          <Text className={`text-center font-display text-ink ${compact ? "text-sm" : "text-lg"}`} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
             {formatRate(rate)} {rate === 1 ? "Medkit" : "Medkits"} per second
           </Text>
         </View>
@@ -142,6 +152,8 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
   const skinSection = GEM_ITEMS.find((i) => i.id === chosenSkin)?.section;
   const medkitSkin = skinSection && !sectionOpen(skinSection, now) ? null : chosenSkin;
   const [editing, setEditingState] = useState(false);
+  // The medkit's idle animations pause while My Room is shown.
+  const [page, setPage] = useState(0);
   const setEditing = (on: boolean) => {
     setEditingState(on);
     onEditing(on);
@@ -177,7 +189,7 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
           It steps aside while decorating, so the room, its buttons and the item tray all fit. */}
       {drag
         ? !editing && (
-            <Animated.View style={[{ overflow: "hidden", alignSelf: "stretch" }, counterFade]}>
+            <Animated.View style={[{ overflow: "hidden", alignSelf: "stretch", zIndex: 10 }, counterFade]}>
               {/* Measured once at full height, so the fold knows how far to go. */}
               <View onLayout={(e) => setCounterH((h) => h || e.nativeEvent.layout.height)}>
                 <Counter compact={compact} />
@@ -190,6 +202,7 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
         overflowVisible
         width={width}
         dots="overlay"
+        onPageChange={setPage}
         scrollEnabled={!editing}
         className="flex-1"
         pages={[
@@ -199,7 +212,7 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
             content: (
               <View className="flex-1 items-center justify-center">
                 <Animated.View style={zoom}>
-                  <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths, boosts, luckyTaps, room, gemUpgrades })} owned={owned} skin={medkitSkin} effect={tapEffect} />
+                  <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths, boosts, luckyTaps, room, gemUpgrades })} owned={owned} skin={medkitSkin} effect={tapEffect} active={page === 0} />
                 </Animated.View>
               </View>
             ),

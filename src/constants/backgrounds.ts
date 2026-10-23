@@ -18,7 +18,7 @@ export const BACKGROUNDS: { id: string; name: string; pattern: PatternKind | Ani
   { id: "candy_hearts", name: "Candy Hearts", pattern: "hearts", light: { bg: "#fdeef3", line: "#f6c2d4" }, dark: { bg: "#22101a", line: "#43203a" } },
   { id: "plain", name: "Plain", pattern: "plain", light: { bg: "#f9e8e8", line: "#f9e8e8" }, dark: { bg: "#0f1c24", line: "#0f1c24" } },
   { id: "purple_rain", name: "Purple Rain", pattern: "rain", price: 15, light: { bg: "#ece3fb", line: "#a77ee8", accent: "#c9a8f5" }, dark: { bg: "#1a0f2e", line: "#9a6ae0", accent: "#5c3a99" } },
-  { id: "heart_monitor", name: "Heart Monitor", pattern: "ecg", price: 15, light: { bg: "#e4f6ec", line: "#2a9d5c", accent: "#c3e8d3" }, dark: { bg: "#04170f", line: "#39e07a", accent: "#0c3321" } },
+  { id: "heart_monitor", name: "Heart Monitor", pattern: "ecg", price: 15, light: { bg: "#eef2f9", line: "#e2475b", accent: "#d5deed" }, dark: { bg: "#0a1220", line: "#ff5d70", accent: "#1a2840" } },
   { id: "night_sky", name: "Night Shift Sky", pattern: "stars", price: 10, light: { bg: "#dfe4f8", line: "#f2b938", accent: "#b9c3ec" }, dark: { bg: "#0b1030", line: "#fff3b8", accent: "#1c2456" } },
   { id: "blood_stream", name: "Blood Stream", pattern: "cells", price: 10, light: { bg: "#fdecef", line: "#ec7d8f", accent: "#d85a70" }, dark: { bg: "#250a12", line: "#b2384c", accent: "#7f2234" } },
   // Premium (Gem Shop)

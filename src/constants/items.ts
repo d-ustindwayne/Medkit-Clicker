@@ -60,7 +60,8 @@ export const itemCost = (item: ShopItem, owned: number) =>
 /** Every 25 of one item makes that item heal 30% more: x1.3 at 25, x1.6 at 50, x2.2 at 100. */
 export const MILESTONE_EVERY = 25;
 export const MILESTONE_BONUS = 0.3;
-export const itemMultiplier = (count: number) => 1 + MILESTONE_BONUS * Math.floor(count / MILESTONE_EVERY);
+// Rounded to cents so 1 + 0.3 x 9 is 3.7, not 3.6999999999999997.
+export const itemMultiplier = (count: number) => Math.round((1 + MILESTONE_BONUS * Math.floor(count / MILESTONE_EVERY)) * 100) / 100;
 
 export const perSecond = (owned: Record<ItemId, number>) =>
   SHOP_ITEMS.reduce((sum, item) => {

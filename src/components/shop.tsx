@@ -3,7 +3,7 @@ import { Image } from "@/components/ui/image";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
-import { BOOSTS, COIN, type Boost } from "@/constants/boosts";
+import { BOOSTS, COIN, boostMultiplier, type Boost } from "@/constants/boosts";
 import { MEDKIT_IMAGE, MILESTONE_EVERY, SHOP_ITEMS, itemCost, itemMultiplier, type ShopItem } from "@/constants/items";
 import { HOSPITAL_SCENE } from "@/constants/scenes";
 import { Shine } from "@/components/fx/shine";
@@ -16,8 +16,8 @@ import { useGameActions, useGameSelector } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useNow } from "@/hooks/use-now";
 import { usePalette } from "@/hooks/use-palette";
-import { formatCount, formatRate } from "@/lib/format";
-import { bulkCost, coinBalance, priceOf } from "@/lib/game";
+import { formatCount, formatMult, formatRate } from "@/lib/format";
+import { bulkCost, coinBalance, priceOf, type GameState } from "@/lib/game";
 
 type CardProps = {
   item: ShopItem;
@@ -80,7 +80,7 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
             {!hidden && (
               <Text className="font-body text-xs text-ink opacity-70">
                 +{formatRate(item.rate * itemMultiplier(owned))} per second each
-                {` · x${itemMultiplier(owned + MILESTONE_EVERY - (owned % MILESTONE_EVERY))} at ${owned + MILESTONE_EVERY - (owned % MILESTONE_EVERY)}`}
+                {` · ${formatMult(itemMultiplier(owned + MILESTONE_EVERY - (owned % MILESTONE_EVERY)))} at ${owned + MILESTONE_EVERY - (owned % MILESTONE_EVERY)}`}
               </Text>
             )}
           </View>
@@ -90,7 +90,8 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
         </View>
         {!hidden && (
           <View className="h-1.5 bg-ink/10">
-            <View className={`h-full ${affordable ? "bg-success" : "bg-primary"}`} style={{ width: `${progress * 100}%` }} />
+            {/* Scaled, not resized: a transform skips the layout pass a width change costs. */}
+            <View className={`h-full w-full ${affordable ? "bg-success" : "bg-primary"}`} style={{ transform: [{ scaleX: progress }], transformOrigin: "left" }} />
           </View>
         )}
         {affordable && <Shine />}
@@ -108,12 +109,28 @@ const SHOP_PAGES = [
 ];
 
 /**
+ * Prices change only when an item is bought, a sale starts or ends, or Bulk Orders levels up, so
+ * they're cached on exactly those: a game tick (or a burst of taps) doesn't redo x100 price loops.
+ */
+const priceCache = new Map<string, number>();
+const costOf = (s: GameState, item: ShopItem, qty: number) => {
+  const key = `${item.id}:${s.owned[item.id]}:${qty}:${boostMultiplier(s.boosts, "price")}:${s.gemUpgrades.bulk_orders ?? 0}`;
+  let cost = priceCache.get(key);
+  if (cost === undefined) {
+    if (priceCache.size > 500) priceCache.clear();
+    cost = qty === 1 ? priceOf(s, item) : bulkCost(s, item, qty);
+    priceCache.set(key, cost);
+  }
+  return cost;
+};
+
+/**
  * One shop row. It subscribes to just its own numbers, so a game tick only redraws the rows whose
  * price, affordability or progress (in 2% steps) actually changed, not the whole list.
  */
 function ShopRow({ item, qty }: { item: ShopItem; qty: number }) {
   const card = useGameSelector((s) => {
-    const cost = qty === 1 ? priceOf(s, item) : bulkCost(s, item, qty);
+    const cost = costOf(s, item, qty);
     const owned = s.owned[item.id];
     return {
       owned,
@@ -296,14 +313,16 @@ export function Shop({ compact, width }: { compact: boolean; width: number }) {
 
   return (
     <View className="flex-1 bg-primary">
-      <Text
-        accessibilityRole="header"
-        className={`text-center font-pixel tracking-[2px] text-ink ${compact ? "pt-6 text-3xl" : "pt-5 text-5xl"}`}
-        style={{ textShadowColor: "rgba(0,0,0,0.28)", textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0.1 }}
-      >
-        {SHOP_PAGES[page].title}
-      </Text>
       <Pager
+        title={(i) => (
+          <Text
+            accessibilityRole="header"
+            className={`text-center font-pixel tracking-[2px] text-ink ${compact ? "pt-6 text-3xl" : "pt-5 text-5xl"}`}
+            style={{ textShadowColor: "rgba(0,0,0,0.28)", textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0.1 }}
+          >
+            {SHOP_PAGES[i].title}
+          </Text>
+        )}
         width={width}
         dots="top"
         className="flex-1"

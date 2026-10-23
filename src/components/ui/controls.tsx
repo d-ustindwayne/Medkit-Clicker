@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useRef, useState, type ReactNode } from "react";
+import { Pressable, Text, View, type GestureResponderEvent } from "react-native";
 
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
@@ -19,6 +19,32 @@ export function SettingsGroup({ title, icon, children }: { title: string; icon: 
       </View>
     </HardShadow>
   );
+}
+
+/**
+ * Touch handlers for a bar you can press and drag along: `onSlide` gets the finger's position as
+ * 0-1 across the bar on touch, while dragging, and (with `done`) on release. Positions come from
+ * the finger's place on screen, so the value keeps following it even when it strays above, below
+ * or past the ends of the bar. The bar keeps the touch, so a scrolling page doesn't take over
+ * mid-drag. Its children should be pointerEvents "none" (the bar's left edge is found from the
+ * first touch).
+ */
+export function useSlide(width: number, onSlide: (k: number, done: boolean) => void) {
+  const left = useRef(0);
+  const at = (e: GestureResponderEvent) => Math.min(1, Math.max(0, (e.nativeEvent.pageX - left.current) / Math.max(1, width)));
+  return {
+    onStartShouldSetResponder: () => true,
+    onMoveShouldSetResponder: () => true,
+    onResponderTerminationRequest: () => false,
+    onResponderGrant: (e: GestureResponderEvent) => {
+      left.current = e.nativeEvent.pageX - e.nativeEvent.locationX;
+      onSlide(at(e), false);
+      return true;
+    },
+    onResponderMove: (e: GestureResponderEvent) => onSlide(at(e), false),
+    onResponderRelease: (e: GestureResponderEvent) => onSlide(at(e), true),
+    onResponderTerminate: (e: GestureResponderEvent) => onSlide(at(e), true),
+  };
 }
 
 /** Label above a control. */
@@ -51,19 +77,34 @@ export function Stepper({ label, value, onPrev, onNext }: { label: string; value
 }
 
 /**
- * Speaker button (tap to mute/unmute) and a segmented level bar (tap a segment to set the level).
- * Unmuting restores the level from before muting.
+ * Speaker button (tap to mute/unmute) and a segmented level bar: tap a segment, or press and drag
+ * along the bar (all the way left is off). Unmuting restores the level from before muting.
  */
 export function VolumeControl({ label, value, steps, onChange }: { label: string; value: number; steps: number; onChange: (v: number) => void }) {
   const { playSfx } = useAudio();
   const [beforeMute, setBeforeMute] = useState(Math.max(1, Math.ceil(steps / 2)));
+  const [barW, setBarW] = useState(0);
+  const [held, setHeld] = useState(false);
   const set = (v: number) => {
     onChange(v);
     playSfx("click");
   };
+  // A segment's level is set anywhere inside it; one click per step while dragging.
+  const slide = useSlide(barW, (k, done) => {
+    const v = Math.min(steps, Math.max(0, Math.ceil(k * steps)));
+    if (v !== value) set(v);
+    setHeld(!done);
+  });
 
   return (
-    <View className="flex-row items-center gap-2" accessibilityRole="adjustable" accessibilityLabel={label} accessibilityValue={{ min: 0, max: steps, now: value }}>
+    <View
+      className="flex-row items-center gap-2"
+      accessibilityRole="adjustable"
+      accessibilityLabel={label}
+      accessibilityValue={{ min: 0, max: steps, now: value }}
+      accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+      onAccessibilityAction={(e) => set(Math.min(steps, Math.max(0, value + (e.nativeEvent.actionName === "increment" ? 1 : -1))))}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={value === 0 ? `Unmute ${label}` : `Mute ${label}`}
@@ -78,13 +119,17 @@ export function VolumeControl({ label, value, steps, onChange }: { label: string
       >
         <PixelIcon name={value === 0 ? "mute" : "speaker"} size={18} />
       </Pressable>
-      <View className="h-10 flex-1 flex-row gap-[3px] border-[1.5px] border-outline bg-backdrop p-[3px]">
+      <View
+        {...slide}
+        onLayout={(e) => setBarW(e.nativeEvent.layout.width)}
+        className={`h-10 flex-1 flex-row gap-[3px] border-outline p-[3px] ${held ? "border-2 bg-accent" : "border-[1.5px] bg-backdrop"}`}
+      >
         {Array.from({ length: steps }, (_, i) => (
-          <Pressable
+          <View
             key={i}
-            accessibilityLabel={`${label} ${i + 1} of ${steps}`}
-            onPress={() => set(i + 1)}
-            className={`flex-1 ${i < value ? "bg-primary" : "bg-ink/10"}`}
+            pointerEvents="none"
+            // The level the finger is on stands out while dragging.
+            className={`flex-1 ${i < value ? "bg-primary" : "bg-ink/10"} ${held && i === value - 1 ? "border-2 border-outline" : ""}`}
           />
         ))}
       </View>

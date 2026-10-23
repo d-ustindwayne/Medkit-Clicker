@@ -1,19 +1,24 @@
+import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { memo, useEffect } from "react";
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import Svg, { Defs, Path, RadialGradient, Stop } from "react-native-svg";
 
 const RAYS = 18;
 const SPIN_MS = 60_000;
 
-/** Slowly turning light rays behind the medkit. */
-export const Sunburst = memo(function Sunburst({ size, color }: { size: number; color: string }) {
-  const reduceMotion = useReducedMotion();
+/** Slowly turning light rays behind the medkit. `active`: on screen (it stops turning when not). */
+export const Sunburst = memo(function Sunburst({ size, color, active = true }: { size: number; color: string; active?: boolean }) {
+  const reduceMotion = useReduceMotion();
   const rotation = useSharedValue(0);
 
   useEffect(() => {
-    if (reduceMotion) return;
-    rotation.set(withRepeat(withTiming(360, { duration: SPIN_MS, easing: Easing.linear }), -1, false));
-  }, [reduceMotion, rotation]);
+    if (reduceMotion || !active) return;
+    // Picks up from wherever it stopped.
+    const from = rotation.get() % 360;
+    rotation.set(from);
+    rotation.set(withRepeat(withTiming(from + 360, { duration: SPIN_MS, easing: Easing.linear }), -1, false));
+    return () => cancelAnimation(rotation);
+  }, [reduceMotion, rotation, active]);
 
   const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.get()}deg` }] }));
 
@@ -29,7 +34,9 @@ export const Sunburst = memo(function Sunburst({ size, color }: { size: number; 
   }).join(" ");
 
   return (
-    <Animated.View pointerEvents="none" style={[{ position: "absolute", width: size, height: size }, style]}>
+    // Drawn once into a texture on Android and then only rotated, instead of redrawing the gradient
+    // every frame.
+    <Animated.View pointerEvents="none" renderToHardwareTextureAndroid style={[{ position: "absolute", width: size, height: size }, style]}>
       <Svg width={size} height={size}>
         <Defs>
           <RadialGradient id="fade" cx="50%" cy="50%" r="50%">
