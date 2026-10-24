@@ -1,92 +1,112 @@
-# Medkit Clicker
+# 🩺 Medkit Clicker
 
-**Medkit Clicker is a cozy pixel-art idle game about running a hospital: tap the medkit to heal patients, then spend them on medical supplies, from bandages to a DNA lab, that keep healing for you.** Grow your hospital, unlock over a hundred achievements and rebirth for permanent boosts, all to a soundtrack you pick.
+**A cozy pixel-art game about building your very own hospital, one tap at a time.**
 
-It runs on Android, iOS and the web, built with Expo 57, React Native, React 19, NativeWind v4 and Reanimated 4, by Dustin Dwayne Diaz.
+Tap the medkit to heal patients. Use those patients to buy medical supplies, from simple bandages all the way up to a DNA lab, that keep healing people for you. Watch your little clinic grow into a grand medical center, collect achievements, decorate your rooms, and relax to a lo-fi soundtrack that fits the mood.
 
-## Features
+Medkit Clicker is available on Android phones & tablets, ~~iPhone & iPad,~~ and in your web browser. It was created by Dustin Dwayne Diaz.
 
-- **Tap and grow:** every tap heals patients. 13 supplies, from bandages and gloves to IV bags, microscopes and a DNA lab, keep healing while you rest. Each purchase raises the next price by 15%.
-- **Offline progress:** your team keeps working for up to 4 hours while the app is closed.
-- **115 achievements**, from "First Aid" to healing a vigintillion patients, with progress bars and a few secret ones.
-- **Three currencies**, shown top-right: patients (medkits), Care Coins (from achievements) and Natal Gems (one per rebirth).
-- **Rebirth:** on the Hospital page, start a new run for a Natal Gem and a small permanent healing boost. Your hospital grows with it, from a little clinic to the Grand Haven Medical Center (10 looks).
-- **Emergencies:** cars pass and visitors walk in; when an ambulance pulls up at the door, tap it to admit the patient for a burst of healing.
-- **Care Coins and boosts:** achievements pay Care Coins. Spend them in the shop's Boosts tab on 13 power-ups, like 2x per tap for 3 minutes or an instant hour of healing.
-- **My Room:** decorate hospital rooms (Empty Room, Reception, Lab, Pharmacy, Children's Ward) with 26 pixel-art items (some animated) you unlock by playing. Each placed item gives a small permanent bonus, and nurses and the doctor walk around.
-- **Sick patients** turn up in your room at random. Treat them in one of nine quick minigames (injection timing, CPR rhythm, bandage race, pulse count, pill sorting, X-ray, germ busting, breathing, memory pairs) for patients and coins.
-- **Redeem codes** unlock hidden sections, like a rewards shop where patients buy real-life treats (with a limit on each).
-- **Original soundtrack:** five chill lo-fi loops made in BeepBox (*Waiting Room*, *Morning Rounds*, *Night Shift*, *Visiting Hours* (a waltz), *Recovery Room*), included for every player.
-- **Music player** for the soundtrack: play/pause, track skipping and seeking; sound effects with their own volume; vibration feedback (with an off switch) on phones.
-- **Light and dark themes** from the original design, with seven backgrounds, each with its own pattern and colours.
-- **Swipe pages:** My Room next to the medkit, and the outside of the hospital next to the shop, drawn as full-width pixel scenes.
-- **Saves:** autosaves every 10 seconds and when the app is backgrounded. Export (to a folder you choose) or import a save as JSON or CSV.
-- **Responsive layout:** the shop sits beside the medkit on tablets and desktops, and below it on phones.
+---
 
-## Getting started
+## What is it like to play?
 
-Requires [Bun](https://bun.sh/) and, to render the soundtrack, [ffmpeg](https://ffmpeg.org/).
+Medkit Clicker is an "idle" game, which means it's easy to pick up and just as happy to run quietly in the background. Every tap on the medkit heals patients. The more supplies you buy, the more healing happens on its own, even while you're away. Your team keeps working for up to 4 hours after you close the game, so you'll always come back to a busier hospital.
 
-```bash
-bun install
-bun run start
-```
+There's no rush and no pressure. Play for a minute or an hour. Your hospital will be waiting for you.
 
-### Music
+---
 
-**Soundtrack.** The game's own music is composed in code as BeepBox songs (`scripts/compose-music.ts`). `bun run music:compose` writes the BeepBox files to `src/audio/soundtrack/beepbox/` and renders each one with BeepBox's synth to a seamlessly looping MP3 in `src/audio/soundtrack/`. To open a song in the [BeepBox](https://www.beepbox.co) editor, use File > Import JSON. These files are committed and ship in the app.
+## What you can do
 
-## Scripts
+### 🏥 Grow your hospital
 
-| Command                             | What it does                                                                                                      |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `bun run start`                     | Start the Expo dev server                                                                                         |
-| `bun run android` / `bun run ios`   | Build and run on a device or emulator                                                                             |
-| `bun run web`                       | Run in the browser                                                                                                |
-| `bun run music:compose` | Compose the soundtrack: BeepBox JSON plus looping MP3s (needs ffmpeg) |
-| `bun run db:setup` | Create the database tables and upload codes, rewards and music |
-| `bun run server` | Run the API locally (needs `.env`, see `.env.example`) |
-| `bun run apk:phone` | Test APK for real phones (arm64 only, minified, debug-signed) → `android/app/build/outputs/apk/release/` |
-| `bun run apk:release` | The APK to publish: 32- and 64-bit phones, signed with the release key. Attach it to the GitHub release twice, as `medkit-clicker-<version>.apk` and as `medkit-clicker.apk` (the website's Download button links to that name) |
-| `bun run lint`                      | Lint with ESLint                                                                                                  |
-| `bun run typecheck`                 | Type-check with TypeScript                                                                                        |
-| `bun run test`                      | Unit tests for the game logic (Bun's built-in runner)                                                             |
-| `bun run add-code <section> <code>` | Register a redeem code. Only its hash is stored, in `.env.local` (gitignored). Restart the dev server afterwards. |
+Start with a single medkit and build up your supplies. There are 13 to collect, including bandages, gloves, IV bags, microscopes and a DNA lab. Each one you buy makes the next a little pricier, so every upgrade feels like a real step forward.
 
-## Project structure
+### 🚑 Handle emergencies
 
-```
-src/
-  app/            Expo Router screens (_layout.tsx, index.tsx)
-  components/     Medkit button, shop, side menu, toasts, UI controls, room/ (My Room), ward/ (minigames)
-  constants/      Shop items, achievements, boosts, patients, rooms, rewards, the soundtrack, theme palettes
-  hooks/          Game state provider and audio provider
-  lib/            Game reducer, number formatting, storage, save export/import
-  imgs/ fonts/ audio/ media/   Sprites, fonts, sound, design references
-```
+Life at a hospital is never dull. Cars drive past and visitors walk through the door. When an ambulance pulls up out front, tap it to admit the patient and get a big burst of healing.
 
-Game balance (prices, rates and growth) lives in `src/constants/items.ts`. Development builds show a **Dev tools** section at the bottom of Settings for testing late-game content (add patients or items, unlock achievements, skip time). Achievements live in `src/constants/achievements.ts`.
+### 🌟 Start fresh with Rebirth
 
-## Docs
+Ready for a new beginning? Rebirth lets you start a brand-new run in exchange for a Natal Gem and a small permanent healing boost. As you rebirth, your hospital transforms too, growing through 10 different looks, from a humble little clinic to the magnificent Grand Haven Medical Center.
 
-- [docs/TESTING.md](docs/TESTING.md): the test checklist and the latest results
-- [docs/DATABASE.md](docs/DATABASE.md): Aiven PostgreSQL, the API, and how to set them up
-- [docs/WEBSITE.md](docs/WEBSITE.md): the website in website/: address, deploy and asset sync
+### 🏆 Collect achievements
 
-## Redeem codes
+There are 115 achievements to discover, from your very first "First Aid" all the way to healing a truly absurd number of patients. Each comes with a progress bar so you can see how close you are, and a few are secret.
 
-Reward sections are defined in `src/constants/rewards.ts`. Each one is unlocked by a code, and the code itself never appears in the source or in git. To set one up:
+### 🪙 Three kinds of rewards
 
-```bash
-bun run add-code jasmine "the-code"
-```
+Keep an eye on the top-right corner of the screen:
 
-This writes the code's SHA-256 hash to `.env.local`. Builds made on another machine need the same `.env.local`, or the code won't match.
+- **Patients** are your main currency, earned by healing.
+- **Care Coins** are earned from achievements and spent on special boosts.
+- **Natal Gems** are earned each time you rebirth.
 
-## Fun fact
+### ⚡ Power-ups and boosts
 
-The game started as a gift: Dustin made it for Jasmine Sison Taboy, a nursing student, to relieve her stress. That's why the theme is nursing, and why there's a hidden rewards section.
+Spend your Care Coins in the shop on 13 different boosts, like doubling the healing power of every tap for 3 minutes, or instantly gaining an hour's worth of healing.
 
-## License
+### 🛋️ Decorate My Room
 
-The code is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for the licenses of bundled fonts. The soundtrack in `src/audio/soundtrack/` is original to this project and covered by the same license.
+Make the hospital your own! Furnish rooms such as the Reception, Lab, Pharmacy and Children's Ward with 26 pixel-art items, some of them animated. You unlock new decorations just by playing, and every item you place gives you a small permanent bonus. Nurses and the doctor wander through while you decorate.
+
+### 🤒 Treat sick patients with mini-games
+
+Every so often, a sick patient shows up in your room. Help them with one of nine quick mini-games:
+
+- Injection timing
+- CPR rhythm
+- Bandage race
+- Pulse counting
+- Pill sorting
+- X-ray
+- Germ busting
+- Breathing exercises
+- Memory pairs
+
+Each one rewards you with patients and coins.
+
+### 🎁 Redeem codes and rewards
+
+Discover special rewards by redeeming codes throughout your journey. You never know what little surprises might be waiting for you!
+
+---
+
+## 🎵 Music and sound
+
+Medkit Clicker comes with its own original soundtrack: five relaxing lo-fi tunes made just for the game.
+
+- _Waiting Room_
+- _Morning Rounds_
+- _Night Shift_
+- _Visiting Hours_ (a gentle waltz)
+- _Recovery Room_
+
+There's a built-in music player where you can play, pause, skip tracks and jump around within a song. Sound effects have their own volume control, and on phones you can turn vibration feedback on or off.
+
+---
+
+## 🎨 Make it yours
+
+- **Light and dark themes** to suit your eyes and your mood.
+- **Seven backgrounds**, each with its own pattern and colors.
+- **Swipe between scenes:** My Room sits next to the medkit, and the outside of the hospital sits next to the shop, each drawn as a full-width pixel scene.
+- **Works on any screen:** on tablets and computers the shop sits beside the medkit, and on phones it moves below it.
+
+---
+
+## 💾 Your progress is safe
+
+The game saves automatically every few seconds and whenever you leave the app. You can also back up your progress to a file of your choice, or restore it later, so you never have to lose your hospital.
+
+---
+
+## 💙 The story behind the game
+
+Medkit Clicker started as a gift. Dustin made it for Jasmine Sison Taboy, a nursing student, to help her unwind during stressful times. That's why the game is all about nursing and caring for others, and why there's a hidden rewards section waiting to be found.
+
+---
+
+## 📄 License
+
+Medkit Clicker is open source under the Apache License 2.0. The soundtrack is original to this project and shares the same license. See the LICENSE and NOTICE files in this repository for full details.
