@@ -73,7 +73,7 @@ export function AboutPage({ onSecret }: { onSecret?: () => void }) {
           </Animated.View>
         </Pressable>
         <Text className="font-display text-xl text-ink">{APP_INFO.name}</Text>
-        <Text className="font-body text-xs text-ink opacity-70">Version {Constants.expoConfig?.version ?? "0.7.5"}</Text>
+        <Text className="font-body text-xs text-ink opacity-70">Version {Constants.expoConfig?.version ?? "0.7.6"}</Text>
       </View>
 
       <Text className="font-body text-base leading-6 text-ink">
