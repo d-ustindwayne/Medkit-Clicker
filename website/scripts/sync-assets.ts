@@ -13,8 +13,8 @@ if (!existsSync(game)) {
 
 const files: Record<string, string> = {
   "fonts/silkscreen.ttf": "fonts/slkscr.ttf",
-  "fonts/nunito-regular.ttf": "fonts/nunito-regular.ttf",
-  "fonts/nunito-bold.ttf": "fonts/nunito-bold.ttf",
+  "fonts/nunito-regular.ttf": "fonts/nunito-regular.min.ttf",
+  "fonts/nunito-bold.ttf": "fonts/nunito-bold.min.ttf",
   "sprites/medkit.png": "imgs/medkit.png",
   "sprites/hospital.png": "imgs/hospital.png",
   "sprites/heart.png": "imgs/misc/heart.png",

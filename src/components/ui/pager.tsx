@@ -55,6 +55,9 @@ function useMouseDrag(scroller: RefObject<ScrollView | null>, width: number, cou
     };
     const move = (e: PointerEvent) => {
       if (!drag) return;
+      // The button came up without a pointerup (let go outside the window, or the browser took the
+      // gesture over): end the drag here, or the pages would keep following the mouse.
+      if ((e.buttons & 1) === 0) return finish(e.clientX, e.timeStamp);
       const dx = e.clientX - drag.x;
       if (!drag.moved) {
         if (Math.abs(dx) < 8) return;
@@ -69,7 +72,8 @@ function useMouseDrag(scroller: RefObject<ScrollView | null>, width: number, cou
       }
       node.scrollLeft = drag.left - dx;
     };
-    const up = (e: PointerEvent) => {
+    /** Ends a drag on the page it was heading for; without a final position (a cancelled drag), on the nearest one. */
+    const finish = (x?: number, t?: number) => {
       if (!drag) return;
       const d = drag;
       drag = null;
@@ -78,13 +82,16 @@ function useMouseDrag(scroller: RefObject<ScrollView | null>, width: number, cou
       setTimeout(() => (swallowClick = false), 0);
       const { width: w, count: n } = latest.current;
       const from = Math.round(d.left / w);
-      const next = Math.min(Math.max(from + stepFor(e.clientX - d.x, e.timeStamp - d.t, w), 0), n - 1);
+      const target = x === undefined || t === undefined ? Math.round(node.scrollLeft / w) : from + stepFor(x - d.x, t - d.t, w);
+      const next = Math.min(Math.max(target, 0), n - 1);
       node.style.cursor = "";
       document.body.style.userSelect = "";
       scroller.current?.scrollTo({ x: next * w, animated: true });
       // Snapping comes back once the pages have arrived.
       setTimeout(() => (node.style.scrollSnapType = ""), 400);
     };
+    const up = (e: PointerEvent) => finish(e.clientX, e.timeStamp);
+    const cancel = () => finish();
     // Pressing the mouse to drag shouldn't start selecting text either.
     const select = (e: Event) => {
       if (drag) e.preventDefault();
@@ -97,6 +104,8 @@ function useMouseDrag(scroller: RefObject<ScrollView | null>, width: number, cou
     node.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("blur", cancel);
     node.addEventListener("click", click, true);
     node.addEventListener("selectstart", select);
     return () => {
@@ -104,6 +113,8 @@ function useMouseDrag(scroller: RefObject<ScrollView | null>, width: number, cou
       node.removeEventListener("pointerdown", down);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("blur", cancel);
       node.removeEventListener("click", click, true);
     };
   }, [scroller]);
@@ -118,6 +129,21 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
   // tapped) and then kept, so hidden pages cost nothing at start-up.
   const [mounted, setMounted] = useState<number[]>([0]);
   const mount = (...ids: number[]) => setMounted((m) => (ids.every((i) => i < 0 || i >= pages.length || m.includes(i)) ? m : [...new Set([...m, ...ids])]));
+  /**
+   * Phones: the pages drawn right now, the current one and, while a swipe or page change is under
+   * way, the ones it passes. Built pages stay mounted (nothing is lost), but a hidden one isn't drawn:
+   * Android uploads the pictures of every drawn page to the GPU each frame, even off screen, and with
+   * My Room, the Hospital and the Gem Shop all drawn they overflowed its cache and every frame stuttered.
+   */
+  const [shownRange, setShownRange] = useState<[number, number]>([0, 0]);
+  const show = (a: number, b: number) => {
+    const lo = Math.max(0, Math.min(a, b)), hi = Math.min(pages.length - 1, Math.max(a, b));
+    setShownRange((r) => (r[0] === lo && r[1] === hi ? r : [lo, hi]));
+  };
+  const reveal = (...ids: number[]) => {
+    mount(...ids);
+    show(Math.min(page, ...ids), Math.max(page, ...ids));
+  };
   // A moment after start-up the next page is built too, so the first swipe never reaches a page
   // that is still loading its art.
   useEffect(() => {
@@ -127,6 +153,7 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
 
   const settle = (next: number) => {
     mount(next);
+    show(next, next);
     if (next === page) return;
     playSfx("click");
     setPage(next);
@@ -144,7 +171,7 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
       const dx = Math.abs(dragDx(e.nativeEvent.pageX));
       return scrollEnabled && pages.length > 1 && dx > 8 && dx > Math.abs(e.nativeEvent.pageY - (drag.current?.y ?? 0));
     },
-    onResponderGrant: () => mount(page - 1, page + 1),
+    onResponderGrant: () => reveal(page - 1, page + 1),
     onResponderMove: (e: GestureResponderEvent) => {
       const x = Math.min(Math.max(page * width - dragDx(e.nativeEvent.pageX), 0), (pages.length - 1) * width);
       scroller.current?.scrollTo({ x, animated: false });
@@ -156,7 +183,10 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
       scroller.current?.scrollTo({ x: next * width, animated: true });
       settle(next);
     },
-    onResponderTerminate: () => scroller.current?.scrollTo({ x: page * width, animated: true }),
+    onResponderTerminate: () => {
+      scroller.current?.scrollTo({ x: page * width, animated: true });
+      settle(page);
+    },
   };
 
   useMouseDrag(scroller, width, pages.length, scrollEnabled && pages.length > 1, () => mount(page - 1, page + 1));
@@ -190,7 +220,8 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
           accessibilityState={{ selected: i === page }}
           hitSlop={8}
           onPress={() => {
-            mount(i);
+            // Every page on the way is shown while the pages slide over.
+            reveal(i);
             scroller.current?.scrollTo({ x: i * width, animated: true });
           }}
           className={`h-2.5 border-[1.5px] border-outline ${i === page ? "w-7 bg-ink" : "w-2.5 bg-surface"}`}
@@ -217,7 +248,7 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
         showsHorizontalScrollIndicator={false}
         // On the web, visible overflow would stop the pages scrolling at all, so they clip there.
         style={{ width, flexGrow: 1, overflow: overflowVisible && !WEB ? "visible" : undefined }}
-        onScrollBeginDrag={() => mount(page - 1, page + 1)}
+        onScrollBeginDrag={() => reveal(page - 1, page + 1)}
         onMomentumScrollEnd={(e) => {
           settle(Math.round(e.nativeEvent.contentOffset.x / width));
         }}
@@ -225,7 +256,13 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
       >
         {pages.map((p, i) => (
           <View key={p.key} style={WEB ? [WEB_PAGE, { width }] : { width }}>
-            {mounted.includes(i) ? p.content : null}
+            {mounted.includes(i) ? (
+              WEB ? (
+                p.content
+              ) : (
+                <View style={{ flex: 1, display: i >= shownRange[0] && i <= shownRange[1] ? "flex" : "none" }}>{p.content}</View>
+              )
+            ) : null}
           </View>
         ))}
       </ScrollView>

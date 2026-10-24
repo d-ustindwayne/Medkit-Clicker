@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Image } from "@/components/ui/image";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 
 import { BACKGROUNDS, ownsBackground } from "@/constants/backgrounds";
 import { DevTools } from "@/components/menu/dev-tools";
@@ -10,7 +10,7 @@ import { Field, SettingsGroup, Stepper, Toggle, VolumeControl } from "@/componen
 import { PixelButton } from "@/components/ui/pixel-button";
 import { useMusic } from "@/hooks/use-audio";
 import { openSections } from "@/constants/rewards";
-import { useGameActions, useGameState, useSettings } from "@/hooks/use-game";
+import { useGameActions, useGameSelector, useGameStore, useSettings } from "@/hooks/use-game";
 import { useNow } from "@/hooks/use-now";
 import { COIN } from "@/constants/boosts";
 import { coinBalance } from "@/lib/game";
@@ -23,18 +23,20 @@ const cycle = (i: number, delta: number, length: number) => (i + delta + length)
 
 export function SettingsPage({ onDone }: { onDone: () => void }) {
   const settings = useSettings();
-  const state = useGameState();
+  // Only what the page shows, so it doesn't redraw on every game tick while it's open.
+  const state = useGameSelector((s) => ({ ownedBackgrounds: s.ownedBackgrounds, unlockedSections: s.unlockedSections, devTools: s.devTools, coins: coinBalance(s) }));
+  const store = useGameStore();
   const now = useNow(60_000);
   const music = useMusic();
   const { updateSettings, setTheme, replaceSave, resetProgress, dispatch, pushToast } = useGameActions();
   const [confirmReset, setConfirmReset] = useState(false);
   const background = BACKGROUNDS[settings.background % BACKGROUNDS.length];
   const owned = ownsBackground(settings.background, state.ownedBackgrounds);
-  const coins = coinBalance(state);
+  const coins = state.coins;
 
   const onExport = async (format: SaveFormat) => {
     try {
-      const saved = await exportSave({ state, settings, appIcon: appIcon() }, format);
+      const saved = await exportSave({ state: store.get(), settings, appIcon: appIcon() }, format);
       if (!saved) return;
       dispatch({ type: "exported" });
       pushToast({ kind: "info", title: "Save exported", body: `Saved your progress as a .${format} file.` });
@@ -102,7 +104,8 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
         <Field label="Sound effects">
           <VolumeControl label="Sound effects volume" value={settings.sfxVolume} steps={VOLUME_STEPS} onChange={(v) => updateSettings({ sfxVolume: v })} />
         </Field>
-        <Toggle label="Vibration" value={settings.haptics} onChange={(haptics) => updateSettings({ haptics })} />
+        {/* Browsers can't vibrate the way the app does, so the web version has no switch for it. */}
+        {Platform.OS !== "web" && <Toggle label="Vibration" value={settings.haptics} onChange={(haptics) => updateSettings({ haptics })} />}
       </SettingsGroup>
 
       <SettingsGroup title="LOOK" icon={settings.theme === "dark" ? "moon" : "sun"}>

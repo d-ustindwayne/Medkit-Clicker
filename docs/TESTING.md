@@ -16,8 +16,9 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] Swiping the medkit area goes to the Hospital page and back; the dots follow
 
 ## Shop
-- [ ] All 13 items appear in order: Bandage, Gloves, Facemask, Thermometer, Stethoscope, BP Cuff, Syringe, Medicine, IV Bag, Blood Sample, COVID Test, Microscope, DNA Strand
+- [ ] Items appear in order (Bandage, Gloves, Facemask, Thermometer, Stethoscope, BP Cuff, Syringe, Medicine, IV Bag, Blood Sample, COVID Test, Microscope, DNA Strand), but a new game lists only the first 3; each item you discover brings in one more "???" (always 2 ahead)
 - [ ] Unaffordable items you've never bought show as "???" silhouettes until you've earned half their price
+- [ ] Tap growth: every 100 taps the "+N" per tap grows a little; it stops growing at 2,300 taps and stays after a rebirth
 - [ ] Buying: the price goes up 15%, the count goes up, there's a bounce, a buy sound and a 📱 medium vibration
 - [ ] Can't afford: the card shakes, plays the invalid sound and gives a 📱 warning vibration
 - [ ] The progress bar fills toward the next purchase; the shine sweeps over affordable items
@@ -28,7 +29,8 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] The first tap unlocks "First Aid" with a toast showing the bronze trophy, confetti and a 📱 success vibration
 - [ ] The Achievements page lists 111, with progress bars and trophy, medal, heart and clock art
 - [ ] Secret achievements stay hidden until unlocked
-
+- [ ] Scrolled to the bottom of the badges, the chosen achievement's name and description are still shown at the top
+- [ ] Germ Buster starts with "Get ready..." and the first germ springs up like the rest
 ## Menu and navigation
 - [ ] The menu opens and closes; every page opens (Achievements, Redeem, Settings, About) and back works
 - [ ] Closing the menu slides it out to the left (it doesn't vanish), and it opens again on the menu page
@@ -78,10 +80,19 @@ Run through this before a release or after big changes. Items marked 📱 need a
 - [ ] The page never widens or zooms out when a toast or confetti appears
 - [ ] Long names (shop items, boosts, Gem Shop, the music track, toasts, background names) scroll slowly when they don't fit, and end in "…" with Reduce motion; nothing runs past its box at phone widths
 - [ ] Decorating: an item at the far right of the room shows its whole ✕; on a computer the ✓ button sits below the currency chips
-
+- [ ] Dragging with the mouse over the hospital, the medkit or any picture never lifts out a ghost image, and never selects text (the website too); text boxes can still be selected
+- [ ] Settings has no Vibration switch, and the Gem Shop has no App Icons section (the app on a phone still has both)
+- [ ] The browser offers Install / Add to Home Screen; the installed game opens full screen with the medkit icon. About shows "Get the Android app" (web only)
+- [ ] Minigame keys on a computer: Space (Injection, Rhythm, fast Bandage), arrows or WASD (arrow Bandage), ← → (left/right Bandage, faster heart), ← ↓ → or 1 2 3 (beat count), 0-3 (X-ray count), hold Space (Deep Breaths); each game shows its keys
+- [ ] With the code entered, "Check for new songs" downloads the music in the browser; after closing and reopening the tab the playlists are still there and play
+- [ ] While tapping and buying, the medkit and the hospital never move up or down as the patients number changes
 ## Layout and looks
 - [ ] Phone portrait: the shop sits under the medkit and nothing is cut off; toasts don't hide important buttons
 - [ ] Tablet or landscape: the shop sits beside the medkit
+- [ ] With Heart Monitor (and any background), after opening My Room, the Hospital and the Gem Shop once, the main screen stays smooth; `adb shell dumpsys gfxinfo com.medkitclicker.app` shows few janky frames
+- [ ] Hospital page on a short shop (phone, shop pulled down): the rebirth card folds into a REBIRTH tab and the hospital and road show; the tab slides the card down and back up. With the shop pulled up, or beside the medkit, the full card shows
+- [ ] Opened from the tab on a short phone, the rebirth card never runs off the page: it scrolls inside the space under the tab, and the Rebirth button can always be reached
+- [ ] Web: dragging the pages with the mouse and letting go outside the browser window (or double-click and drag) never leaves the pages stuck following the mouse
 - [ ] All sprites are crisp (not blurry) at every size
 - [ ] Backgrounds reach every edge (no bare strip on the right); tilting the phone shifts them a little, near layers more than far ones
 - [ ] Heart Monitor sweeps smoothly with random beats; Blood Stream cells tumble; in decorate mode the reception's side floor carries on the tile grid

@@ -15,7 +15,8 @@ export function ScenePage({ scene, width, children, above, contentRef, sides }: 
   const sideW = width / 4;
   return (
     // Centred, so a scene drawn narrower than the page (My Room while decorating) sits in the middle.
-    <View className="flex-1 items-center" accessibilityLabel={scene.title} style={{ backgroundColor: scene.fillTop }}>
+    // A scene anchored to the bottom (the hospital) keeps its bottom edge, the road, on a page shorter than the art.
+    <View className="flex-1 items-center" accessibilityLabel={scene.title} style={{ backgroundColor: scene.fillTop, justifyContent: scene.anchor === 1 ? "flex-end" : undefined }}>
       <View style={{ flex: scene.anchor, overflow: "hidden", alignSelf: "stretch" }}>{above}</View>
       <View className="flex-row">
         {sides && <Image source={sides.left} style={{ width: sideW, height }} contentFit="cover" />}

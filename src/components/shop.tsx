@@ -136,16 +136,30 @@ function ShopRow({ item, qty }: { item: ShopItem; qty: number }) {
       cost,
       affordable: s.healed >= cost,
       progress: Math.min(1, Math.floor((s.healed / cost) * 50) / 50),
-      hidden: owned === 0 && s.totalHealed < itemCost(item, owned) * 0.5,
+      hidden: isHidden(s, item),
     };
   });
   return <ShopCard qty={qty} item={item} {...card} />;
 }
 
+/** Never bought and not yet half-way to its price: shown as a "???" silhouette. */
+const isHidden = (s: GameState, item: ShopItem) => s.owned[item.id] === 0 && s.totalHealed < itemCost(item, 0) * 0.5;
+/** Like Cookie Clicker: the list shows the supplies found so far plus the next two silhouettes (3 at the start). */
+const SILHOUETTES_AHEAD = 2;
+const shownCount = (s: GameState) => {
+  let found = 0;
+  SHOP_ITEMS.forEach((item, i) => {
+    if (!isHidden(s, item)) found = i + 1;
+  });
+  return Math.min(SHOP_ITEMS.length, Math.max(3, found + SILHOUETTES_AHEAD));
+};
+
 function SuppliesList({ qty }: { qty: number }) {
+  // Just the count, so the list redraws only when a new supply comes into view.
+  const shown = useGameSelector(shownCount);
   return (
     <>
-      {SHOP_ITEMS.map((item) => (
+      {SHOP_ITEMS.slice(0, shown).map((item) => (
         <ShopRow key={item.id} item={item} qty={qty} />
       ))}
     </>

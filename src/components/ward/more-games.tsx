@@ -25,6 +25,7 @@ import { useSettings } from "@/hooks/use-game";
 import { PILL_COLORS, PILL_SIZES, PILL_VARIANTS, SIZE_NAMES, TWO_RULES, dealPills, type PillSpec, type PillsVariant } from "@/lib/pills";
 import { rand } from "@/lib/random";
 import { useHaptics } from "@/hooks/use-haptics";
+import { HAS_KEYS, useKeys } from "@/hooks/use-keys";
 
 // Six more quick ward minigames, each a few seconds long, with a bit of life: things bob, pop
 // and flip. They get harder with progress (see minigameLevel and minigameTuning), and each has a
@@ -53,6 +54,8 @@ function useCountdown(ms: number, onEnd: () => void) {
 }
 
 const Hint = ({ children }: { children: string }) => <Text className="text-center font-body text-sm text-ink opacity-70">{children}</Text>;
+/** The keyboard controls, shown only where there are any (the web version). */
+export const KeyHint = ({ children }: { children: string }) => (HAS_KEYS ? <Text className="text-center font-pixel text-[10px] tracking-[1px] text-ink opacity-60">KEYS: {children}</Text> : null);
 
 /** A thin timer bar that drains as time runs out and turns red near the end. */
 function TimeBar({ left, total }: { left: number; total: number }) {
@@ -125,7 +128,10 @@ function CountPulse({ onDone, tuning, irregular }: GameProps & { irregular: bool
     return () => timers.forEach(clearTimeout);
   }, [setup, pulse]);
   const heart = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }));
+  const [answered, setAnswered] = useState(false);
   const answer = (n: number) => {
+    if (answered) return;
+    setAnswered(true);
     const ok = n === setup.beats;
     if (ok) juice.pop();
     else juice.shake();
@@ -133,6 +139,8 @@ function CountPulse({ onDone, tuning, irregular }: GameProps & { irregular: bool
     playSfx(ok ? "buy" : "invalid");
     setTimeout(() => done(ok), 350);
   };
+  const option = (k: number) => () => answer(setup.options[k]);
+  useKeys({ ArrowLeft: option(0), ArrowDown: option(1), ArrowRight: option(2), "1": option(0), "2": option(1), "3": option(2) }, asking);
   return (
     <Animated.View style={juice.style}>
       <View className="items-center gap-3">
@@ -150,6 +158,7 @@ function CountPulse({ onDone, tuning, irregular }: GameProps & { irregular: bool
                 <PixelButton key={n} label={String(n)} onPress={() => answer(n)} />
               ))}
             </View>
+            <KeyHint>← ↓ → OR 1 2 3</KeyHint>
           </>
         ) : (
           <Hint>{beat === 0 ? (irregular ? "An irregular pulse. Get ready..." : "Get ready...") : irregular ? "Count every beat, however uneven..." : "Count the heartbeats..."}</Hint>
@@ -197,6 +206,7 @@ function FasterPulse({ onDone, tuning }: GameProps) {
     playSfx(ok ? "buy" : "invalid");
     setTimeout(() => done(ok), 400);
   };
+  useKeys({ ArrowLeft: () => pick(0), ArrowRight: () => pick(1) });
   return (
     <Animated.View style={juice.style}>
       <View className="items-center gap-3">
@@ -217,6 +227,7 @@ function FasterPulse({ onDone, tuning }: GameProps) {
           ))}
         </View>
         <Hint>{asking ? "Tap the heart that beats faster." : "One pulse is racing. Which one?"}</Hint>
+        <KeyHint>← OR →</KeyHint>
       </View>
     </Animated.View>
   );
@@ -480,6 +491,7 @@ function XrayFilm({ variant, tuning, onResult }: { variant: XrayVariant; tuning:
     feedback(ok);
     setTimeout(() => result(ok), 450);
   };
+  useKeys({ "0": () => answer(0), "1": () => answer(1), "2": () => answer(2), "3": () => answer(3) }, variant === "count");
   const cols = film.count > 9 ? 4 : 3;
   const scale = film.count <= 6 ? 1 : film.count <= 9 ? 0.9 : film.count <= 12 ? 0.78 : 0.66;
   // The crack gets finer and the joint shifts less as the game gets harder.
@@ -517,6 +529,9 @@ function XrayFilm({ variant, tuning, onResult }: { variant: XrayVariant; tuning:
               <PixelButton key={n} label={String(n)} tone={answered === n ? (n === film.odd.size ? "success" : "danger") : undefined} onPress={() => answer(n)} />
             ))}
           </View>
+        ) : null}
+        {variant === "count" ? (
+          <KeyHint>0 1 2 3</KeyHint>
         ) : (
           <Hint>{text.hint}</Hint>
         )}
@@ -593,6 +608,8 @@ function Splat({ good }: { good: boolean }) {
     </View>
   );
 }
+/** The pause before the first germ: time to get ready, and for the pictures to load. */
+const GERM_LEAD_MS = 1200;
 /** A tap this soon after a germ moves on still counts for it, so a busy phone doesn't cost a hit. */
 const GERM_GRACE_MS = 180;
 type Spawn = { n: number; cell: number; good: boolean; busted: boolean };
@@ -629,6 +646,7 @@ function GermGame({ onDone, tuning }: GameProps) {
     return { variant, waves: planWaves(variant, tuning.germCells) };
   });
   const [wave, setWave] = useState<Spawn[]>([]);
+  const [started, setStarted] = useState(false);
   const [busted, setBusted] = useState(0);
   /** Splats still playing; they outlive the germ, which may move on before its splat is done. */
   const [splats, setSplats] = useState<{ n: number; cell: number; good: boolean }[]>([]);
@@ -660,10 +678,11 @@ function GermGame({ onDone, tuning }: GameProps) {
         return;
       }
       current.current = plan.waves[w];
+      setStarted(true);
       setWave(plan.waves[w]);
       timer = setTimeout(() => next(w + 1), show);
     };
-    timer = setTimeout(() => next(0), 700);
+    timer = setTimeout(() => next(0), GERM_LEAD_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per game
   }, []);
@@ -695,9 +714,14 @@ function GermGame({ onDone, tuning }: GameProps) {
   return (
     <Animated.View style={juice.style}>
       <View className="items-center gap-3">
-        <Text className="font-number text-base text-ink">
-          Busted {busted} (need {need} of {GERMS})
-        </Text>
+        <Text className="font-number text-base text-ink">{started ? `Busted ${busted} (need ${need} of ${GERMS})` : "Get ready..."}</Text>
+        {/* Loaded (unseen) during the pause: a germ whose picture is still loading pops up with no spring. */}
+        {!started && (
+          <View pointerEvents="none" style={{ position: "absolute", opacity: 0 }}>
+            <Image source={GERM_IMAGE} style={{ width: 52, height: 52 }} contentFit="contain" />
+            <Image source={GOOD_IMAGE} style={{ width: 52, height: 52 }} contentFit="contain" />
+          </View>
+        )}
         {/* 3x3 holes, or 4x4 at the top levels. */}
         <View className={`${tuning.germCells > 9 ? "w-72" : "w-56"} flex-row flex-wrap justify-between gap-y-2`}>
           {Array.from({ length: tuning.germCells }, (_, i) => {
@@ -798,6 +822,7 @@ function BreathGame({ onDone, tuning }: GameProps) {
     if (round + 1 >= BREATHS) return setTimeout(() => done(total >= 2), 450);
     setRound(round + 1);
   };
+  useKeys({ " ": { down: inhale, up: exhale } }, round < BREATHS);
   return (
     <Animated.View style={juice.style}>
       <View className="items-center gap-3">
@@ -809,6 +834,7 @@ function BreathGame({ onDone, tuning }: GameProps) {
           <Animated.View style={[{ width: 120, height: 120, borderRadius: 60 }, circle]} />
         </TapPressable>
         <Hint>{variant === "varied" && round === 0 && note.startsWith("Hold") ? "Each breath is different: fill the ring, then let go." : note}</Hint>
+        <KeyHint>HOLD SPACE, LET GO TO RELEASE</KeyHint>
       </View>
     </Animated.View>
   );

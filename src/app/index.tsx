@@ -19,6 +19,7 @@ import { ToastStack } from "@/components/toast-stack";
 import { RoomPage } from "@/components/room/room-page";
 import { ownsBackground } from "@/constants/backgrounds";
 import { GEM_ITEMS } from "@/constants/gems";
+import { TAP_GROWTH_EVERY, tapGrowth } from "@/constants/items";
 import { sectionOpen } from "@/constants/rewards";
 import { BOOSTS, LUCKY_MULT } from "@/constants/boosts";
 import { healingRate } from "@/constants/rebirth";
@@ -90,6 +91,8 @@ function ActiveBoosts() {
 /** Inter Bold averages a little under this many ems per character. */
 const CHAR_EM = 0.64;
 const COUNTER_PX = 48;
+/** Computers: one line ("1,234 Patients Healed"), a little bigger with the web's larger text. */
+const WIDE_COUNTER_PX = Platform.OS === "web" ? 54 : 48;
 
 function Counter({ compact }: { compact: boolean }) {
   const { healed, owned, rebirths, boosts, room } = useGameSelector((s) => ({ healed: s.healed, owned: s.owned, rebirths: s.rebirths, boosts: s.boosts, room: s.room }));
@@ -100,26 +103,25 @@ function Counter({ compact }: { compact: boolean }) {
   // Hard pixel drop shadow; NativeWind has no text-shadow utilities.
   const shadow = { textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 };
   // The count shrinks to fit by its length. adjustsFontSizeToFit would re-measure the text on every
-  // change, many times a second while tapping, which costs frames on slower phones.
+  // change, many times a second while tapping, which costs frames on slower phones. Its line keeps
+  // the full height whatever the size, so the medkit and the hospital below never move as it changes.
   const [boxW, setBoxW] = useState(0);
   const count = formatCount(healed);
-  const countPx = boxW ? Math.min(COUNTER_PX, Math.floor(boxW / (count.length * CHAR_EM))) : COUNTER_PX;
+  const line = compact ? count : `${count} ${label}`;
+  const maxPx = compact ? COUNTER_PX : WIDE_COUNTER_PX;
+  const countPx = boxW ? Math.min(maxPx, Math.floor(boxW / (line.length * CHAR_EM))) : maxPx;
   return (
     // Side padding clears the menu button (left) and the currency chips (right). The counter draws
     // above the pager, so the medkit and its orbit never cover the numbers (the shine goes behind them).
     <View className={`z-10 items-center ${compact ? "px-24" : "px-28"}`} accessibilityLiveRegion="none">
-      {compact ? (
-        <View accessibilityRole="header" className="items-center self-stretch" onLayout={(e) => setBoxW(e.nativeEvent.layout.width)}>
-          <Text className="text-center font-display text-ink" style={[shadow, { fontSize: countPx, lineHeight: countPx }]} numberOfLines={1}>
-            {count}
+      <View accessibilityRole="header" className="items-center self-stretch" onLayout={(e) => setBoxW(e.nativeEvent.layout.width)}>
+        <View className="justify-center" style={{ height: maxPx + 6 }}>
+          <Text className="text-center font-display text-ink" style={[shadow, { fontSize: countPx, lineHeight: countPx + 6 }]} numberOfLines={1}>
+            {line}
           </Text>
-          <Text className="text-center font-display text-xl text-ink">{label}</Text>
         </View>
-      ) : (
-        <Text accessibilityRole="header" className="text-center font-display text-5xl text-ink" style={shadow} numberOfLines={2} adjustsFontSizeToFit>
-          {formatCount(healed)} {label}
-        </Text>
-      )}
+        {compact && <Text className="text-center font-display text-xl text-ink">{label}</Text>}
+      </View>
       <View className="mt-2 max-w-full flex-row items-center gap-2">
         <View className="max-w-full rounded-full border-[1.5px] border-outline bg-surface px-4 py-1">
           {/* One line that shrinks to fit, so a long rate ("350.23 million") is never cut off. The web
@@ -152,7 +154,9 @@ type ShopDrag = { value: SharedValue<number>; low: number; high: number; top: nu
 
 function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: number; height: number; compact: boolean; shopUp: boolean; drag?: ShopDrag; onEditing: (on: boolean) => void }) {
   // Only what the medkit area shows, so it doesn't redraw on every tick.
-  const { owned, rebirths, boosts, luckyTaps, waiting, room, gemUpgrades, medkitSkin: chosenSkin, tapEffect } = useGameSelector((s) => ({
+  // Tap growth changes every 100 taps, so the step is selected rather than the tap count.
+  const { owned, rebirths, boosts, luckyTaps, waiting, room, gemUpgrades, medkitSkin: chosenSkin, tapEffect, growth } = useGameSelector((s) => ({
+    growth: tapGrowth(s.taps),
     owned: s.owned, rebirths: s.rebirths, boosts: s.boosts, luckyTaps: s.luckyTaps, waiting: s.patients.length, room: s.room,
     gemUpgrades: s.gemUpgrades, medkitSkin: s.medkitSkin, tapEffect: s.tapEffect,
   }));
@@ -222,7 +226,7 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
             content: (
               <View className="flex-1 items-center justify-center">
                 <Animated.View style={zoom}>
-                  <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths, boosts, luckyTaps, room, gemUpgrades })} owned={owned} skin={medkitSkin} effect={tapEffect} active={page === 0} />
+                  <MedkitButton size={size} tapAmount={tapValue({ owned, rebirths, boosts, luckyTaps, room, gemUpgrades, taps: growth * TAP_GROWTH_EVERY })} owned={owned} skin={medkitSkin} effect={tapEffect} active={page === 0} />
                 </Animated.View>
               </View>
             ),

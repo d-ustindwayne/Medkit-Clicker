@@ -3,7 +3,7 @@ import { Image } from "@/components/ui/image";
 import { Modal, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
-import { MORE_GAMES } from "@/components/ward/more-games";
+import { KeyHint, MORE_GAMES } from "@/components/ward/more-games";
 import { pickVariant, shuffle, useDone, useJuice, type GameProps } from "@/components/ward/game-kit";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
@@ -15,6 +15,7 @@ import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameStore, useSettings } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
+import { useKeys } from "@/hooks/use-keys";
 import { usePalette } from "@/hooks/use-palette";
 import { formatCount, formatMult } from "@/lib/format";
 import { treatCoins, treatReward, wardLevel } from "@/lib/game";
@@ -75,6 +76,7 @@ function InjectionGame({ onDone, tuning }: GameProps) {
     setHits(total);
     setRound(round + 1);
   };
+  useKeys({ " ": inject, Enter: inject });
 
   return (
     <Animated.View style={juice.style}>
@@ -91,6 +93,7 @@ function InjectionGame({ onDone, tuning }: GameProps) {
       </View>
       <PixelButton label="INJECT" tone="success" instant onPress={inject} />
       <Text className="text-center font-body text-sm text-ink opacity-70">{note ?? (moving ? "The vein is moving. Hit its dark centre!" : "Stop the needle in the vein's dark centre.")}</Text>
+      <KeyHint>SPACE</KeyHint>
     </View>
     </Animated.View>
   );
@@ -199,6 +202,7 @@ function RhythmGame({ onDone, tuning }: GameProps) {
     haptic.denied();
     juice.shake();
   };
+  useKeys({ " ": press });
   const skipped = beat >= 0 && plan.skip[beat];
   const hint = `${plan.variant === "skips" ? "Tap with the beat, but not when the heart goes grey!" : plan.variant === "speedup" ? "The heart is speeding up. Keep with it!" : "Tap the heart every time it beats."} Extra taps cost you a beat.`;
 
@@ -215,6 +219,7 @@ function RhythmGame({ onDone, tuning }: GameProps) {
         </Animated.View>
       </TapPressable>
       <Text className="text-center font-body text-sm text-ink opacity-70">{hint}</Text>
+      <KeyHint>SPACE</KeyHint>
     </View>
     </Animated.View>
   );
@@ -287,6 +292,7 @@ function BandageArrows({ onDone, tuning }: GameProps) {
     playSfx("click");
     if (count.current >= WRAPS) done(true);
   };
+  useKeys({ ArrowUp: () => press("up"), ArrowRight: () => press("right"), ArrowDown: () => press("down"), ArrowLeft: () => press("left"), w: () => press("up"), d: () => press("right"), s: () => press("down"), a: () => press("left") });
   const pad = (a: Arrow) => (
     <TapPressable key={a} accessibilityRole="button" accessibilityLabel={`Wrap ${a}`} onDown={() => press(a)} className="h-14 w-14 items-center justify-center border-2 border-outline bg-accent active:scale-95">
       <PixelIcon name={a} size={22} />
@@ -323,6 +329,7 @@ function BandageArrows({ onDone, tuning }: GameProps) {
           </View>
         </View>
         <Text className="text-center font-body text-sm text-ink opacity-70">Press the arrow shown. A wrong one unwinds a wrap!</Text>
+        <KeyHint>ARROW KEYS OR W A S D</KeyHint>
       </View>
     </Animated.View>
   );
@@ -366,6 +373,7 @@ function BandageTaps({ onDone, tuning, alternate }: GameProps & { alternate: boo
     if (count.current % 3 === 0) playSfx("click");
     if (count.current >= WRAPS) done(true);
   };
+  useKeys(alternate ? { ArrowLeft: () => wrap(0), ArrowRight: () => wrap(1), a: () => wrap(0), d: () => wrap(1) } : { " ": () => wrap(0) });
   const roll = (size: number) => (
     <Animated.View style={rollStyle}>
       <Image source={BANDAGE} style={{ width: size, height: size }} contentFit="contain" />
@@ -401,6 +409,7 @@ function BandageTaps({ onDone, tuning, alternate }: GameProps & { alternate: boo
         </TapPressable>
       )}
       <Text className="text-center font-body text-sm text-ink opacity-70">{alternate ? "Tap left, right, left, right... as fast as you can!" : "Tap as fast as you can!"}</Text>
+      <KeyHint>{alternate ? "← → OR A D" : "SPACE"}</KeyHint>
     </View>
   );
 }

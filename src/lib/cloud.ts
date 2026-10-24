@@ -1,8 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
-import { Directory, File, Paths } from "expo-file-system";
-
 import type { PromoItem } from "@/lib/game";
+import { clearMusicStore, playableTracks, storeTrack } from "@/lib/music-store";
 
 // Talks to the Medkit Clicker server (server/index.ts). Nothing here logs anyone in: a redeem code
 // is traded once for a token, and the token opens that section's rewards and music.
@@ -129,62 +128,55 @@ export const redeemOnline = async (token: string, rewardId: string, note?: strin
   return res;
 };
 
-const musicDir = () => new Directory(Paths.document, "music");
-
 /** Deleting progress: forgets the code's token, a code waiting to go online, and the downloaded music. */
 export async function forgetCloud() {
   await AsyncStorage.multiRemove([TOKEN_KEY, PENDING_CODE_KEY, LIBRARY_KEY]);
-  try {
-    const dir = musicDir();
-    if (dir.exists) dir.delete();
-  } catch {
-    // no music folder (web) or already gone
-  }
+  await clearMusicStore();
 }
 
-/** Playlists already downloaded to this phone (only files that are really there). */
-export async function loadCachedPlaylists(): Promise<CachedPlaylist[]> {
+/** The downloaded playlists as saved: each song by its storage key (see music-store). */
+async function storedLibrary(): Promise<CachedPlaylist[]> {
   try {
     const raw = await AsyncStorage.getItem(LIBRARY_KEY);
-    const list = raw ? (JSON.parse(raw) as CachedPlaylist[]) : [];
-    return list.map((p) => ({ ...p, tracks: p.tracks.filter((uri) => new File(uri).exists) })).filter((p) => p.tracks.length > 0);
+    return raw ? (JSON.parse(raw) as CachedPlaylist[]) : [];
   } catch {
     return [];
   }
 }
 
+/** Turns saved playlists into ones the player can open, keeping only songs that are really stored. */
+const playable = async (list: CachedPlaylist[]) =>
+  (await Promise.all(list.map(async (p) => ({ ...p, tracks: await playableTracks(p.tracks) })))).filter((p) => p.tracks.length > 0);
+
+/** Playlists already downloaded to this phone or browser, ready to play. */
+export async function loadCachedPlaylists(): Promise<CachedPlaylist[]> {
+  return playable(await storedLibrary());
+}
+
 /**
- * Downloads every song the token can open into the app's documents folder, skipping files it
- * already has. `onProgress` gets (done, total) in songs. Returns the playlists ready to play.
+ * Downloads every song the token can open (into the app's documents folder, or the browser on the
+ * web), skipping songs it already has. `onProgress` gets (done, total) in songs. Returns the
+ * playlists ready to play.
  */
 export async function downloadMusic(token: string, onProgress: (done: number, total: number) => void): Promise<CachedPlaylist[]> {
   const manifest = await call<Manifest>("/music", { token });
   const total = manifest.reduce((n, p) => n + p.tracks.length, 0);
   let done = 0;
   onProgress(done, total);
-  const root = musicDir();
-  if (!root.exists) root.create({ intermediates: true });
   const library: CachedPlaylist[] = [];
   for (const p of manifest) {
-    const dir = new Directory(root, p.id);
-    if (!dir.exists) dir.create({ intermediates: true });
     const tracks: string[] = [];
     for (const t of p.tracks) {
-      // The file name carries the checksum, so a changed song downloads again.
-      const file = new File(dir, `${t.position}-${t.sha256.slice(0, 12)}.m4a`);
-      if (!file.exists || file.size !== t.size) {
-        if (file.exists) file.delete();
-        await File.downloadFileAsync(`${API_URL}/music/track/${t.id}`, file, { headers: { authorization: `Bearer ${token}` }, idempotent: true });
-      }
-      tracks.push(file.uri);
+      // The name carries the checksum, so a changed song downloads again.
+      tracks.push(await storeTrack(p.id, `${t.position}-${t.sha256.slice(0, 12)}.m4a`, t.size, `${API_URL}/music/track/${t.id}`, token));
       onProgress(++done, total);
     }
     library.push({ id: p.id, name: p.name, tracks });
     // Saved after every playlist, so a download cut off halfway keeps what it already got.
-    await AsyncStorage.setItem(LIBRARY_KEY, JSON.stringify([...library, ...(await loadCachedPlaylists()).filter((c) => !library.some((l) => l.id === c.id))]));
+    await AsyncStorage.setItem(LIBRARY_KEY, JSON.stringify([...library, ...(await storedLibrary()).filter((c) => !library.some((l) => l.id === c.id))]));
   }
   await AsyncStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
-  return library;
+  return playable(library);
 }
 
 /** `rewards` lists every part of a bundle; older servers send only `kind` and `amount`. */

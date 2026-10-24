@@ -106,6 +106,19 @@ body {
     linear-gradient(90deg, var(--grid-line) 2px, transparent 2px);
   background-size: 32px 32px;
   background-attachment: fixed;
+  // Like the game: dragging never selects text or picks up a picture. Form fields stay selectable.
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+img {
+  -webkit-user-drag: none;
 }
 
 img.pixel,

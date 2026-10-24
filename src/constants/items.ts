@@ -32,6 +32,23 @@ export const COST_GROWTH = 1.14;
 /** Share of the per-second rate added to every medkit tap. */
 export const TAP_RATE_BONUS = 0.025;
 
+/**
+ * Tap growth: taps get stronger the more you tap, so tapping carries the early game and stays worth
+ * it. Every 100 taps ever made is a step, up to 23 (2,300 taps). Each step adds 1 to every tap and 1%
+ * of per-second, so taps top out at 1 + 23 + 25.5% of per-second. It never goes down: rebirth keeps
+ * it (only Delete progress resets it). Players see the bigger "+N", not steps or levels.
+ */
+export const TAP_GROWTH_EVERY = 100;
+export const TAP_GROWTH_STEPS = 23;
+export const TAP_GROWTH_RATE = 0.01;
+/** Tap growth steps (0-23) from lifetime taps. */
+export const tapGrowth = (taps: number) => Math.min(TAP_GROWTH_STEPS, Math.floor(taps / TAP_GROWTH_EVERY));
+/** Patients a bare tap heals before boosts: 1, plus tap growth, plus a share of per-second. */
+export const baseTap = (rate: number, taps = 0) => {
+  const steps = tapGrowth(taps);
+  return 1 + steps + rate * (TAP_RATE_BONUS + TAP_GROWTH_RATE * steps);
+};
+
 // Ordered from everyday bedside care to specialist diagnostics: first aid and infection control,
 // then vital signs, then treatment, then the lab. Each tier costs ~10x the last and pays back slower,
 // the classic clicker curve. Ids are what saves store, so reordering never touches progress.

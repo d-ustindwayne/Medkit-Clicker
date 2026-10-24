@@ -5,7 +5,15 @@ import { CAR_SPRITES } from "@/constants/cars";
 // The Hospital page (shop, page 2). Everything here is drawn on the scene's 320x240 art-pixel grid.
 
 /** The hospital grows with rebirths. Each look is a 320x240 scene with a transparent sky. */
-export type HospitalTier = { rebirths: number; name: string; image: ImageSourcePropType };
+export type HospitalTier = { rebirths: number; name: string; image: ImageSourcePropType; balloon?: SkyBalloon };
+/** Something floating over a hospital look: its frames, size and resting spot (art pixels), and how far it drifts. */
+export type SkyBalloon = { name: string; frames: ImageSourcePropType[]; x: number; y: number; w: number; h: number; drift: number };
+/** The Sky Medical Centre: a clinic under a hot-air balloon, over Grand Haven Reborn. */
+const SKY_MEDICAL: SkyBalloon = {
+  name: "Sky Medical Centre",
+  frames: [require("@/imgs/hospital/sky_medical_1.png"), require("@/imgs/hospital/sky_medical_2.png")],
+  x: 22, y: 6, w: 48, h: 76, drift: 12,
+};
 export const HOSPITAL_TIERS: HospitalTier[] = [
   { rebirths: 0, name: "Little Clinic", image: require("@/imgs/scenes/hospital_0.png") },
   { rebirths: 1, name: "Neighbourhood Clinic", image: require("@/imgs/scenes/hospital_1.png") },
@@ -17,7 +25,7 @@ export const HOSPITAL_TIERS: HospitalTier[] = [
   { rebirths: 28, name: "Skyline Medical Center", image: require("@/imgs/scenes/hospital_7.png") },
   { rebirths: 36, name: "Meadow Medical Campus", image: require("@/imgs/scenes/hospital_8.png") },
   { rebirths: 45, name: "Grand Haven Medical Center", image: require("@/imgs/scenes/hospital_9.png") },
-  { rebirths: 50, name: "Grand Haven Reborn", image: require("@/imgs/scenes/hospital_10.png") },
+  { rebirths: 50, name: "Grand Haven Reborn", image: require("@/imgs/scenes/hospital_10.png"), balloon: SKY_MEDICAL },
 ];
 export const HOSPITAL_SKY: ImageSourcePropType = require("@/imgs/scenes/hospital_sky.png");
 

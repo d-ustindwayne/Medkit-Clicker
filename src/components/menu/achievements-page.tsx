@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Image } from "@/components/ui/image";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 import { visibleAchievements } from "@/constants/achievements";
 import { COIN } from "@/constants/boosts";
 import { HardShadow } from "@/components/ui/hard-shadow";
-import { useGameState } from "@/hooks/use-game";
+import { useGameSelector } from "@/hooks/use-game";
+import type { GameState } from "@/lib/game";
 
 /** Tiny progress (like 1e-20 of the way to a vigintillion) still reads as something, not 0%. */
 const formatPercent = (p: number) => {
@@ -18,10 +19,27 @@ const formatPercent = (p: number) => {
 const TILE = 56;
 const GAP = 8;
 
+/** The chosen achievement's progress, redrawn only when it moves a step (the bar in 0.5% steps). */
+function Progress({ of }: { of: (s: GameState) => number }) {
+  const { bar, text } = useGameSelector((s) => {
+    const p = of(s);
+    return { bar: Math.floor(Math.min(1, p) * 200) / 200, text: formatPercent(p) };
+  });
+  return (
+    <View className="mt-2 flex-row items-center gap-2">
+      <View className="h-2.5 flex-1 border-[1.5px] border-outline bg-surface">
+        <View className="h-full bg-success" style={{ width: `${bar * 100}%` }} />
+      </View>
+      <Text className="w-12 text-right font-number text-sm text-ink">{text}</Text>
+    </View>
+  );
+}
+
 export function AchievementsPage() {
-  const state = useGameState();
-  const { achievements } = state;
-  const ACHIEVEMENTS = visibleAchievements(state.unlockedSections);
+  // Only what the page shows, not the whole state: the 127 badges would otherwise redraw on every
+  // game tick (five times a second) while the page is open.
+  const { achievements, unlockedSections } = useGameSelector((s) => ({ achievements: s.achievements, unlockedSections: s.unlockedSections }));
+  const ACHIEVEMENTS = visibleAchievements(unlockedSections);
   const [selected, setSelected] = useState(ACHIEVEMENTS[0].id);
   const unlockedCount = ACHIEVEMENTS.filter((a) => achievements[a.id] !== undefined).length;
   const current = ACHIEVEMENTS.find((a) => a.id === selected) ?? ACHIEVEMENTS[0];
@@ -33,7 +51,8 @@ export function AchievementsPage() {
   const tile = gridW ? Math.floor((gridW - (Platform.OS === "web" ? 1 : 0) - GAP * (cols - 1)) / cols) : TILE;
 
   return (
-    <View className="gap-4">
+    <View className="flex-1">
+      <View className="gap-4 p-4 pb-3">
       <View className="gap-1">
         <Text className="font-number text-lg text-ink">
           {unlockedCount} of {ACHIEVEMENTS.length} unlocked
@@ -64,19 +83,13 @@ export function AchievementsPage() {
             Unlocked {new Date(achievements[current.id]!).toLocaleDateString()}
           </Text>
         ) : (
-          current.progress &&
-          !current.secret && (
-            <View className="mt-2 flex-row items-center gap-2">
-              <View className="h-2.5 flex-1 border-[1.5px] border-outline bg-surface">
-                <View className="h-full bg-success" style={{ width: `${Math.min(1, current.progress(state)) * 100}%` }} />
-              </View>
-              <Text className="w-12 text-right font-number text-sm text-ink">{formatPercent(current.progress(state))}</Text>
-            </View>
-          )
+          current.progress && !current.secret && <Progress key={current.id} of={current.progress} />
         )}
       </View>
       </HardShadow>
+      </View>
 
+      <ScrollView contentContainerClassName="px-4 pb-4 pt-1">
       <View className="flex-row flex-wrap gap-2" onLayout={(e) => setGridW(Math.floor(e.nativeEvent.layout.width))}>
         {ACHIEVEMENTS.map((a) => {
           const unlocked = achievements[a.id] !== undefined;
@@ -100,6 +113,7 @@ export function AchievementsPage() {
           );
         })}
       </View>
+      </ScrollView>
     </View>
   );
 }

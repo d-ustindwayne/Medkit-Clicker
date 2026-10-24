@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { BOOSTS, boostMultiplier } from "@/constants/boosts";
-import { SHOP_ITEMS, itemCost, itemMultiplier, perSecond } from "@/constants/items";
+import { SHOP_ITEMS, TAP_GROWTH_STEPS, TAP_GROWTH_RATE, TAP_RATE_BONUS, itemCost, itemMultiplier, perSecond } from "@/constants/items";
 import { SICK_PATIENTS, minigameLevel, minigameTuning } from "@/constants/patients";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, dayPhase, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
@@ -21,6 +21,19 @@ describe("shop", () => {
       expect(SHOP_ITEMS[i].baseCost).toBeGreaterThan(SHOP_ITEMS[i - 1].baseCost);
       expect(SHOP_ITEMS[i].rate).toBeGreaterThan(SHOP_ITEMS[i - 1].rate);
     }
+  });
+
+  test("tap growth: every 100 taps makes taps stronger, up to 23 steps, and rebirth keeps it", () => {
+    const s = { ...newGame(), owned: { ...newGame().owned, gloves: 10 } };
+    const rate = perSecond(s.owned);
+    expect(tapValue({ ...s, taps: 0 })).toBeCloseTo(1 + rate * TAP_RATE_BONUS);
+    expect(tapValue({ ...s, taps: 99 })).toBeCloseTo(1 + rate * TAP_RATE_BONUS);
+    expect(tapValue({ ...s, taps: 1000 })).toBeCloseTo(1 + 10 + rate * (TAP_RATE_BONUS + 10 * TAP_GROWTH_RATE));
+    const max = 1 + TAP_GROWTH_STEPS + rate * (TAP_RATE_BONUS + TAP_GROWTH_STEPS * TAP_GROWTH_RATE);
+    expect(tapValue({ ...s, taps: 2300 })).toBeCloseTo(max);
+    expect(tapValue({ ...s, taps: 1e6 })).toBeCloseTo(max);
+    const reborn = run({ ...s, taps: 2300, healed: 1e9, runHealed: 1e9 }, { type: "rebirth" });
+    expect(reborn.taps).toBe(2300);
   });
 
   test("buying spends the price and raises the next one by 15%", () => {

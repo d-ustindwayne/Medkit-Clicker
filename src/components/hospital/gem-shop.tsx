@@ -190,7 +190,8 @@ function ItemTile({ item }: { item: GemItem }) {
   );
 }
 
-const KINDS: GemItemKind[] = ["skin", "tap", "background", "room", "icon", "sticker"];
+// App icons are left out where the icon can't be changed (the web version), so no gems are spent on them.
+const KINDS: GemItemKind[] = (["skin", "tap", "background", "room", "icon", "sticker"] as const).filter((k) => k !== "icon" || supportsIcons);
 const SECTION_TITLE: Record<GemItemKind, string> = { skin: "MEDKIT SKINS", tap: "TAP EFFECTS", background: "ANIMATED BACKGROUNDS", room: "ANIMATED ROOM ITEMS", icon: "APP ICONS", sticker: "STICKERS" };
 
 /** Third page of the shop: spend Natal Gems on permanent upgrades and cosmetics. */

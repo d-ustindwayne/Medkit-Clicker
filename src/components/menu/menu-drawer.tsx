@@ -113,6 +113,10 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
             </Text>
           </View>
 
+          {/* Achievements scroll only their badge grid, so the chosen one's details stay in view. */}
+          {page === "achievements" ? (
+            <AchievementsPage />
+          ) : (
           <ScrollView contentContainerClassName="gap-3 p-4">
             {page === "menu" && (
               <>
@@ -133,12 +137,12 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
                 )}
               </>
             )}
-            {page === "achievements" && <AchievementsPage />}
             {page === "settings" && <SettingsPage onDone={close} />}
             {page === "about" && <AboutPage onSecret={() => setPage("redeem")} />}
             {page === "redeem" && <RedeemPage onUnlocked={(id) => setPage(`rewards:${id}`)} />}
             {page.startsWith("rewards:") && <RewardsPage sectionId={page.slice("rewards:".length)} />}
           </ScrollView>
+          )}
 
           <Text className="px-4 pb-3 pt-2 font-body text-xs text-ink opacity-70">
             © {APP_INFO.year} {APP_INFO.author}. {APP_INFO.license}.

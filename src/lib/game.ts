@@ -7,7 +7,7 @@ import { GEM_ITEMS, GEM_LEVEL_COSTS, GEM_UPGRADES, gemBalance, gemLevel, type Ge
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS } from "@/constants/hospital";
 import { REWARD_SECTIONS } from "@/constants/rewards";
 import { ROOMS, ROOM_ITEMS, fromOldArt, isUnlocked, roomBonus, snapPlacement, spotFor, type RoomState } from "@/constants/room";
-import { SHOP_ITEMS, TAP_RATE_BONUS, itemCost, perSecond, type ItemId } from "@/constants/items";
+import { SHOP_ITEMS, baseTap, itemCost, perSecond, type ItemId } from "@/constants/items";
 
 export type GameState = {
   /** Spendable balance, shown as "Patients Healed". */
@@ -177,9 +177,9 @@ export const newGame = (): GameState => ({
 /** Multiplier from a gem upgrade: 1 + per-level step x level. */
 const gemMult = (s: { gemUpgrades?: Record<string, number> }, id: GemUpgradeId, step: number) => 1 + step * gemLevel(s, id);
 
-/** Patients per medkit tap, including the rebirth boost and (when passed) active boosts. */
-export const tapValue = (s: { owned: Record<ItemId, number>; rebirths: number; boosts?: Record<string, number>; luckyTaps?: number; room?: RoomState; gemUpgrades?: Record<string, number> }) =>
-  (1 + perSecond(s.owned) * TAP_RATE_BONUS) *
+/** Patients per medkit tap, including tap growth, the rebirth boost and (when passed) active boosts. */
+export const tapValue = (s: { owned: Record<ItemId, number>; rebirths: number; taps?: number; boosts?: Record<string, number>; luckyTaps?: number; room?: RoomState; gemUpgrades?: Record<string, number> }) =>
+  baseTap(perSecond(s.owned), s.taps) *
   rebirthMultiplier(s.rebirths) *
   gemMult(s, "steady_hands", 0.1) *
   (1 + roomBonus(s.room, "tap")) *

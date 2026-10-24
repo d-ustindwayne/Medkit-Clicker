@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Image } from "@/components/ui/image";
 import Constants from "expo-constants";
-import { Linking, Pressable, Text, View } from "react-native";
+import { Linking, Platform, Pressable, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import { HardShadow } from "@/components/ui/hard-shadow";
@@ -84,6 +84,15 @@ export function AboutPage({ onSecret }: { onSecret?: () => void }) {
         <PixelButton label="How to play" onPress={() => dispatch({ type: "setIntroSeen", seen: false })} className="flex-1" />
         <PixelButton label="Visit website" onPress={() => Linking.openURL(APP_INFO.website)} className="flex-1" />
       </View>
+      {/* Playing in a browser: the full game is also an Android app. */}
+      {Platform.OS === "web" && (
+        <View className="gap-1">
+          <PixelButton label="Get the Android app" tone="success" onPress={() => Linking.openURL(APP_INFO.androidApk)} />
+          <Text className="font-body text-xs text-ink opacity-70">
+            {"Want it full screen like an app? Use your browser's Install or Add to Home Screen option (on iPhone: Share, then Add to Home Screen)."}
+          </Text>
+        </View>
+      )}
 
       <HardShadow offset={5}>
       <View className="border-2 border-outline bg-surface px-3 py-1">

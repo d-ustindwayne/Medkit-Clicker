@@ -1,12 +1,14 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
-import { Pressable, Text, View, type ImageSourcePropType } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
 import Svg, { Defs, LinearGradient, Polygon, Stop } from "react-native-svg";
 
 import { RebirthCard } from "@/components/hospital/rebirth-card";
 import { ScenePage } from "@/components/scene-page";
+import { AnimatedSprite } from "@/components/ui/animated-sprite";
+import { PixelIcon } from "@/components/ui/pixel-icon";
 import {
   AMBULANCE,
   AMBULANCE_GAP,
@@ -25,6 +27,7 @@ import {
   SKIES,
   dayPhase,
   hospitalTier,
+  type SkyBalloon,
   visitorGap,
   type DayPhase,
 } from "@/constants/hospital";
@@ -72,6 +75,32 @@ function Cloud({ cloud, width }: { cloud: (typeof CLOUDS)[number]; width: number
   return (
     <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0, top: cloud.y * px, width: w, height: CLOUD_H * px }, move]}>
       <Image source={cloud.image} style={{ width: w, height: CLOUD_H * px }} contentFit="fill" />
+    </Animated.View>
+  );
+}
+
+// ---------- sky balloon ----------
+
+/** A balloon floating over the hospital: drifts slowly side to side and bobs, with a flickering burner. */
+function Balloon({ balloon, width }: { balloon: SkyBalloon; width: number }) {
+  const px = width / ART_W;
+  const sway = useSharedValue(0);
+  const bob = useSharedValue(0);
+  const reduceMotion = useReduceMotion();
+  useEffect(() => {
+    if (reduceMotion) return;
+    const ease = Easing.inOut(Easing.sin);
+    sway.set(withRepeat(withSequence(withTiming(1, { duration: 4500, easing: ease }), withTiming(-1, { duration: 9000, easing: ease }), withTiming(0, { duration: 4500, easing: ease })), -1, false));
+    bob.set(withRepeat(withSequence(withTiming(1, { duration: 1600, easing: ease }), withTiming(0, { duration: 1600, easing: ease })), -1, false));
+    return () => {
+      cancelAnimation(sway);
+      cancelAnimation(bob);
+    };
+  }, [sway, bob, reduceMotion]);
+  const move = useAnimatedStyle(() => ({ transform: [{ translateX: sway.get() * balloon.drift * px }, { translateY: -bob.get() * 2 * px }] }));
+  return (
+    <Animated.View pointerEvents="none" accessibilityLabel={balloon.name} style={[{ position: "absolute", left: balloon.x * px, top: balloon.y * px, width: balloon.w * px, height: balloon.h * px }, move]}>
+      <AnimatedSprite frames={balloon.frames} size={balloon.w * px} height={balloon.h * px} frameMs={180} />
     </Animated.View>
   );
 }
@@ -348,6 +377,72 @@ const SkyAbove = memo(function SkyAbove({ phase, width }: { phase: DayPhase; wid
   });
 });
 
+/** The rebirth card's distance from the top of the page. */
+const CARD_TOP = 28;
+/** The card folds away when less than this share of the art would show below it. */
+const FOLD_BELOW = 0.5;
+const FOLD_MS = 220;
+/** The card's hard shadow offset. */
+const SHADOW = 4;
+
+/**
+ * The rebirth card over the hospital. On short screens it would hide the whole scene, so there it
+ * folds up into a tab at the top that slides it down (and back up) when tapped.
+ */
+function FoldingRebirthCard({ artH }: { artH: number }) {
+  // Rounded: the page's height changes on every frame while the shop is dragged.
+  const [pageH, setPageH] = useState(0);
+  const [cardH, setCardH] = useState(0);
+  const [tabH, setTabH] = useState(0);
+  const [open, setOpen] = useState(false);
+  const fold = cardH > 0 && pageH - CARD_TOP - cardH < artH * FOLD_BELOW;
+  const folded = fold && !open;
+  // Opened on a short page, the card gets the room under the tab and scrolls inside it, so its
+  // bottom (and the Rebirth button) is never cut off.
+  const room = fold && pageH > 0 && tabH > 0 ? pageH - 8 - tabH - SHADOW : undefined;
+  const shown = Math.min(cardH + SHADOW, room ?? Infinity);
+  const slide = useSharedValue(0);
+  const reduceMotion = useReduceMotion();
+  useEffect(() => {
+    slide.set(withTiming(folded ? 1 : 0, { duration: reduceMotion ? 0 : FOLD_MS, easing: Easing.out(Easing.cubic) }));
+  }, [slide, folded, reduceMotion]);
+  // Folded, the card hides under the tab (it's clipped at the tab's bottom edge) and slides down from it.
+  const move = useAnimatedStyle(() => ({ transform: [{ translateY: -slide.get() * shown }] }));
+  return (
+    <>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={(e) => setPageH(Math.round(e.nativeEvent.layout.height / 8) * 8)} />
+    {/* Above the scene: its art is raised (zIndex 1, for My Room), and on Android that would cover the card. */}
+    <View pointerEvents="box-none" style={{ position: "absolute", left: 12, right: 12, top: 0, paddingTop: fold ? 8 : CARD_TOP, zIndex: 10 }}>
+      {fold && (
+        <View className="items-center pb-1.5" onLayout={(e) => setTabH(Math.round(e.nativeEvent.layout.height))}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={open ? "Hide the rebirth card" : "Show the rebirth card"}
+            accessibilityState={{ expanded: open }}
+            onPress={() => setOpen((o) => !o)}
+            hitSlop={8}
+            className="flex-row items-center gap-1.5 border-2 border-outline bg-surface px-3 py-1 active:translate-y-0.5"
+          >
+            <Text className="font-pixel text-xs tracking-[2px] text-ink">REBIRTH</Text>
+            <PixelIcon name={open ? "up" : "down"} size={10} />
+          </Pressable>
+        </View>
+      )}
+      {/* The scroll area leaves room on the right and below for the card's hard shadow. */}
+      <View pointerEvents="box-none" style={{ overflow: "hidden", marginRight: -SHADOW }}>
+        <Animated.View pointerEvents="box-none" style={move}>
+          <ScrollView style={{ maxHeight: room }} contentContainerStyle={{ paddingRight: SHADOW, paddingBottom: SHADOW }} scrollEnabled={room !== undefined && cardH + SHADOW > room} showsVerticalScrollIndicator={false}>
+            <View onLayout={(e) => setCardH(Math.round(e.nativeEvent.layout.height))}>
+              <RebirthCard />
+            </View>
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </View>
+    </>
+  );
+}
+
 /** Second page of the shop area: the hospital from outside. It grows with rebirths. */
 export function HospitalPage({ width, active }: { width: number; active: boolean }) {
   const rebirths = useGameSelector((s) => s.rebirths);
@@ -370,13 +465,12 @@ export function HospitalPage({ width, active }: { width: number; active: boolean
           ))}
         </View>
         <Image source={tier.image} style={{ position: "absolute", width, height }} contentFit="cover" accessibilityLabel={tier.name} />
+        {tier.balloon && <Balloon balloon={tier.balloon} width={width} />}
         {/* Evening and night light over the buildings; the sky image itself stays bright and starry. */}
         {sky.tint && <View pointerEvents="none" style={{ position: "absolute", width, height, top: 0, backgroundColor: sky.tint }} />}
         <Street width={width} active={active} night={night} />
       </ScenePage>
-      <View className="absolute left-3 right-3 top-7">
-        <RebirthCard />
-      </View>
+      <FoldingRebirthCard artH={height} />
     </View>
   );
 }
