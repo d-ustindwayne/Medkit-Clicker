@@ -1,0 +1,53 @@
+name: iOS Simulator Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulator-build:
+    runs-on: macos-26
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install JavaScript dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate iOS project
+        run: bunx expo prebuild --platform ios --clean
+
+      - name: Check generated workspace
+        run: |
+          ls -la ios
+          xcodebuild -list \
+            -workspace ios/MedkitClicker.xcworkspace
+
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild \
+            -workspace ios/MedkitClicker.xcworkspace \
+            -scheme MedkitClicker \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Save simulator build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MedkitClicker-ios-simulator
+          path: ${{ runner.temp }}/DerivedData/Build/Products/Release-iphonesimulator/*.app
+          if-no-files-found: error
+          retention-days: 7
