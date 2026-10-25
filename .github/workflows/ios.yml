@@ -1,4 +1,4 @@
-name: iOS Simulator Build
+name: iOS Device IPA
 
 on:
   workflow_dispatch:
@@ -7,8 +7,9 @@ permissions:
   contents: read
 
 jobs:
-  simulator-build:
+  build-ipa:
     runs-on: macos-26
+    timeout-minutes: 60
 
     steps:
       - name: Check out repository
@@ -26,28 +27,90 @@ jobs:
       - name: Generate iOS project
         run: bunx expo prebuild --platform ios --clean
 
-      - name: Check generated workspace
+      - name: Verify workspace and scheme
         run: |
-          ls -la ios
-          xcodebuild -list \
+          xcodebuild \
+            -list \
             -workspace ios/MedkitClicker.xcworkspace
 
-      - name: Build for iOS Simulator
+      - name: Compile for real iPhones
         run: |
+          set -o pipefail
+
           xcodebuild \
             -workspace ios/MedkitClicker.xcworkspace \
             -scheme MedkitClicker \
             -configuration Release \
-            -sdk iphonesimulator \
-            -destination 'generic/platform=iOS Simulator' \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
             build
 
-      - name: Save simulator build artifact
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PRODUCTS="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos"
+
+          APP_PATH="$(find "$PRODUCTS" \
+            -maxdepth 1 -type d -name '*.app' -print -quit)"
+
+          if [[ -z "$APP_PATH" ]]; then
+            echo "Error: No iOS application bundle was produced."
+            exit 1
+          fi
+
+          IPA_ROOT="$RUNNER_TEMP/ipa-root"
+          APP_NAME="$(basename "$APP_PATH")"
+
+          mkdir -p "$IPA_ROOT/Payload"
+
+          # Copy the application bundle into the required IPA structure.
+          ditto "$APP_PATH" "$IPA_ROOT/Payload/$APP_NAME"
+
+          INFO_PLIST="$IPA_ROOT/Payload/$APP_NAME/Info.plist"
+
+          # Verify that the generated app has the expected identity.
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy \
+            -c 'Print :CFBundleIdentifier' "$INFO_PLIST")
+
+          if [[ "$BUNDLE_ID" != "com.medkitclicker.app" ]]; then
+            echo "Unexpected bundle identifier: $BUNDLE_ID"
+            exit 1
+          fi
+
+          VERSION=$(/usr/libexec/PlistBuddy \
+            -c 'Print :CFBundleShortVersionString' "$INFO_PLIST")
+
+          BUILD=$(/usr/libexec/PlistBuddy \
+            -c 'Print :CFBundleVersion' "$INFO_PLIST")
+
+          echo "Bundle ID: $BUNDLE_ID"
+          echo "Version: $VERSION"
+          echo "Build: $BUILD"
+
+          # Create the IPA with Payload/ at the archive root.
+          (
+            cd "$IPA_ROOT"
+            /usr/bin/zip -qry \
+              "$GITHUB_WORKSPACE/MedkitClicker-unsigned.ipa" \
+              Payload
+          )
+
+          # Confirm that the resulting archive is valid.
+          /usr/bin/unzip -t \
+            "$GITHUB_WORKSPACE/MedkitClicker-unsigned.ipa"
+
+          echo "IPA packaging completed."
+
+      - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
-          name: MedkitClicker-ios-simulator
-          path: ${{ runner.temp }}/DerivedData/Build/Products/Release-iphonesimulator/*.app
+          name: MedkitClicker-unsigned-ipa
+          path: MedkitClicker-unsigned.ipa
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
