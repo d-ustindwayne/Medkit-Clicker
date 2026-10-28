@@ -1,9 +1,11 @@
-name: Deploy website to GitHub Pages
+name: Medkit Clicker Web Build
 
-# Builds website/ and the web version of the game (served at /<repo-name>/play/), and publishes
-# website/dist; nothing else in the repo is served.
+# Builds website/ and the web version of the game (served at /play/), and publishes website/dist;
+# nothing else in the repo is served. The site is at https://medkit-clicker.dustindwayn.ee (the
+# custom domain is set in the repo's Settings → Pages).
 # Every push to main redeploys the site (it takes about a minute), and it can be run by hand from
-# the Actions tab (Run workflow).
+# the Actions tab (Run workflow). The iOS workflow also starts it after a release, so the
+# AltStore source lists the new iPhone build.
 on:
   push:
     branches: [main]
@@ -28,12 +30,18 @@ jobs:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      # Pages serves the site at /<repo-name>/, so the build uses that as its base.
+      # The custom domain serves the site from the root.
       - run: bun run build
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/
-      # Deep links like /docs fall back to the app, which routes them.
+          BASE_PATH: /
+      # Unknown links fall back to the app, which routes them.
       - run: cp dist/index.html dist/404.html
+      # One HTML file per page (with its own title and share tags) and the sitemap, for search engines.
+      - run: bun scripts/route-pages.ts
+      # The AltStore/SideStore source, built from the GitHub Releases that have an iPhone build.
+      - run: bun scripts/altstore-source.ts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       # The game itself, exported for the web into the site's play/ folder. Online features (rewards,
       # music downloads) and code-locked sections need the repository variables below; without them
       # the web version simply plays without those parts.
@@ -42,7 +50,7 @@ jobs:
       - run: bunx expo export --platform web --output-dir website/dist/play
         working-directory: .
         env:
-          EXPO_BASE_URL: /${{ github.event.repository.name }}/play
+          EXPO_BASE_URL: /play
           EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
           EXPO_PUBLIC_CODE_DEV: ${{ vars.EXPO_PUBLIC_CODE_DEV }}
           EXPO_PUBLIC_CODE_JASMINE: ${{ vars.EXPO_PUBLIC_CODE_JASMINE }}

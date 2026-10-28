@@ -31,7 +31,7 @@ bun run sync-assets  # copy art, fonts and music from the game (when this folder
 
 ## Deploying
 
-The site lives in the game repo and is served at https://d-ustindwayne.github.io/Medkit-Clicker/. Pushes to `main` that change `website/` run `.github/workflows/website.yml` (at the repo root), which builds with `BASE_PATH=/Medkit-Clicker/` and publishes only `website/dist`. One-time setup: in the repo's **Settings → Pages**, set **Source** to **GitHub Actions**.
+The site lives in the game repo and is served at https://medkit-clicker.dustindwayn.ee/ (custom domain on GitHub Pages). Pushes to `main` run `.github/workflows/website.yml` (at the repo root), which builds with `BASE_PATH=/`, runs `scripts/route-pages.ts` and `scripts/altstore-source.ts`, and publishes only `website/dist`. One-time setup: in the repo's **Settings → Pages**, set **Source** to **GitHub Actions**.
 
 ## Accessibility
 

@@ -38,8 +38,9 @@ const TOC = [
         <p>
           Medkit Clicker runs on Android. <a :href="LINKS.download" rel="noopener">Download the APK</a> on your phone and
           open it (release notes and older versions are on <a :href="LINKS.releases" rel="noopener">GitHub Releases</a>). If Android asks, allow installs from your browser or file manager, then tap Install.
-          On an iPhone, tablet or computer, <a :href="LINKS.play">play it in your browser</a> instead; your progress is
-          saved in that browser.
+          On an iPhone, install it for free with AltStore or SideStore (<RouterLink to="/iphone">see how</RouterLink>).
+          On any device, you can also <a :href="LINKS.play">play it in your browser</a>; your progress is saved in that
+          browser.
         </p>
 
         <h2 id="basics">The basics</h2>

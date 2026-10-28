@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://medkit-clicker.dustindwayn.ee/sitemap.xml

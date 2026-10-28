@@ -106,7 +106,8 @@ setInterval(() => void retryAlerts().catch((e) => console.error("Alert retry fai
  * The web version of the game (GitHub Pages) calls the API from another site, so browsers need CORS
  * headers. The phone app sends no Origin and is unaffected. Nothing uses cookies: access is by token.
  */
-const WEB_ORIGINS = ["https://d-ustindwayne.github.io"];
+// The custom domain, plus the old github.io address (it now redirects there, but cached pages may still call from it).
+const WEB_ORIGINS = ["https://medkit-clicker.dustindwayn.ee", "https://d-ustindwayne.github.io"];
 const allowedOrigin = (origin: string | null) => (origin && (WEB_ORIGINS.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) ? origin : null);
 
 Bun.serve({

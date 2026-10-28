@@ -1,7 +1,7 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
 // Everything is in app.json. This only adds the web version's base path, which the website deploy
-// sets (EXPO_BASE_URL=/Medkit-Clicker/play) so the game can be served from the site's play/ folder.
+// sets (EXPO_BASE_URL=/play) so the game can be served from the site's play/ folder.
 // Native builds don't set it and are unaffected.
 export default ({ config }: ConfigContext): ExpoConfig =>
   ({

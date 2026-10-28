@@ -384,7 +384,8 @@ onBeforeUnmount(() => {
         <h2 id="download-title" class="finale-title">Open your clinic</h2>
         <p class="finale-text">
           Medkit Clicker is an Android app. The APK is on GitHub Releases; your phone may ask you to allow installs from
-          your browser first. On any other device, play it right here in your browser.
+          your browser first. iPhones can install it for free with AltStore or SideStore. On any other device, play it
+          right here in your browser.
         </p>
         <div class="actions is-centered">
           <a class="button pixel-button is-primary heartbeat" :href="LINKS.download" rel="noopener">
@@ -395,6 +396,7 @@ onBeforeUnmount(() => {
             <PixelIcon name="play" :size="16" />
             Play in browser
           </a>
+          <RouterLink class="button pixel-button" to="/iphone">Play on iPhone</RouterLink>
           <RouterLink class="button pixel-button" to="/docs">Read the guide</RouterLink>
         </div>
       </div>

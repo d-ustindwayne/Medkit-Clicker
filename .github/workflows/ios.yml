@@ -1,19 +1,49 @@
-name: iOS Device IPA
+name: Medkit Clicker iOS Build
 
+# Builds the unsigned iPhone app (.ipa) that AltStore/SideStore sign on the player's phone.
+# - Publishing a GitHub Release (for example `gh release create v0.7.7 ...`) builds that tag and
+#   attaches medkit-clicker-<version>.ipa, medkit-clicker.ipa and ios-build.json to the release,
+#   then redeploys the website so its AltStore source (altstore.json) lists the new version.
+#   The tag must match app.json's version (v0.7.7 for "0.7.7").
+# - Run workflow (Actions tab) builds main for testing; the .ipa is kept as a workflow artifact.
+#   Give it an existing release tag to build that tag and attach the files to its release instead.
 on:
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build and attach to (leave empty for a test build of main)"
+        required: false
+        default: ""
 
 permissions:
-  contents: read
+  contents: write
+  actions: write
+
+concurrency:
+  group: ios-${{ github.event.release.tag_name || inputs.tag || github.ref }}
+  cancel-in-progress: true
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  # The same settings as the web version: without them the app has no server (codes can't be
+  # redeemed, no music downloads) and no code-locked sections.
+  EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+  EXPO_PUBLIC_CODE_DEV: ${{ vars.EXPO_PUBLIC_CODE_DEV }}
+  EXPO_PUBLIC_CODE_JASMINE: ${{ vars.EXPO_PUBLIC_CODE_JASMINE }}
+  EXPO_PUBLIC_CODE_JASMINE_EXPIRES: ${{ vars.EXPO_PUBLIC_CODE_JASMINE_EXPIRES }}
 
 jobs:
   build-ipa:
     runs-on: macos-26
-    timeout-minutes: 60
+    timeout-minutes: 75
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG || github.ref }}
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -21,11 +51,28 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: Check the server and code settings
+        run: |
+          if [[ -z "$EXPO_PUBLIC_API_URL" ]]; then
+            echo "::warning::The EXPO_PUBLIC_API_URL repository variable is empty, so codes can't be redeemed in this build."
+          fi
+
+      - name: Check the tag matches the app version
+        if: env.TAG != ''
+        run: |
+          VERSION=$(bun -e 'console.log(require("./app.json").expo.version)')
+          if [[ "$TAG" != "v$VERSION" ]]; then
+            echo "::error::Tag $TAG doesn't match app.json's version $VERSION (expected v$VERSION)."
+            exit 1
+          fi
+
       - name: Install JavaScript dependencies
         run: bun install --frozen-lockfile
 
       - name: Generate iOS project
         run: bunx expo prebuild --platform ios --clean
+        env:
+          CI: "1"
 
       - name: Verify workspace and scheme
         run: |
@@ -93,17 +140,43 @@ jobs:
           echo "Version: $VERSION"
           echo "Build: $BUILD"
 
+          OUT="$GITHUB_WORKSPACE/ios-out"
+          mkdir -p "$OUT"
+
           # Create the IPA with Payload/ at the archive root.
           (
             cd "$IPA_ROOT"
-            /usr/bin/zip -qry \
-              "$GITHUB_WORKSPACE/MedkitClicker-unsigned.ipa" \
-              Payload
+            /usr/bin/zip -qry "$OUT/medkit-clicker-$VERSION.ipa" Payload
           )
 
           # Confirm that the resulting archive is valid.
-          /usr/bin/unzip -t \
-            "$GITHUB_WORKSPACE/MedkitClicker-unsigned.ipa"
+          /usr/bin/unzip -tq "$OUT/medkit-clicker-$VERSION.ipa"
+
+          # The same file under a fixed name, for the website's "Download the .ipa" link.
+          cp "$OUT/medkit-clicker-$VERSION.ipa" "$OUT/medkit-clicker.ipa"
+
+          # What the website's AltStore source needs: version, minimum iOS, and the permissions
+          # AltStore checks against the app (usage descriptions and entitlements).
+          plutil -convert json -o "$RUNNER_TEMP/info.json" "$INFO_PLIST"
+          ENTITLEMENTS="$(find ios -maxdepth 2 -name '*.entitlements' -print -quit)"
+          if [[ -n "$ENTITLEMENTS" ]]; then
+            plutil -convert json -o "$RUNNER_TEMP/entitlements.json" "$ENTITLEMENTS"
+          else
+            echo '{}' > "$RUNNER_TEMP/entitlements.json"
+          fi
+          python3 - "$RUNNER_TEMP/info.json" "$RUNNER_TEMP/entitlements.json" "$OUT/ios-build.json" <<'EOF'
+          import json, re, sys
+          info = json.load(open(sys.argv[1]))
+          entitlements = json.load(open(sys.argv[2]))
+          json.dump({
+              "version": info["CFBundleShortVersionString"],
+              "buildVersion": info["CFBundleVersion"],
+              "minOSVersion": info.get("MinimumOSVersion"),
+              "entitlements": sorted(entitlements),
+              "privacy": {k: v for k, v in sorted(info.items()) if re.fullmatch(r"NS\w+UsageDescription", k)},
+          }, open(sys.argv[3], "w"), indent=2)
+          EOF
+          cat "$OUT/ios-build.json"
 
           echo "IPA packaging completed."
 
@@ -111,6 +184,19 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MedkitClicker-unsigned-ipa
-          path: MedkitClicker-unsigned.ipa
+          path: ios-out/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Attach to the release
+        if: env.TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" ios-out/* --clobber
+
+      # Pushes by this workflow's token don't start other workflows, but a dispatch does.
+      - name: Redeploy the website (updates the AltStore source)
+        if: env.TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run website.yml --ref main
