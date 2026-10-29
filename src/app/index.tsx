@@ -144,7 +144,11 @@ function Counter({ compact }: { compact: boolean }) {
   const fit = (text: string) => (boxW ? Math.min(maxPx, Math.floor(boxW / (text.length * CHAR_EM))) : maxPx);
   // In between phone and computer sizes (a tablet, a narrow browser window) the one-line count got
   // tiny, so once it would drop below MIN_LINE_PX the name goes on its own line under the number.
-  const stacked = compact || fit(`${count} ${label}`) < MIN_LINE_PX;
+  // Decided on the widest number of the same size ("999.99 million" for any millions), so it doesn't
+  // flip back and forth as the digits change; that changed the counter's height on every tick, and
+  // the room below grew and shrank with it.
+  const widest = healed < 1e6 ? "999,999" : count.replace(/[\d.]+/, "999.99");
+  const stacked = compact || fit(`${widest} ${label}`) < MIN_LINE_PX;
   const line = stacked ? count : `${count} ${label}`;
   const countPx = fit(line);
   return (

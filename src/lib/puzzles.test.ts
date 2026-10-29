@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { DOWN, LEFT, RIGHT, UP, canStep, flowsThrough, makeMaze, makePipes, turn } from "@/lib/puzzles";
+import { DOWN, LEFT, RIGHT, UP, canStep, flowsThrough, makeMaze, makePipes, solutionPath, turn, turnsTo } from "@/lib/puzzles";
 
 describe("Blood Flow maze", () => {
   test("every cell can be reached from the start", () => {
@@ -41,6 +41,18 @@ describe("IV Line pipes", () => {
       // Brute force one tile at a time is too slow, so check the dealt tiles are turns of a solvable set:
       // every tile has at least one pipe end, and the bag's and the heart's tiles can face the edges.
       expect(p.tiles.every((m) => m > 0)).toBe(true);
+    }
+  });
+  test("turning the path's tiles the counted number of times solves it", () => {
+    for (let k = 0; k < 30; k++) {
+      const p = makePipes(4 + (k % 3));
+      const path = solutionPath(p);
+      expect(path[0]).toBe(p.start * p.n);
+      expect(path[path.length - 1]).toBe(p.end * p.n + p.n - 1);
+      const reverse = k % 2 === 1;
+      const tiles = [...p.tiles];
+      for (const i of path) for (let r = turnsTo(tiles[i], p.solved![i], reverse); r > 0; r--) tiles[i] = reverse ? turn(turn(turn(tiles[i]))) : turn(tiles[i]);
+      expect(flowsThrough({ ...p, tiles }).done).toBe(true);
     }
   });
 });

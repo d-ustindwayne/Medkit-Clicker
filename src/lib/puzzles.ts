@@ -47,7 +47,8 @@ export const canStep = (m: Maze, c: number, dx: number, dy: number) => {
 /** Pipe ends on a tile as bits: up 1, right 2, down 4, left 8. */
 export const UP = 1, RIGHT = 2, DOWN = 4, LEFT = 8;
 export const turn = (m: number) => ((m << 1) | (m >> 3)) & 15;
-export type Pipes = { n: number; tiles: number[]; start: number; end: number };
+/** `solved`: the tiles as they were laid, before the turning (one way to finish it). */
+export type Pipes = { n: number; tiles: number[]; start: number; end: number; solved?: number[] };
 /** A random spanning tree of pipes from the left edge (row `start`) to the right edge (row `end`), each tile turned at random. */
 export function makePipes(n: number): Pipes {
   const tiles = Array(n * n).fill(0);
@@ -88,7 +89,38 @@ export function makePipes(n: number): Pipes {
     });
     if (!flowsThrough({ n, tiles: turned, start, end }).done) break;
   }
-  return { n, tiles: turned, start, end };
+  return { n, tiles: turned, start, end, solved };
+}
+
+/** The tiles on the laid path from the bag to the patient, in order (needs `solved`). */
+export function solutionPath(p: Pipes) {
+  const { n, solved = p.tiles } = p;
+  const first = p.start * n, last = p.end * n + n - 1;
+  const from = new Map<number, number>([[first, -1]]);
+  const todo = [first];
+  while (todo.length) {
+    const c = todo.shift()!;
+    if (c === last) break;
+    const x = c % n, y = Math.floor(c / n);
+    for (const [bit, dx, dy, back] of [[UP, 0, -1, DOWN], [RIGHT, 1, 0, LEFT], [DOWN, 0, 1, UP], [LEFT, -1, 0, RIGHT]]) {
+      const a = x + dx, b = y + dy, d = b * n + a;
+      if (!(solved[c] & bit) || a < 0 || b < 0 || a >= n || b >= n || from.has(d) || !(solved[d] & back)) continue;
+      from.set(d, c);
+      todo.push(d);
+    }
+  }
+  const path: number[] = [];
+  for (let c = last; c !== -1 && from.has(c); c = from.get(c)!) path.unshift(c);
+  return path;
+}
+
+/** Fewest turns that tile mask `m` needs to look like `target` (turning one way, or the other with `reverse`). */
+export function turnsTo(m: number, target: number, reverse = false) {
+  for (let r = 0, t = m; r < 4; r++) {
+    if (t === target) return r;
+    t = reverse ? turn(turn(turn(t))) : turn(t);
+  }
+  return 0;
 }
 /** Which tiles the drip reaches from the bag, and whether it gets out to the patient. */
 export function flowsThrough(p: Pipes) {

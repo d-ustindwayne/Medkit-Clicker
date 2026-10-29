@@ -125,6 +125,8 @@ export const minigameTuning = (level: number) => {
     // IV Line: a bigger grid of pipes.
     pipeSize: d < 0.35 ? 4 : d < 0.75 ? 5 : 6,
     pipeMs: Math.round(mix(25000, 35000)),
+    // Its "few turns" twist: spare turns on top of the fewest that solve it.
+    pipeSlack: Math.round(mix(6, 2)),
     // Harder games pay more: a win at the top level pays twice as much.
     rewardMult: 1 + d,
   };

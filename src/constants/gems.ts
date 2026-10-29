@@ -46,8 +46,8 @@ export const GEM_ITEMS: GemItem[] = [
   { id: "tap_bubbles", name: "Bubbles", kind: "tap", cost: 3, rebirths: 6, image: require("@/imgs/gems/p_bubble.png") },
   // Premium animated backgrounds (listed in BACKGROUNDS with the same ids)
   { id: "sakura", name: "Sakura Breeze", kind: "background", cost: 3, rebirths: 2, image: require("@/imgs/gems/p_petal.png") },
-  { id: "fireflies", name: "Firefly Night", kind: "background", cost: 4, rebirths: 5, image: require("@/imgs/gems/p_firefly.png") },
-  { id: "snowfall", name: "First Snow", kind: "background", cost: 4, rebirths: 7, image: require("@/imgs/gems/p_snow.png") },
+  { id: "fireflies", name: "Firefly Night", kind: "background", cost: 4, rebirths: 5, image: require("@/imgs/gems/bg_fireflies.png") },
+  { id: "snowfall", name: "First Snow", kind: "background", cost: 4, rebirths: 7, image: require("@/imgs/gems/bg_snow.png") },
   { id: "aurora", name: "Aurora Ward", kind: "background", cost: 6, rebirths: 10, image: require("@/imgs/gems/p_sparkle.png") },
   // PLACEHOLDER icon (the sparkle) until the Galaxy gets its own sprite
   { id: "galaxy", name: "Galaxy", kind: "background", cost: 1, rebirths: 1, image: require("@/imgs/gems/p_sparkle.png") },

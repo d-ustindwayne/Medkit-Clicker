@@ -13,7 +13,7 @@ export const GAME = {
   year: 2026,
   license: "Apache License 2.0",
   // Everyone's achievements, as the game's menu counts them (the code-locked one isn't included).
-  achievements: 192,
+  achievements: 199,
   offlineHours: 4,
 };
 

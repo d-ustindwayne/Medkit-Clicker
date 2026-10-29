@@ -32,7 +32,7 @@ Ready for a new beginning? Rebirth lets you start a brand-new run in exchange fo
 
 ### 🏆 Collect achievements
 
-There are 192 achievements to discover, from your very first "First Aid" all the way to earning a truly absurd number of medkits. Each comes with a progress bar so you can see how close you are, and a few are secret.
+There are 199 achievements to discover, from your very first "First Aid" all the way to earning a truly absurd number of medkits. Each comes with a progress bar so you can see how close you are, and a few are secret.
 
 ### 🪙 Three kinds of rewards
 
@@ -98,7 +98,7 @@ There's a built-in music player where you can play, pause, skip tracks and jump 
 ## 🎨 Make it yours
 
 - **Light and dark themes** to suit your eyes and your mood.
-- **Backgrounds** for every taste: patterns, animated scenes, a galaxy for dark mode, or your own photo.
+- **Backgrounds** for every taste: patterns, animated scenes, a galaxy for dark mode, or your own photo, GIF or short video clip.
 - **Swipe between scenes:** My Room sits next to the medkit, and the outside of the hospital sits next to the shop, each drawn as a full-width pixel scene.
 - **Works on any screen:** on tablets and computers the shop sits beside the medkit, and on phones it moves below it.
 

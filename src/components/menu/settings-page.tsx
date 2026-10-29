@@ -15,8 +15,9 @@ import { useNow } from "@/hooks/use-now";
 import { COIN } from "@/constants/boosts";
 import { CUSTOM_BG_COINS, coinBalance, customBgPrice } from "@/lib/game";
 import { formatCount } from "@/lib/format";
-import { pickCustomBackground } from "@/lib/custom-bg";
-import { useCustomBackground } from "@/lib/custom-bg-store";
+import { CustomBgEditor } from "@/components/menu/custom-bg-editor";
+import { pickCustomMedia, saveCustomBackground } from "@/lib/custom-bg";
+import { framingFor, useCustomBackground, type CustomBg } from "@/lib/custom-bg-store";
 import { appIcon } from "@/lib/app-icon";
 import { cloudEnabled } from "@/lib/cloud";
 import { exportSave, importSave, type SaveFormat } from "@/lib/save-file";
@@ -37,17 +38,40 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
   const owned = ownsBackground(settings.background, state.ownedBackgrounds);
   const coins = state.coins;
   const photo = useCustomBackground();
-  // The first photo is free; each change after that costs Care Coins and 20% of the run's best balance.
+  // The first one is free; each change after that costs Care Coins and 20% of the run's best balance.
+  // Re-framing the one already set (moving, zooming, the clip, the contrast) is free.
   const firstPhoto = state.bgChanges === 0;
+  const affordable = (s: { customBgChanges: number; healed: number; runPeak: number } & Parameters<typeof coinBalance>[0]) =>
+    s.customBgChanges === 0 || (coinBalance(s) >= CUSTOM_BG_COINS && s.healed >= customBgPrice(s.runPeak));
   const canChange = firstPhoto || (coins >= CUSTOM_BG_COINS && state.healed >= state.bgPrice);
+  const [framing, setFraming] = useState<{ bg: CustomBg; fresh: boolean } | null>(null);
+  const failed = (e: unknown) => pushToast({ kind: "info", title: "Couldn't use that", body: e instanceof Error ? e.message : "Try another one." });
   const onPickPhoto = async () => {
     if (!canChange) return;
     try {
-      if (!(await pickCustomBackground())) return;
-      dispatch({ type: "changeCustomBg" });
-      pushToast({ kind: "info", title: "Background set", body: firstPhoto ? "Your photo is the background now." : `Changed for ${CUSTOM_BG_COINS} ${COIN.name} and ${formatCount(state.bgPrice)} medkits.` });
+      const picked = await pickCustomMedia();
+      if (picked) setFraming({ bg: framingFor(picked), fresh: true });
     } catch (e) {
-      pushToast({ kind: "info", title: "Couldn't use that photo", body: e instanceof Error ? e.message : "Try another one." });
+      failed(e);
+    }
+  };
+  const onFramed = async (bg: CustomBg) => {
+    const fresh = framing?.fresh;
+    setFraming(null);
+    try {
+      if (!fresh) {
+        await saveCustomBackground(bg);
+        return pushToast({ kind: "info", title: "Background adjusted", body: "Saved the new framing." });
+      }
+      // Checked again now: the balance may have changed while it was being framed.
+      const s = store.get();
+      if (!affordable(s)) return pushToast({ kind: "info", title: "Not enough to change it", body: `It costs ${CUSTOM_BG_COINS} ${COIN.name} and ${formatCount(customBgPrice(s.runPeak))} medkits.` });
+      const free = s.customBgChanges === 0;
+      await saveCustomBackground(bg);
+      dispatch({ type: "changeCustomBg" });
+      pushToast({ kind: "info", title: "Background set", body: free ? "It's your background now." : `Changed for ${CUSTOM_BG_COINS} ${COIN.name} and ${formatCount(customBgPrice(s.runPeak))} medkits.` });
+    } catch (e) {
+      failed(e);
     }
   };
 
@@ -141,10 +165,20 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
           <View className="gap-2">
             <Text className="font-body text-sm text-ink">
               {firstPhoto
-                ? "Pick any photo for your background. The first one is free."
-                : `Changing the photo costs ${CUSTOM_BG_COINS} ${COIN.name} and ${formatCount(state.bgPrice)} medkits (20% of the most you've held this run).`}
+                ? "Pick a photo, a GIF or a short video for your background. The first one is free."
+                : `Changing it costs ${CUSTOM_BG_COINS} ${COIN.name} and ${formatCount(state.bgPrice)} medkits.`}
             </Text>
-            <PixelButton label={photo ? "Change photo" : "Choose photo"} tone="success" disabled={!canChange} onPress={onPickPhoto} />
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <PixelButton label={photo ? "Change" : "Choose"} tone="success" disabled={!canChange} onPress={onPickPhoto} />
+              </View>
+              {photo && (
+                <View className="flex-1">
+                  <PixelButton label="Adjust" onPress={() => setFraming({ bg: photo, fresh: false })} />
+                </View>
+              )}
+            </View>
+            {framing && <CustomBgEditor initial={framing.bg} saveLabel={framing.fresh ? "Set it" : "Save"} onCancel={() => setFraming(null)} onSave={onFramed} />}
           </View>
         )}
         {!owned && background.gems && (

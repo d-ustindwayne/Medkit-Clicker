@@ -31,14 +31,15 @@ import { SHOW_KEY_HINTS, useKeys } from "@/hooks/use-keys";
 // and flip. They get harder with progress (see minigameLevel and minigameTuning), and each has a
 // few variants that open up as the player's level rises (see pickVariant).
 
-/** A countdown in seconds that calls `onEnd` once at zero. */
-export function useCountdown(ms: number, onEnd: () => void) {
+/** A countdown in seconds that calls `onEnd` once at zero. It starts once `running` is true. */
+export function useCountdown(ms: number, onEnd: () => void, running = true) {
   const [left, setLeft] = useState(ms);
   const end = useRef(onEnd);
   useEffect(() => {
     end.current = onEnd;
   }, [onEnd]);
   useEffect(() => {
+    if (!running) return;
     const stop = Date.now() + ms;
     const id = setInterval(() => {
       const l = stop - Date.now();
@@ -49,7 +50,7 @@ export function useCountdown(ms: number, onEnd: () => void) {
       }
     }, 100);
     return () => clearInterval(id);
-  }, [ms]);
+  }, [ms, running]);
   return left;
 }
 
@@ -139,8 +140,6 @@ function CountPulse({ onDone, tuning, irregular }: GameProps & { irregular: bool
     playSfx(ok ? "buy" : "invalid");
     setTimeout(() => done(ok), 350);
   };
-  const option = (k: number) => () => answer(setup.options[k]);
-  useKeys({ ArrowLeft: option(0), ArrowDown: option(1), ArrowRight: option(2), "1": option(0), "2": option(1), "3": option(2) }, asking);
   return (
     <Animated.View style={juice.style}>
       <View className="items-center gap-3">
@@ -158,7 +157,6 @@ function CountPulse({ onDone, tuning, irregular }: GameProps & { irregular: bool
                 <PixelButton key={n} label={String(n)} onPress={() => answer(n)} />
               ))}
             </View>
-            <KeyHint>← ↓ → OR 1 2 3</KeyHint>
           </>
         ) : (
           <Hint>{beat === 0 ? (irregular ? "An irregular pulse. Get ready..." : "Get ready...") : irregular ? "Count every beat, however uneven..." : "Count the heartbeats..."}</Hint>
@@ -206,7 +204,6 @@ function FasterPulse({ onDone, tuning }: GameProps) {
     playSfx(ok ? "buy" : "invalid");
     setTimeout(() => done(ok), 400);
   };
-  useKeys({ ArrowLeft: () => pick(0), ArrowRight: () => pick(1) });
   return (
     <Animated.View style={juice.style}>
       <View className="items-center gap-3">
@@ -227,7 +224,6 @@ function FasterPulse({ onDone, tuning }: GameProps) {
           ))}
         </View>
         <Hint>{asking ? "Tap the heart that beats faster." : "One pulse is racing. Which one?"}</Hint>
-        <KeyHint>← OR →</KeyHint>
       </View>
     </Animated.View>
   );
@@ -363,12 +359,70 @@ function PillsGame({ onDone, tuning }: GameProps) {
 
 // ---------- X-ray: several films in a row: fractures, a swallowed coin, a dislocated joint, counting breaks ----------
 const BONE = "#e8f2ff";
-const FILM = "#0d1a2c";
+/** Each film is a different part of the body, on a slightly different tint of film. */
+type BoneKind = "long" | "finger" | "rib" | "spine";
+const BONE_KINDS: { kind: BoneKind; name: string; turn: number }[] = [
+  { kind: "long", name: "ARM AND LEG", turn: 35 },
+  { kind: "finger", name: "HAND", turn: 30 },
+  { kind: "rib", name: "RIBS", turn: 12 },
+  { kind: "spine", name: "SPINE", turn: 8 },
+];
+const FILMS = ["#0d1a2c", "#0b1f1f", "#171329", "#101820"];
+/** The crack across a bone: a dark slanted line `w` wide in a bone part `size` wide. */
+const Crack = ({ w, size, film, top = 12 }: { w: number; size: number; film: string; top?: number }) => (
+  <View className="absolute h-[3px]" style={{ top, left: (size - w) / 2, width: w, backgroundColor: film, transform: [{ rotate: "-25deg" }] }} />
+);
+
 /**
- * A pixel bone: two knobs, a shaft, two knobs. `crack` draws a break across it that wide; `shift`
- * slides the lower half sideways (a dislocated joint).
+ * A pixel bone of one kind. `crack` draws a break across it that wide; `shift` slides part of it
+ * sideways (a dislocated joint).
  */
-function Bone({ crack, shift = 0 }: { crack?: number; shift?: number }) {
+function Bone({ kind, crack, shift = 0, film }: { kind: BoneKind; crack?: number; shift?: number; film: string }) {
+  if (kind === "finger") {
+    // Three short finger bones with gaps for the knuckles; the middle one cracks, the tip slips.
+    const seg = (h: number, c?: boolean) => (
+      <View className="w-2.5 rounded-[3px]" style={{ height: h, backgroundColor: BONE }}>
+        {c && crack !== undefined && <Crack w={Math.min(10, crack)} size={10} film={film} top={h / 2 - 1} />}
+      </View>
+    );
+    return (
+      <View className="items-center gap-[3px]">
+        {seg(10)}
+        {seg(13, true)}
+        <View style={{ transform: [{ translateX: shift }] }}>{seg(15)}</View>
+      </View>
+    );
+  }
+  if (kind === "rib") {
+    // A curved rib in two halves; a dislocated one has its outer half dropped.
+    return (
+      <View className="flex-row items-start">
+        <View className="h-7 w-6 rounded-tl-[14px] border-l-[5px] border-t-[5px]" style={{ borderColor: BONE }}>
+          {crack !== undefined && <View className="absolute -top-[5px] h-[5px] w-[3px]" style={{ left: 8, backgroundColor: film, transform: [{ rotate: "20deg" }] }} />}
+        </View>
+        <View className="h-7 w-6 rounded-tr-[14px] border-r-[5px] border-t-[5px]" style={{ borderColor: BONE, transform: [{ translateY: shift }] }} />
+      </View>
+    );
+  }
+  if (kind === "spine") {
+    // Three vertebrae with their side wings; the middle one cracks, the lowest one slips.
+    const block = (c?: boolean) => (
+      <View className="flex-row items-center">
+        <View className="h-1.5 w-1.5" style={{ backgroundColor: BONE }} />
+        <View className="h-3.5 w-5 rounded-[2px]" style={{ backgroundColor: BONE }}>
+          {c && crack !== undefined && <Crack w={Math.min(18, crack + 4)} size={20} film={film} top={5} />}
+        </View>
+        <View className="h-1.5 w-1.5" style={{ backgroundColor: BONE }} />
+      </View>
+    );
+    return (
+      <View className="items-center gap-[3px]">
+        {block()}
+        {block(true)}
+        <View style={{ transform: [{ translateX: shift }] }}>{block()}</View>
+      </View>
+    );
+  }
   const knobs = (
     <View className="flex-row gap-1">
       <View className="h-3 w-3 rounded-full" style={{ backgroundColor: BONE }} />
@@ -379,7 +433,7 @@ function Bone({ crack, shift = 0 }: { crack?: number; shift?: number }) {
     <View className="items-center">
       {knobs}
       <View className="h-4 w-3" style={{ backgroundColor: BONE }}>
-        {crack !== undefined && <View className="absolute top-3 h-[3px]" style={{ left: (12 - crack) / 2, width: crack, backgroundColor: FILM, transform: [{ rotate: "-25deg" }] }} />}
+        {crack !== undefined && <Crack w={crack} size={12} film={film} />}
       </View>
       <View className="items-center" style={{ transform: [{ translateX: shift }] }}>
         <View className="h-4 w-3" style={{ backgroundColor: BONE }} />
@@ -457,14 +511,17 @@ function XrayFilm({ variant, tuning, onResult }: { variant: XrayVariant; tuning:
   const [film] = useState(() => {
     // The coin film uses fewer, bigger tummies; bones go up to 16, drawn smaller the more there are.
     const count = variant === "coin" ? Math.min(12, tuning.bones) : tuning.bones;
+    // A part of the body and a film tint for this film, and a little wobble in where each bone lies.
+    const bones = BONE_KINDS[rand(BONE_KINDS.length)];
     const cells = Array.from({ length: count }, () => ({
-      angle: rand(71) - 35,
+      angle: rand(bones.turn * 2 + 1) - bones.turn,
+      nudge: { x: rand(7) - 3, y: rand(7) - 3 },
       bubbles: Array.from({ length: 1 + rand(3) }, () => ({ x: 4 + rand(26), y: 4 + rand(26) })),
     }));
     // The bones that are "it": one, two (double), or 0-3 cracked ones to count.
     const howMany = variant === "double" ? 2 : variant === "count" ? rand(4) : 1;
     const odd = new Set(shuffle(Array.from({ length: count }, (_, i) => i)).slice(0, howMany));
-    return { count, odd, cells };
+    return { count, odd, cells, bones, tint: FILMS[rand(FILMS.length)] };
   });
   const [picked, setPicked] = useState<number[]>([]);
   const [answered, setAnswered] = useState<number | null>(null);
@@ -509,9 +566,12 @@ function XrayFilm({ variant, tuning, onResult }: { variant: XrayVariant; tuning:
   return (
     <Animated.View style={juice.style}>
       <View className="items-center gap-3">
-        <Text className="font-number text-base text-ink">{text.title}</Text>
+        <View className="items-center">
+          <Text className="font-number text-base text-ink">{text.title}</Text>
+          {variant !== "coin" && <Text className="font-pixel text-[9px] tracking-[2px] text-ink opacity-60">{film.bones.name} FILM</Text>}
+        </View>
         <TimeBar left={left} total={total} />
-        <View onLayout={(e) => setFilmH(e.nativeEvent.layout.height)} className={`${cols === 4 ? "w-72" : "w-60"} flex-row flex-wrap justify-between gap-y-2 overflow-hidden border-2 border-outline p-2`} style={{ backgroundColor: FILM }}>
+        <View onLayout={(e) => setFilmH(e.nativeEvent.layout.height)} className={`${cols === 4 ? "w-72" : "w-60"} flex-row flex-wrap justify-between gap-y-2 overflow-hidden border-2 border-outline p-2`} style={{ backgroundColor: film.tint }}>
           {film.cells.map((c, i) => {
             const odd = film.odd.has(i);
             const glow = picked.includes(i) ? (odd ? "bg-success/30" : "bg-danger/30") : "";
@@ -521,8 +581,8 @@ function XrayFilm({ variant, tuning, onResult }: { variant: XrayVariant; tuning:
                   // Gas bubbles get brighter (closer to the coin) as the game gets harder.
                   <Tummy coin={odd} bubbles={odd ? c.bubbles.slice(0, 1) : c.bubbles} faint={0.35 + level * 0.35} />
                 ) : (
-                  <View style={{ transform: [{ rotate: `${c.angle}deg` }, { scale }] }}>
-                    <Bone crack={cracked && odd ? crackW : undefined} shift={variant === "joint" && odd ? shift : 0} />
+                  <View style={{ transform: [{ translateX: c.nudge.x }, { translateY: c.nudge.y }, { rotate: `${c.angle}deg` }, { scale }] }}>
+                    <Bone kind={film.bones.kind} film={film.tint} crack={cracked && odd ? crackW : undefined} shift={variant === "joint" && odd ? shift : 0} />
                   </View>
                 )}
               </TapPressable>

@@ -90,6 +90,8 @@ export type GameState = {
   runPeak: number;
   /** Times the custom background photo was set; the first is free. */
   customBgChanges: number;
+  /** Flying hearts caught (for an achievement). */
+  heartsCaught: number;
   /** Walking rewards (Android step counter). */
   walk: WalkState;
 };
@@ -126,6 +128,8 @@ export type GameAction =
   | { type: "setFame"; fame: "none" | "sent" | "declined" }
   | { type: "minigameWon"; game: string; perfect?: boolean }
   | { type: "minigameLost" }
+  /** A flying heart was caught (its reward is dispatched on its own). */
+  | { type: "heartCaught" }
   | { type: "setPendingIcon"; icon: string | null }
   | { type: "setIntroSeen"; seen: boolean }
   /** A new custom background photo was picked: free the first time, then CUSTOM_BG_COINS and customBgPrice. */
@@ -202,6 +206,7 @@ export const newGame = (): GameState => ({
   daily: { streak: 0, last: null },
   runPeak: 0,
   customBgChanges: 0,
+  heartsCaught: 0,
   walk: newWalk(),
 });
 
@@ -533,6 +538,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
     }
     case "minigameLost":
       return state.minigameStreak === 0 ? state : { ...state, minigameStreak: 0 };
+    case "heartCaught":
+      return { ...state, heartsCaught: state.heartsCaught + 1 };
     case "setFame":
       return { ...state, fame: action.fame };
     case "devRebirth":
@@ -678,6 +685,7 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     runPeak: typeof s.runPeak === "number" ? s.runPeak : s.healed,
     walk: s.walk && typeof s.walk.meters === "number" ? { ...newWalk(), ...s.walk } : newWalk(),
     customBgChanges: typeof s.customBgChanges === "number" ? s.customBgChanges : 0,
+    heartsCaught: typeof s.heartsCaught === "number" ? s.heartsCaught : 0,
     daily: s.daily && typeof s.daily.streak === "number" ? { streak: s.daily.streak, last: typeof s.daily.last === "string" ? s.daily.last : null } : base.daily,
     introSeen: s.introSeen === true || (typeof s.introSeen !== "boolean" && (s.taps ?? 0) > 0),
     room: s.room && typeof s.room.current === "string" ? upgradeRoom({ current: s.room.current, placed: { ...(s.room.placed ?? {}) }, layout: s.room.layout }) : base.room,

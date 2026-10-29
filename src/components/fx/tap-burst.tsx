@@ -7,6 +7,9 @@ import { usePalette } from "@/hooks/use-palette";
 
 export const BURST_MS = 900;
 const PARTICLES = 6;
+/** The "+N" label's box, wide enough for the longest amount on one line. */
+const LABEL_W = 220;
+const labelPx = (label: string) => (label.length <= 6 ? 30 : label.length <= 8 ? 25 : 21);
 
 /** Gem Shop tap effects: a sprite and how its particles move. */
 const EFFECTS = {
@@ -58,7 +61,7 @@ export const TapBurst = memo(function TapBurst({ ref, slot, size, effect = null 
   }));
   const number = useAnimatedStyle(() => ({
     opacity: t.get() < 0.6 ? 1 : 1 - (t.get() - 0.6) / 0.4,
-    transform: [{ translateX: px.get() - 60 }, { translateY: py.get() - 24 - 110 * t.get() }, { scale: 1 + 0.25 * Math.sin(Math.min(t.get() * 6, Math.PI)) }],
+    transform: [{ translateX: px.get() - LABEL_W / 2 }, { translateY: py.get() - 24 - 110 * t.get() }, { scale: 1 + 0.25 * Math.sin(Math.min(t.get() * 6, Math.PI)) }],
   }));
   const spin = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.get()}deg` }] }));
 
@@ -77,10 +80,12 @@ export const TapBurst = memo(function TapBurst({ ref, slot, size, effect = null 
               <Particle key={i} t={t} size={size} angle={((i + (seed % 7) / 7) / PARTICLES) * Math.PI * 2} color={i % 2 ? palette.primary : palette.success} />
             ))}
       </Animated.View>
-      <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0, top: 0, width: 120 }, number]}>
+      <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0, top: 0, width: LABEL_W }, number]}>
+        {/* Always one line: long amounts ("+300.23K") get a smaller size instead of wrapping. */}
         <Text
-          className="text-center font-display text-3xl text-ink"
-          style={{ textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0.1 }}
+          numberOfLines={1}
+          className="text-center font-display text-ink"
+          style={{ fontSize: labelPx(label), lineHeight: labelPx(label) + 6, textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0.1 }}
         >
           {label}
         </Text>

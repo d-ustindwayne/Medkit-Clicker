@@ -15,8 +15,9 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
-import Svg, { Circle, Defs, G, LinearGradient, Path, Pattern, Rect, Stop } from "react-native-svg";
+import Svg, { Circle, Defs, G, LinearGradient, Path, Pattern, RadialGradient, Rect, Stop } from "react-native-svg";
 
+import { CustomMedia } from "@/components/custom-media";
 import { pixelPath } from "@/components/ui/pixel-icon";
 import { BACKGROUNDS, type AnimatedKind, type Colors, type PatternKind } from "@/constants/backgrounds";
 import type { ThemeName } from "@/constants/theme";
@@ -278,10 +279,16 @@ const AuroraBand = memo(function AuroraBand({ i, width, height, color }: { i: nu
 
 /** Galaxy: one turn of the spiral takes this long. */
 const GALAXY_TURN_MS = 240_000;
-const GALAXY_DOTS = 320;
+/** Soft glows laid along each arm, and the pixel stars scattered over them. */
+const GALAXY_GLOWS = 44;
+const GALAXY_STARS = 110;
+/** The arms' colours from the core outwards: rose, violet, then teal at the tips. */
+const ARM_COLOURS = ["#ff9ad5", "#c08cff", "#8f7bff", "#6fd6ff"];
 /**
- * Galaxy: a two-armed spiral of square pixel stars seen at a slant, slowly turning, with a soft
- * core glow. Inner stars are brighter and whiter, outer ones fade into the arm colour.
+ * Galaxy: a two-armed spiral drawn as soft overlapping glows (rose near the core, violet, then
+ * teal at the tips) around a bright pink-white core, with square pixel stars sprinkled along the
+ * arms, seen at a slant and slowly turning. Not a real galaxy, a pretty one. It's drawn once and
+ * only turned: on Android it's kept as a texture, so the turning costs no redrawing.
  */
 const GalaxySpiral = memo(function GalaxySpiral({ width, height, colors }: { width: number; height: number; colors: Colors }) {
   // Wider than the screen, so the arms sweep out well past the medkit in the middle.
@@ -289,28 +296,63 @@ const GalaxySpiral = memo(function GalaxySpiral({ width, height, colors }: { wid
   const spin = useSharedValue(0);
   useEffect(() => {
     spin.set(withRepeat(withTiming(1, { duration: GALAXY_TURN_MS, easing: Easing.linear }), -1, false));
+    return () => cancelAnimation(spin);
   }, [spin]);
   const tilt = use(TiltContext);
   const turn = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.get() * 360}deg` }] }));
-  const lean = useAnimatedStyle(() => ({ transform: [...tiltShift(tilt, 0.3), { rotate: "-18deg" }, { scaleY: 0.62 }] }));
+  const lean = useAnimatedStyle(() => ({ transform: [...tiltShift(tilt, 0.3), { rotate: "-18deg" }, { scaleY: 0.58 }] }));
   const r = d / 2;
-  const dots = Array.from({ length: GALAXY_DOTS }, (_, i) => {
-    const k = noise(i, 41);
+  // A point on arm `arm` (0 or 1), `k` of the way out (0 core, 1 tip).
+  const onArm = (arm: number, k: number, jitter = 0) => {
+    const a = arm * Math.PI + k * Math.PI * 2.6 + jitter;
+    const dist = r * (0.07 + k * 0.86);
+    return { x: r + Math.cos(a) * dist, y: r + Math.sin(a) * dist };
+  };
+  const glows = Array.from({ length: GALAXY_GLOWS * 2 }, (_, i) => {
     const arm = i % 2;
-    const a = arm * Math.PI + k * Math.PI * 3.2 + (noise(i, 42) - 0.5) * 0.5;
-    const dist = r * (0.06 + k * 0.92) * (0.88 + noise(i, 43) * 0.24);
-    const s = noise(i, 44) > 0.85 ? 6 : noise(i, 44) > 0.4 ? 4 : 3;
-    return { x: r + Math.cos(a) * dist, y: r + Math.sin(a) * dist, s, o: 1 - k * 0.45, inner: k < 0.3 || noise(i, 45) > 0.75 };
+    // Spaced evenly along the arm (the arm gets longer per turn further out), so the tips don't break up.
+    const t = Math.floor(i / 2) / (GALAXY_GLOWS - 1);
+    const k = Math.sqrt(t);
+    return { ...onArm(arm, k, (noise(i, 46) - 0.5) * 0.06), rr: r * (0.15 - k * 0.07), fill: `url(#gxArm${Math.min(3, Math.floor(t * 4))})` };
+  });
+  const stars = Array.from({ length: GALAXY_STARS }, (_, i) => {
+    const k = noise(i, 41);
+    const p = onArm(i % 2, k, (noise(i, 42) - 0.5) * (0.5 + k * 0.5));
+    const spread = r * 0.06 * (noise(i, 43) - 0.5);
+    const s = noise(i, 44) > 0.88 ? 5 : noise(i, 44) > 0.45 ? 3 : 2;
+    return { x: p.x + spread, y: p.y + spread, s, o: 0.95 - k * 0.45 };
   });
   return (
     <Animated.View style={[{ position: "absolute", left: (width - d) / 2, top: (height - d) / 2, width: d, height: d }, lean]}>
-      <Animated.View style={[{ width: d, height: d }, turn]}>
+      <Animated.View style={[{ width: d, height: d }, turn]} renderToHardwareTextureAndroid>
         <Svg width={d} height={d}>
-          {[0.42, 0.28, 0.16, 0.08].map((rr, j) => (
-            <Circle key={j} cx={r} cy={r} r={r * rr} fill={j === 3 ? colors.line : colors.accent} opacity={0.14 + j * 0.08} />
+          <Defs>
+            <RadialGradient id="gxHalo" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor={colors.accent ?? colors.line} stopOpacity={0.45} />
+              <Stop offset="0.55" stopColor="#3b2c8f" stopOpacity={0.18} />
+              <Stop offset="1" stopColor="#0b0a2a" stopOpacity={0} />
+            </RadialGradient>
+            {ARM_COLOURS.map((c, j) => (
+              <RadialGradient key={c} id={`gxArm${j}`} cx="50%" cy="50%" r="50%">
+                <Stop offset="0" stopColor={c} stopOpacity={0.42 - j * 0.05} />
+                <Stop offset="0.55" stopColor={c} stopOpacity={0.14} />
+                <Stop offset="1" stopColor={c} stopOpacity={0} />
+              </RadialGradient>
+            ))}
+            <RadialGradient id="gxCore" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#ffffff" stopOpacity={1} />
+              <Stop offset="0.22" stopColor="#ffe2f4" stopOpacity={0.95} />
+              <Stop offset="0.55" stopColor="#ff9ad5" stopOpacity={0.45} />
+              <Stop offset="1" stopColor="#9b5cff" stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Circle cx={r} cy={r} r={r * 0.62} fill="url(#gxHalo)" />
+          {glows.map((g, i) => (
+            <Circle key={i} cx={g.x} cy={g.y} r={g.rr} fill={g.fill} />
           ))}
-          {dots.map((p, i) => (
-            <Rect key={i} x={Math.round(p.x)} y={Math.round(p.y)} width={p.s} height={p.s} fill={p.inner ? colors.line : (colors.accent ?? colors.line)} opacity={p.o} />
+          <Circle cx={r} cy={r} r={r * 0.24} fill="url(#gxCore)" />
+          {stars.map((p, i) => (
+            <Rect key={i} x={Math.round(p.x)} y={Math.round(p.y)} width={p.s} height={p.s} fill={colors.line} opacity={p.o} />
           ))}
         </Svg>
       </Animated.View>
@@ -500,7 +542,7 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
       return (
         <>
           <Wash width={width} height={height * 0.6} color={colors.accent ?? colors.line} opacity={0.22} from="top" />
-          {many(40).map((i) => (
+          {many(24).map((i) => (
             <Star key={i} i={i} left={noise(i, 9) * width} top={noise(i, 10) * height} color={colors.line} />
           ))}
           <GalaxySpiral width={width} height={height} colors={colors} />
@@ -522,16 +564,10 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
 
 type Props = { index: number; theme: ThemeName; width: number; height: number };
 
-/** The player's own photo, covering the backdrop; a little darker in the dark theme. */
+/** The player's own photo, GIF or video clip, framed as they chose, covering the backdrop. */
 function CustomPhoto({ width, height, theme }: { width: number; height: number; theme: ThemeName }) {
-  const uri = useCustomBackground();
-  if (!uri) return null;
-  return (
-    <View style={{ width, height }}>
-      <Image source={{ uri }} style={{ width, height }} contentFit="cover" />
-      {theme === "dark" && <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.35)" }]} />}
-    </View>
-  );
+  const bg = useCustomBackground();
+  return bg ? <CustomMedia bg={bg} width={width} height={height} theme={theme} /> : null;
 }
 
 /** Backdrop behind the medkit: a slowly drifting tiled pattern, or one of the animated scenes. */

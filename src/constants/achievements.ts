@@ -142,20 +142,41 @@ const TROPHY = {
 const MEDAL = require("@/imgs/achievements/medal.png");
 const WINGED_HEART = require("@/imgs/achievements/winged_heart.png");
 const CLOCK_MOON = require("@/imgs/achievements/clock_moon.png");
-// Bronze, then platinum, then gold, then diamond (the order chosen for this game).
-const tierTrophy = (i: number, count: number) => [TROPHY.bronze, TROPHY.platinum, TROPHY.gold, TROPHY.diamond][Math.min(3, Math.floor((i / count) * 4))];
+/**
+ * The lifetime medkit trophies, in order of size (owner's split, 0.8.1): the first 9 bronze (to a
+ * billion), the next 12 silver, then 15 each of gold, diamond and purple.
+ */
+const MEDKIT_TIERS: [count: number, image: ImageSourcePropType][] = [
+  [9, TROPHY.bronze],
+  [12, TROPHY.platinum],
+  [15, TROPHY.gold],
+  [15, TROPHY.diamond],
+  [Infinity, TROPHY.purple],
+];
+const medkitThresholds = [...healedMilestones.map(([n]) => n), ...bigMilestones].sort((a, b) => a - b);
+const medkitTrophy = (n: number) => {
+  let rank = medkitThresholds.indexOf(n);
+  for (const [count, image] of MEDKIT_TIERS) {
+    if (rank < count) return image;
+    rank -= count;
+  }
+  return TROPHY.purple;
+};
 
 const totalOwned = (s: GameState) => Object.values(s.owned).reduce((a, b) => a + b, 0);
 const totalWins = (s: GameState) => Object.values(s.minigameWins).reduce((a, b) => a + b, 0);
+const totalPerfect = (s: GameState) => Object.values(s.minigamePerfect).reduce((a, b) => a + b, 0);
+/** Items placed in all the rooms together (staff don't count). */
+const placedItems = (s: GameState) => Object.values(s.room.placed).reduce((n, list) => n + list.filter((p) => !STAFF_IDS.includes(p.item)).length, 0);
 const STAFF_IDS = ROOM_ITEMS.filter((i) => i.staff).map((i) => i.id);
 
 /** The 0.8.0 minigames: their medal art is the game's own PLACEHOLDER sprite until medals are drawn. */
 const NEW_GAME_MEDALS: [game: string, name: string, description: string, image: ImageSourcePropType][] = [
-  ["food", "Healthy Choices", "Win the Healthy Shopping minigame.", require("@/imgs/minigames/cart.png")],
-  ["colour", "Shade Spotter", "Win the Odd Colour Out minigame.", require("@/imgs/gems/p_sparkle.png")],
-  ["find", "Lost and Found", "Win the Find It minigame.", require("@/imgs/room/notice_board.png")],
-  ["maze", "Good Circulation", "Win the Blood Flow minigame.", require("@/imgs/shop/blood_vial.png")],
-  ["pipes", "Plumbing the Depths", "Win the IV Line minigame.", require("@/imgs/shop/iv_bag.png")],
+  ["food", "Healthy Choices", "Win the Healthy Shopping minigame.", require("@/imgs/achievements/games/medal_food.png")],
+  ["colour", "Shade Spotter", "Win the Odd Colour Out minigame.", require("@/imgs/achievements/games/medal_colour.png")],
+  ["find", "Lost and Found", "Win the Find It minigame.", require("@/imgs/achievements/games/medal_find.png")],
+  ["maze", "Good Circulation", "Win the Blood Flow minigame.", require("@/imgs/achievements/games/medal_maze.png")],
+  ["pipes", "Plumbing the Depths", "Win the IV Line minigame.", require("@/imgs/achievements/games/medal_pipes.png")],
 ];
 
 const LIST: Achievement[] = [
@@ -163,16 +184,16 @@ const LIST: Achievement[] = [
     id: `healed_${n}`,
     name,
     description: n === 1 ? "Earn your first medkit." : `Earn ${formatCount(n)} medkits.`,
-    image: tierTrophy(i, healedMilestones.length),
+    image: medkitTrophy(n),
     coins: 1 + Math.floor(i / 3),
     check: (s: GameState) => s.totalHealed >= n,
     progress: (s: GameState) => s.totalHealed / n,
   })),
-  ...bigMilestones.map((n, i) => ({
+  ...bigMilestones.map((n) => ({
     id: `healed_${n}`,
     name: unitName(n),
     description: `Earn 1 ${formatCount(n).split(" ")[1]} medkits.`,
-    image: i % 2 ? TROPHY.purple : TROPHY.diamond,
+    image: medkitTrophy(n),
     coins: 6,
     check: (s: GameState) => s.totalHealed >= n,
     progress: (s: GameState) => s.totalHealed / n,
@@ -392,7 +413,7 @@ const LIST: Achievement[] = [
     id: "game_memory_perfect",
     name: "Photographic Memory",
     description: "Win the memory minigame without a single wrong pair.",
-    image: require("@/imgs/achievements/games/medal_memory.png"),
+    image: require("@/imgs/achievements/camera.png"),
     coins: 4,
     check: (s) => (s.minigamePerfect["memory"] ?? 0) >= 1,
   },
@@ -400,7 +421,7 @@ const LIST: Achievement[] = [
     id: "game_colour_perfect",
     name: "Eagle Eye",
     description: "Win Odd Colour Out without a wrong tap.",
-    image: require("@/imgs/gems/p_sparkle.png"),
+    image: require("@/imgs/achievements/eye.png"),
     coins: 4,
     check: (s) => (s.minigamePerfect["colour"] ?? 0) >= 1,
   },
@@ -408,7 +429,7 @@ const LIST: Achievement[] = [
     id: "game_food_perfect",
     name: "Clean Eating",
     description: "Win Healthy Shopping without catching any junk food.",
-    image: require("@/imgs/misc/apple.png"),
+    image: require("@/imgs/achievements/salad.png"),
     coins: 4,
     check: (s) => (s.minigamePerfect["food"] ?? 0) >= 1,
   },
@@ -434,7 +455,7 @@ const LIST: Achievement[] = [
     id: "game_wins_25",
     name: "Ward Veteran",
     description: "Win 25 ward minigames.",
-    image: TROPHY.nurse,
+    image: require("@/imgs/achievements/ward_badge_silver.png"),
     coins: 4,
     check: (s) => totalWins(s) >= 25,
     progress: (s) => totalWins(s) / 25,
@@ -443,7 +464,7 @@ const LIST: Achievement[] = [
     id: "game_wins_100",
     name: "Ward Legend",
     description: "Win 100 ward minigames.",
-    image: TROPHY.platinum,
+    image: require("@/imgs/achievements/ward_badge_gold.png"),
     coins: 8,
     check: (s) => totalWins(s) >= 100,
     progress: (s) => totalWins(s) / 100,
@@ -453,7 +474,7 @@ const LIST: Achievement[] = [
     id: "full_house",
     name: "Full House",
     description: "Have three patients waiting in My Room at once.",
-    image: TROPHY.nurse,
+    image: require("@/imgs/achievements/waiting_bench.png"),
     secret: true,
     coins: 3,
     check: (s) => s.patients.length >= 3,
@@ -462,7 +483,7 @@ const LIST: Achievement[] = [
     id: "staff_meeting",
     name: "Staff Meeting",
     description: "Put every nurse and the doctor to work in My Room.",
-    image: ICONS.clipboard,
+    image: require("@/imgs/achievements/id_badge.png"),
     secret: true,
     coins: 3,
     check: (s) => STAFF_IDS.every((id) => Object.values(s.room.placed).some((list) => list.some((p) => p.item === id))),
@@ -472,7 +493,7 @@ const LIST: Achievement[] = [
     id: "exactly_777",
     name: "Jackpot",
     description: "Have exactly 777 medkits (not a single one more).",
-    image: TROPHY.star,
+    image: require("@/imgs/achievements/slot_machine.png"),
     coins: 3,
     check: (s) => Math.floor(s.healed) === 777,
   },
@@ -480,7 +501,7 @@ const LIST: Achievement[] = [
     id: "bandage_hoarder",
     name: "Bandage Hoarder",
     description: "Own 150 bandages and not a single pair of gloves.",
-    image: SHOP_ITEMS[0].image,
+    image: require("@/imgs/achievements/bandage_stack.png"),
     coins: 4,
     check: (s) => s.owned.bandage >= 150 && s.owned.gloves === 0,
   },
@@ -488,7 +509,7 @@ const LIST: Achievement[] = [
     id: "hands_off",
     name: "Hands Off",
     description: "Reach 1,000 medkits per second having tapped the medkit fewer than 100 times, ever.",
-    image: WINGED_HEART,
+    image: require("@/imgs/achievements/hands_off.png"),
     coins: 4,
     check: (s) => s.taps < 100 && healingRate(s) >= 1_000,
   },
@@ -496,7 +517,7 @@ const LIST: Achievement[] = [
     id: "the_answer",
     name: "The Answer",
     description: "Own exactly 42 of four different supplies at the same time.",
-    image: ICONS.supplyShelf,
+    image: require("@/imgs/achievements/answer_42.png"),
     coins: 4,
     check: (s) => Object.values(s.owned).filter((n) => n === 42).length >= 4,
   },
@@ -504,9 +525,72 @@ const LIST: Achievement[] = [
     id: "penny_pincher",
     name: "Penny Pincher",
     description: "Have a trillion medkits in hand while owning fewer than 60 supplies.",
-    image: ICONS.medkit,
+    image: require("@/imgs/achievements/piggy_bank.png"),
     coins: 4,
     check: (s) => s.healed >= 1e12 && totalOwned(s) < 60,
+  },
+  // 0.8.1: up to 199, each with its own icon.
+  {
+    id: "week_streak",
+    name: "Seven Days Straight",
+    description: "Claim the daily gift seven days in a row.",
+    image: require("@/imgs/achievements/calendar_7.png"),
+    coins: 6,
+    check: (s) => s.daily.streak >= 7,
+    progress: (s) => s.daily.streak / 7,
+  },
+  {
+    id: "picture_perfect",
+    name: "Picture Perfect",
+    description: "Set your own photo, GIF or video as the background.",
+    image: require("@/imgs/achievements/photo_frame.png"),
+    coins: 3,
+    check: (s) => s.customBgChanges >= 1,
+  },
+  {
+    id: "heart_catcher",
+    name: "Heart Catcher",
+    description: "Catch 10 flying hearts.",
+    image: require("@/imgs/achievements/heart_net.png"),
+    coins: 5,
+    check: (s) => s.heartsCaught >= 10,
+    progress: (s) => s.heartsCaught / 10,
+  },
+  {
+    id: "flawless_shift",
+    name: "Flawless Shift",
+    description: "Win 10 minigames without a single mistake.",
+    image: require("@/imgs/achievements/rosette.png"),
+    coins: 5,
+    check: (s) => totalPerfect(s) >= 10,
+    progress: (s) => totalPerfect(s) / 10,
+  },
+  {
+    id: "interior_designer",
+    name: "Interior Designer",
+    description: "Have 10 items placed across your rooms.",
+    image: require("@/imgs/achievements/paint_roller.png"),
+    coins: 4,
+    check: (s) => placedItems(s) >= 10,
+    progress: (s) => placedItems(s) / 10,
+  },
+  {
+    id: "big_spender",
+    name: "Big Spender",
+    description: "Spend 200 Care Coins.",
+    image: require("@/imgs/achievements/coin_purse.png"),
+    coins: 4,
+    check: (s) => s.coinsSpent >= 200,
+    progress: (s) => s.coinsSpent / 200,
+  },
+  {
+    id: "gem_collector",
+    name: "Gem Collector",
+    description: "Spend 10 Natal Gems.",
+    image: require("@/imgs/achievements/gem_chest.png"),
+    coins: 5,
+    check: (s) => s.gemsSpent >= 10,
+    progress: (s) => s.gemsSpent / 10,
   },
 ];
 
