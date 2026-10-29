@@ -25,7 +25,7 @@ import { useSettings } from "@/hooks/use-game";
 import { PILL_COLORS, PILL_SIZES, PILL_VARIANTS, SIZE_NAMES, TWO_RULES, dealPills, type PillSpec, type PillsVariant } from "@/lib/pills";
 import { rand } from "@/lib/random";
 import { useHaptics } from "@/hooks/use-haptics";
-import { HAS_KEYS, useKeys } from "@/hooks/use-keys";
+import { SHOW_KEY_HINTS, useKeys } from "@/hooks/use-keys";
 
 // Six more quick ward minigames, each a few seconds long, with a bit of life: things bob, pop
 // and flip. They get harder with progress (see minigameLevel and minigameTuning), and each has a
@@ -55,7 +55,7 @@ function useCountdown(ms: number, onEnd: () => void) {
 
 const Hint = ({ children }: { children: string }) => <Text className="text-center font-body text-sm text-ink opacity-70">{children}</Text>;
 /** The keyboard controls, shown only where there are any (the web version). */
-export const KeyHint = ({ children }: { children: string }) => (HAS_KEYS ? <Text className="text-center font-pixel text-[10px] tracking-[1px] text-ink opacity-60">KEYS: {children}</Text> : null);
+export const KeyHint = ({ children }: { children: string }) => (SHOW_KEY_HINTS ? <Text className="text-center font-pixel text-[10px] tracking-[1px] text-ink opacity-60">KEYS: {children}</Text> : null);
 
 /** A thin timer bar that drains as time runs out and turns red near the end. */
 function TimeBar({ left, total }: { left: number; total: number }) {
@@ -234,18 +234,25 @@ function FasterPulse({ onDone, tuning }: GameProps) {
 }
 
 // ---------- Sort the Meds: tap the pills that match: by colour, size, capsule, or two rules at once ----------
-/** One pill half; with Colour labels on, it shows its colour's first letter. */
+/**
+ * One pill half; with Colour labels on, it shows its colour's first letter, black on a white badge
+ * so it reads on every colour.
+ */
 function PillHalf({ color, label, size }: { color: string; label?: string; size: number }) {
   return (
     <View className="flex-1 items-center justify-center" style={{ backgroundColor: color }}>
       {label && (
-        <Text className="font-pixel text-ink" style={{ fontSize: size, lineHeight: size + 2 }}>
-          {label}
-        </Text>
+        <View className="items-center justify-center rounded-full bg-white/90" style={{ minWidth: size + 6, height: size + 4 }}>
+          <Text className="font-pixel text-black" style={{ fontSize: size, lineHeight: size + 2 }}>
+            {label}
+          </Text>
+        </View>
       )}
     </View>
   );
 }
+/** With Colour labels on, pills are bigger and fatter so their letters can be read; the sizes still differ clearly. */
+const LABELLED_PILL_SIZES = [0.56, 0.76, 0.96];
 const WHITE_HALF = "#ffffff";
 /** A pill that sways slightly and pops away when taken. */
 const Pill = memo(function Pill({ spec, i, taken, cell }: { spec: PillSpec; i: number; taken: boolean; cell: number }) {
@@ -262,9 +269,9 @@ const Pill = memo(function Pill({ spec, i, taken, cell }: { spec: PillSpec; i: n
     transform: [{ rotate: `${wobble.get() * 3}deg` }, { scale: 1 + gone.get() * 0.4 }],
   }));
   const { colorLabels } = useSettings();
-  const w = Math.round(cell * PILL_SIZES[spec.size]);
-  const h = Math.round(w / 2);
-  const font = Math.max(6, Math.round(h * 0.55));
+  const w = Math.round(cell * (colorLabels ? LABELLED_PILL_SIZES : PILL_SIZES)[spec.size]);
+  const h = Math.round(w * (colorLabels ? 0.6 : 0.5));
+  const font = Math.max(colorLabels ? 10 : 6, Math.round(h * 0.5));
   return (
     <Animated.View style={style}>
       <View className="flex-row overflow-hidden rounded-full border-2 border-outline" style={{ width: w, height: h }}>

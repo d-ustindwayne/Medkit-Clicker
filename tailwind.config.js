@@ -14,6 +14,7 @@ module.exports = {
         backdrop: "rgb(var(--color-backdrop) / <alpha-value>)",
         outline: "rgb(var(--color-outline) / <alpha-value>)",
         shadow: "rgb(var(--color-shadow) / <alpha-value>)",
+        gold: "rgb(var(--color-gold) / <alpha-value>)",
       },
       fontFamily: {
         pixel: ["Silkscreen"],

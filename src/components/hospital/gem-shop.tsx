@@ -90,6 +90,8 @@ function ItemTile({ item }: { item: GemItem }) {
   const locked = state.rebirths < item.rebirths;
   const affordable = gemBalance(state) >= item.cost;
   const bgIndex = BACKGROUNDS.findIndex((b) => b.id === item.id);
+  const darkOnly = bgIndex >= 0 && !!BACKGROUNDS[bgIndex].darkOnly;
+  const darkOnlyNote = () => pushToast({ kind: "info", title: item.name, body: `${item.name} shows only in the dark theme. Switch the theme in Settings to see it.`, image: item.image });
   const [currentIcon] = useState(appIcon);
   const iconName = state.pendingIcon ? iconFromPending(state.pendingIcon) : currentIcon;
   const equipped =
@@ -102,7 +104,10 @@ function ItemTile({ item }: { item: GemItem }) {
     dispatch({ type: "buyGemItem", id: item.id });
     haptic.buy();
     playSfx("buy");
-    if (item.kind === "background") updateSettings({ background: bgIndex });
+    if (item.kind === "background") {
+      updateSettings({ background: bgIndex });
+      if (darkOnly && settings.theme !== "dark") darkOnlyNote();
+    }
     if (item.kind === "room") pushToast({ kind: "info", title: item.name, body: "It's in your My Room tray now. Swipe the medkit to My Room to place it.", image: item.image });
   };
   const save = () => {
@@ -140,7 +145,10 @@ function ItemTile({ item }: { item: GemItem }) {
     if (item.kind === "icon") return switchIcon();
     if (item.kind === "skin") dispatch({ type: "equip", slot: "skin", id: equipped ? null : item.id });
     else if (item.kind === "tap") dispatch({ type: "equip", slot: "tap", id: equipped ? null : item.id });
-    else if (item.kind === "background") updateSettings({ background: equipped ? 0 : bgIndex });
+    else if (item.kind === "background") {
+      updateSettings({ background: equipped ? 0 : bgIndex });
+      if (!equipped && darkOnly && settings.theme !== "dark") darkOnlyNote();
+    }
   };
 
   return (
@@ -149,6 +157,7 @@ function ItemTile({ item }: { item: GemItem }) {
         <View className={`items-center gap-1 border-2 border-outline p-2 ${equipped ? "bg-accent" : "bg-surface"}`}>
           <Image source={item.image} style={{ width: 52, height: 52, opacity: locked ? 0.35 : 1 }} contentFit="contain" />
           <MarqueeText className="text-center font-display text-sm text-ink">{item.name}</MarqueeText>
+          {darkOnly && <Text className="text-center font-body text-xs text-ink opacity-70">Dark theme only</Text>}
           {locked ? (
             <Text className="text-center font-body text-xs text-ink opacity-70">Rebirth {item.rebirths} to unlock</Text>
           ) : owned ? (

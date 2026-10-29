@@ -16,8 +16,9 @@ import { HardShadow } from "@/components/ui/hard-shadow";
 import { MarqueeText } from "@/components/ui/marquee-text";
 import { Pager } from "@/components/ui/pager";
 import { ToastStack } from "@/components/toast-stack";
+import { UpdatePrompt } from "@/components/update-prompt";
 import { RoomPage } from "@/components/room/room-page";
-import { ownsBackground } from "@/constants/backgrounds";
+import { ownsBackground, showsInTheme } from "@/constants/backgrounds";
 import { GEM_ITEMS } from "@/constants/gems";
 import { TAP_GROWTH_EVERY, tapGrowth } from "@/constants/items";
 import { sectionOpen } from "@/constants/rewards";
@@ -60,28 +61,40 @@ function MenuButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** Countdown chips for running boosts and Lucky Stethoscope taps. */
+/** How many boost chips show; more running than this fold into a "..." box with a count. */
+const SHOWN_BOOSTS = 3;
+
+/**
+ * Countdown chips for running boosts and Lucky Stethoscope taps, centred just above the shop (and
+ * above the page dots). With more than three running, the rest fold into a "..." box with a count.
+ */
 function ActiveBoosts() {
   const { boosts, luckyTaps } = useGameSelector((s) => ({ boosts: s.boosts, luckyTaps: s.luckyTaps }));
   const now = useNow();
-  const active = BOOSTS.filter((b) => (boosts[b.id] ?? 0) > now);
-  if (active.length === 0 && luckyTaps === 0) return null;
   const left = (ms: number) => {
     const s = Math.ceil(ms / 1000);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   };
+  const chips = [
+    ...BOOSTS.filter((b) => (boosts[b.id] ?? 0) > now).map((b) => ({ key: b.id, image: b.image, text: left(boosts[b.id] - now), label: `${b.name} active` })),
+    ...(luckyTaps > 0 ? [{ key: "lucky", image: BOOSTS.find((b) => b.effect.kind === "charges")!.image, text: `x${LUCKY_MULT} · ${luckyTaps}`, label: `${luckyTaps} lucky taps left` }] : []),
+  ];
+  if (chips.length === 0) return null;
+  const more = chips.length - SHOWN_BOOSTS;
   return (
-    <View className="mt-1.5 flex-row flex-wrap justify-center gap-1.5">
-      {active.map((b) => (
-        <View key={b.id} className="flex-row items-center gap-1 rounded-full border-[1.5px] border-outline bg-accent px-2 py-0.5" accessibilityLabel={`${b.name} active`}>
-          <Image source={b.image} style={{ width: 14, height: 14 }} contentFit="contain" />
-          <Text className="font-number text-xs text-ink">{left(boosts[b.id] - now)}</Text>
+    <View pointerEvents="none" className="absolute inset-x-0 bottom-9 z-10 flex-row justify-center gap-1.5">
+      {chips.slice(0, SHOWN_BOOSTS).map((c) => (
+        <View key={c.key} className="flex-row items-center gap-1 rounded-full border-[1.5px] border-outline bg-accent px-2 py-0.5" accessibilityLabel={c.label}>
+          <Image source={c.image} style={{ width: 14, height: 14 }} contentFit="contain" />
+          <Text className="font-number text-xs text-ink">{c.text}</Text>
         </View>
       ))}
-      {luckyTaps > 0 && (
-        <View className="flex-row items-center gap-1 rounded-full border-[1.5px] border-outline bg-accent px-2 py-0.5" accessibilityLabel={`${luckyTaps} lucky taps left`}>
-          <Image source={BOOSTS.find((b) => b.effect.kind === "charges")!.image} style={{ width: 14, height: 14 }} contentFit="contain" />
-          <Text className="font-number text-xs text-ink">x{LUCKY_MULT} · {luckyTaps}</Text>
+      {more > 0 && (
+        <View className="h-[22px] w-7 items-center justify-center border-[1.5px] border-outline bg-surface" accessibilityLabel={`${more} more ${more === 1 ? "boost" : "boosts"} active`}>
+          <Text className="font-pixel text-[10px] leading-[12px] text-ink">...</Text>
+          <View className="absolute -right-2 -top-2 h-4 min-w-4 items-center justify-center rounded-full border border-outline bg-primary px-0.5">
+            <Text className="font-pixel text-[8px] leading-[10px] text-white">{more}</Text>
+          </View>
         </View>
       )}
     </View>
@@ -135,7 +148,6 @@ function Counter({ compact }: { compact: boolean }) {
           )}
         </View>
       </View>
-      <ActiveBoosts />
     </View>
   );
 }
@@ -144,7 +156,7 @@ function Counter({ compact }: { compact: boolean }) {
 function Backdrop({ width, height }: { width: number; height: number }) {
   const settings = useSettings();
   const ownedBackgrounds = useGameSelector((s) => s.ownedBackgrounds);
-  const index = ownsBackground(settings.background, ownedBackgrounds) ? settings.background : 0;
+  const index = ownsBackground(settings.background, ownedBackgrounds) && showsInTheme(settings.background, settings.theme) ? settings.background : 0;
   return <BackgroundPattern index={index} theme={settings.theme} width={width} height={height} />;
 }
 
@@ -239,6 +251,8 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
           },
         ]}
       />
+      {/* Running boosts, above the shop; decorating needs that space for the item tray. */}
+      {!editing && <ActiveBoosts />}
     </View>
   );
 }
@@ -363,6 +377,7 @@ export default function GameScreen() {
       <HallOfFame />
       <Intro />
       <PendingIcon />
+      <UpdatePrompt />
       <MenuDrawer visible={menuOpen} onClose={() => setMenuOpen(false)} />
     </View>
   );

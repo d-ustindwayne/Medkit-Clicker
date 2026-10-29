@@ -1,6 +1,6 @@
 import { Platform, Pressable, type GestureResponderEvent, type PointerEvent, type PressableProps } from "react-native";
 
-const fromKeyboard = (e: GestureResponderEvent) => (e.nativeEvent as unknown as { type?: string }).type?.startsWith("key") ?? false;
+const fromKeyboard = (e: GestureResponderEvent) => (e.nativeEvent as unknown as { type?: string } | undefined)?.type?.startsWith("key") ?? false;
 
 /**
  * Pressable props that act the moment a finger lands (and, for hold controls, when it lifts).

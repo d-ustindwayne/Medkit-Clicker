@@ -5,6 +5,7 @@ import { clearOldImageCache } from "@/components/ui/image";
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { PATIENT_WAIT_MS, SICK_PATIENTS, nextPatientDelay } from "@/constants/patients";
 import { healingRate } from "@/constants/rebirth";
+import { ROOMS, ROOM_ITEMS, isUnlocked } from "@/constants/room";
 import type { ThemeName } from "@/constants/theme";
 import { formatCount, formatDuration } from "@/lib/format";
 import { MAX_PATIENTS, gameReducer, maxAwaySeconds, newGame, type GameAction, type GameState } from "@/lib/game";
@@ -27,6 +28,13 @@ const TAP_FLUSH_MS = 100;
 const AWAY_THRESHOLD_S = 5;
 
 export type Toast = { id: number; title: string; body: string; kind: "achievement" | "info"; image?: ImageSourcePropType };
+
+/**
+ * My Room items and rooms unlocked by playing (not the Gem Shop ones, which are bought on purpose),
+ * as one string so the effect that announces new ones runs only when the list changes.
+ */
+const roomUnlocks = (s: GameState) =>
+  [...ROOM_ITEMS.filter((i) => i.unlock && !("gem" in i.unlock) && isUnlocked(i.unlock, s)).map((i) => `item:${i.id}`), ...ROOMS.filter((r) => r.unlock && isUnlocked(r.unlock, s)).map((r) => `room:${r.id}`)].join(",");
 
 type GameActions = {
   dispatch: (action: GameAction) => void;
@@ -82,6 +90,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
   const stateRef = useRef(state);
   const lastTick = useRef(0);
   const seenAchievements = useRef<Set<string> | null>(null);
+  const seenRoomUnlocks = useRef<Set<string> | null>(null);
   const toastId = useRef(0);
   const focus = useRef(false);
 
@@ -121,6 +130,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
         stateRef.current = saved.state;
         // Achievements already in the save are not new; anything unlocked from here on gets a toast.
         seenAchievements.current = new Set(Object.keys(saved.state.achievements));
+        seenRoomUnlocks.current = new Set(roomUnlocks(saved.state).split(","));
         lastTick.current = saved.savedAt;
       } else {
         lastTick.current = Date.now();
@@ -207,6 +217,25 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       if (a) pushToast({ kind: "achievement", title: a.name, body: `${a.description} +${a.coins} Care ${a.coins === 1 ? "Coin" : "Coins"}`, image: a.image });
     }
   }, [ready, quiet, state.achievements, pushToast]);
+
+  // Announce My Room items and rooms as they unlock (held back for the first minute, like achievements).
+  const unlockedInRoom = roomUnlocks(state);
+  useEffect(() => {
+    if (!ready || quiet) return;
+    seenRoomUnlocks.current ??= new Set();
+    for (const key of unlockedInRoom.split(",")) {
+      if (!key || seenRoomUnlocks.current.has(key)) continue;
+      seenRoomUnlocks.current.add(key);
+      const [kind, id] = key.split(":");
+      if (kind === "item") {
+        const item = ROOM_ITEMS.find((i) => i.id === id);
+        if (item) pushToast({ kind: "info", title: "New for My Room", body: `${item.name} is ready to place. Swipe over to My Room to decorate.`, image: item.image });
+      } else {
+        const room = ROOMS.find((r) => r.id === id);
+        if (room) pushToast({ kind: "info", title: "New room", body: `The ${room.title} is open in My Room.` });
+      }
+    }
+  }, [ready, quiet, unlockedInRoom, pushToast]);
 
   const actions = useMemo<GameActions>(() => {
     const updateSettings = (patch: Partial<Settings>) =>

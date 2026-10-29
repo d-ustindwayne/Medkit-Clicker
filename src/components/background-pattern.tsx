@@ -28,7 +28,7 @@ const DRIFT_MS = 3_500;
 const HEART = pixelPath([".##.##.", "#######", "#######", ".#####.", "..###..", "...#..."]);
 const MOON = pixelPath(["..###..", ".##....", "##.....", "##.....", "##.....", ".##....", "..###.."]);
 
-const ANIMATED = new Set<string>(["rain", "ecg", "stars", "cells", "sakura", "fireflies", "snowfall", "aurora"]);
+const ANIMATED = new Set<string>(["rain", "ecg", "stars", "cells", "sakura", "fireflies", "snowfall", "aurora", "galaxy"]);
 const isAnimated = (k: PatternKind | AnimatedKind): k is AnimatedKind => ANIMATED.has(k);
 
 const SPRITES = {
@@ -275,6 +275,48 @@ const AuroraBand = memo(function AuroraBand({ i, width, height, color }: { i: nu
   return <Animated.View style={[{ position: "absolute", left: -width * 0.25, top: height * (0.12 + i * 0.13), width: width * 1.5, height: height * 0.14, borderRadius: height * 0.07, backgroundColor: color }, style]} />;
 });
 
+/** Galaxy: one turn of the spiral takes this long. */
+const GALAXY_TURN_MS = 240_000;
+const GALAXY_DOTS = 320;
+/**
+ * Galaxy: a two-armed spiral of square pixel stars seen at a slant, slowly turning, with a soft
+ * core glow. Inner stars are brighter and whiter, outer ones fade into the arm colour.
+ */
+const GalaxySpiral = memo(function GalaxySpiral({ width, height, colors }: { width: number; height: number; colors: Colors }) {
+  // Wider than the screen, so the arms sweep out well past the medkit in the middle.
+  const d = Math.max(width, height) * 1.25;
+  const spin = useSharedValue(0);
+  useEffect(() => {
+    spin.set(withRepeat(withTiming(1, { duration: GALAXY_TURN_MS, easing: Easing.linear }), -1, false));
+  }, [spin]);
+  const tilt = use(TiltContext);
+  const turn = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.get() * 360}deg` }] }));
+  const lean = useAnimatedStyle(() => ({ transform: [...tiltShift(tilt, 0.3), { rotate: "-18deg" }, { scaleY: 0.62 }] }));
+  const r = d / 2;
+  const dots = Array.from({ length: GALAXY_DOTS }, (_, i) => {
+    const k = noise(i, 41);
+    const arm = i % 2;
+    const a = arm * Math.PI + k * Math.PI * 3.2 + (noise(i, 42) - 0.5) * 0.5;
+    const dist = r * (0.06 + k * 0.92) * (0.88 + noise(i, 43) * 0.24);
+    const s = noise(i, 44) > 0.85 ? 6 : noise(i, 44) > 0.4 ? 4 : 3;
+    return { x: r + Math.cos(a) * dist, y: r + Math.sin(a) * dist, s, o: 1 - k * 0.45, inner: k < 0.3 || noise(i, 45) > 0.75 };
+  });
+  return (
+    <Animated.View style={[{ position: "absolute", left: (width - d) / 2, top: (height - d) / 2, width: d, height: d }, lean]}>
+      <Animated.View style={[{ width: d, height: d }, turn]}>
+        <Svg width={d} height={d}>
+          {[0.42, 0.28, 0.16, 0.08].map((rr, j) => (
+            <Circle key={j} cx={r} cy={r} r={r * rr} fill={j === 3 ? colors.line : colors.accent} opacity={0.14 + j * 0.08} />
+          ))}
+          {dots.map((p, i) => (
+            <Rect key={i} x={Math.round(p.x)} y={Math.round(p.y)} width={p.s} height={p.s} fill={p.inner ? colors.line : (colors.accent ?? colors.line)} opacity={p.o} />
+          ))}
+        </Svg>
+      </Animated.View>
+    </Animated.View>
+  );
+});
+
 /** How fast the monitor's cursor sweeps across, in px per second (about 70 bpm at the usual beat gap). */
 const ECG_SPEED = 190;
 type Trace = { d: string; d2: string; spikes: number[] };
@@ -323,11 +365,16 @@ function TraceLayer({ trace, width, height, color, side, cursor }: { trace: Trac
   );
 }
 
+/** The sweep bar's width, and how far it runs ahead of the fresh trace. */
+const ECG_BAR_W = 5;
+const ECG_BAR_LEAD = 3;
+
 /**
  * Heart Monitor: a bedside monitor. A cursor sweeps left to right drawing a fresh trace over the
- * last one, with uneven beats, and the heart behind it pulses as each spike is drawn.
+ * last one, with uneven beats, and the heart behind it pulses as each spike is drawn. Like a real
+ * monitor's cursor, a bar (white in light theme, black in dark) runs just ahead of the new trace.
  */
-function Ecg({ width, height, colors }: { width: number; height: number; colors: Colors }) {
+function Ecg({ width, height, colors, theme }: { width: number; height: number; colors: Colors; theme: ThemeName }) {
   const y1 = height * 0.42, y2 = height * 0.8;
   const [traces, setTraces] = useState(() => ({ old: makeTrace(width, y1, y2), now: makeTrace(width, y1, y2) }));
   const cursor = useSharedValue(0);
@@ -354,6 +401,7 @@ function Ecg({ width, height, colors }: { width: number; height: number; colors:
     return { transform: [...tiltShift(tilt, 0.25), { scale: 1 + 0.15 * k * k }] };
   });
   const traceShift = useAnimatedStyle(() => ({ transform: tiltShift(tilt, 0.7) }));
+  const bar = useAnimatedStyle(() => ({ transform: [{ translateX: cursor.get() + ECG_BAR_LEAD }] }));
   const hs = Math.min(width, height) * 0.05;
   return (
     <>
@@ -375,12 +423,16 @@ function Ecg({ width, height, colors }: { width: number; height: number; colors:
       <Animated.View style={[StyleSheet.absoluteFill, traceShift]}>
         <TraceLayer trace={traces.old} width={width} height={height} color={colors.line} side="old" cursor={cursor} />
         <TraceLayer trace={traces.now} width={width} height={height} color={colors.line} side="new" cursor={cursor} />
+        <Animated.View
+          pointerEvents="none"
+          style={[{ position: "absolute", left: 0, top: 0, width: ECG_BAR_W, height, backgroundColor: theme === "dark" ? "#000000" : "#ffffff", opacity: 0.85 }, bar]}
+        />
       </Animated.View>
     </>
   );
 }
 
-function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind; width: number; height: number; colors: Colors }) {
+function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: AnimatedKind; width: number; height: number; colors: Colors; theme: ThemeName }) {
   const many = (n: number) => Array.from({ length: n }, (_, i) => i);
   switch (kind) {
     case "rain":
@@ -393,7 +445,7 @@ function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind;
         </>
       );
     case "ecg":
-      return <Ecg width={width} height={height} colors={colors} />;
+      return <Ecg width={width} height={height} colors={colors} theme={theme} />;
     case "stars":
       return (
         <>
@@ -441,6 +493,16 @@ function AnimatedBackdrop({ kind, width, height, colors }: { kind: AnimatedKind;
           {many(22).map((i) => (
             <Faller key={i} i={i} width={width} height={height} image={SPRITES.snow} px={10 + noise(i, 26) * 10} wind={-0.3} spin={false} />
           ))}
+        </>
+      );
+    case "galaxy":
+      return (
+        <>
+          <Wash width={width} height={height * 0.6} color={colors.accent ?? colors.line} opacity={0.22} from="top" />
+          {many(40).map((i) => (
+            <Star key={i} i={i} left={noise(i, 9) * width} top={noise(i, 10) * height} color={colors.line} />
+          ))}
+          <GalaxySpiral width={width} height={height} colors={colors} />
         </>
       );
     case "aurora":
@@ -501,7 +563,7 @@ export const BackgroundPattern = memo(function BackgroundPattern({ index, theme,
       {!reduceMotion && active && <TiltSensor tilt={tilt} />}
       <TiltContext value={tilt}>
         <Animated.View style={[{ position: "absolute", left: -TILT_PAD, top: -TILT_PAD, width: bw, height: bh }, base]}>
-          {isAnimated(pattern) && !reduceMotion && <AnimatedBackdrop kind={pattern} width={bw} height={bh} colors={colors} />}
+          {isAnimated(pattern) && !reduceMotion && <AnimatedBackdrop kind={pattern} width={bw} height={bh} colors={colors} theme={theme} />}
           {!isAnimated(pattern) && pattern !== "plain" && (
             // Drawn once into a texture on Android and then only moved, not redrawn every frame. The view
             // is sized to the whole pattern: the texture is cut to the view, and a screen-sized one left a

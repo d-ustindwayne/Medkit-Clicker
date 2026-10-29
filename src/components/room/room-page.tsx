@@ -85,10 +85,15 @@ function Staff({ ids, width, height }: { ids: string[]; width: number; height: n
  * a drag follows the finger without re-rendering, and a drop hands over to the new spot in the
  * same frame (no jump back to the old one first).
  */
-function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
+function PlacedItem({ p, item, width, height, editing, onMove, onRemove, onDragChange }: {
   p: Placement; item: RoomItem; width: number; height: number; editing: boolean;
   /** Where the item ends up if dropped at x, y (fractions of the room), or null if it can't go there. */
   onMove: (x: number, y: number) => { x: number; y: number } | null; onRemove: () => void;
+  /**
+   * The item is picked up or let go. iOS scroll views keep scrolling under a touch the item has
+   * claimed, so the room around it must stop scrolling itself.
+   */
+  onDragChange?: (dragging: boolean) => void;
 }) {
   const size = width * (ITEM_PX / ART_W) * 1.5;
   const left = p.x * width - size / 2;
@@ -113,6 +118,7 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
     start.current = null;
     last.current = null;
     setDragging(false);
+    onDragChange?.(false);
     if (!s0) return;
     const spot = onMove(p.x + (x - s0.x) / width, p.y + (y - s0.y) / height);
     if (!spot || (spot.x === p.x && spot.y === p.y)) {
@@ -135,6 +141,7 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
     onResponderGrant: (e: GestureResponderEvent) => {
       start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
       setDragging(true);
+      onDragChange?.(true);
       return true;
     },
     onResponderMove: (e: GestureResponderEvent) => {
@@ -152,6 +159,7 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove }: {
       else {
         start.current = null;
         setDragging(false);
+        onDragChange?.(false);
         dx.set(0);
         dy.set(0);
       }
@@ -250,7 +258,10 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
   const lastPoint = useRef<{ x: number; y: number } | null>(null);
   /** The dragged tile's image, positioned inside this page. */
   const [ghost, setGhost] = useState<{ item: RoomItem; left: number; top: number } | null>(null);
-  /** A tile is being dragged: the tray stops scrolling so it doesn't slide along with the finger. */
+  /**
+   * A tile or a placed item is being dragged: the tray and the room stop scrolling so they don't
+   * slide along with the finger.
+   */
   const [dragging, setDragging] = useState(false);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
@@ -407,6 +418,7 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
                     return spot;
                   }}
                   onRemove={() => dispatch({ type: "removeItem", room: room.id, item: p.item })}
+                  onDragChange={setDragging}
                 />
               );
             })}

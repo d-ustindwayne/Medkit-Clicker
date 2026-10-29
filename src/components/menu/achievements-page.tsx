@@ -94,6 +94,8 @@ export function AchievementsPage() {
         {ACHIEVEMENTS.map((a) => {
           const unlocked = achievements[a.id] !== undefined;
           const isSelected = a.id === selected;
+          // A secret one still to find shows in gold, so it stands out as something special.
+          const hiddenSecret = a.secret && !unlocked;
           return (
             <Pressable
               key={a.id}
@@ -102,12 +104,12 @@ export function AchievementsPage() {
               accessibilityState={{ selected: isSelected }}
               onPress={() => setSelected(a.id)}
               style={{ width: tile, height: tile }}
-              className={`items-center justify-center border-2 border-outline ${isSelected ? "bg-primary" : unlocked ? "bg-surface" : "bg-ink/20"}`}
+              className={`items-center justify-center border-2 ${hiddenSecret ? "border-gold" : "border-outline"} ${isSelected ? "bg-primary" : unlocked ? "bg-surface" : "bg-ink/20"}`}
             >
               {unlocked ? (
                 <Image source={a.image} style={{ width: tile * 0.64, height: tile * 0.64 }} contentFit="contain" />
               ) : (
-                <Text className="font-pixel text-xl text-ink opacity-50">?</Text>
+                <Text className={`font-pixel text-xl ${hiddenSecret ? "text-gold" : "text-ink opacity-50"}`}>?</Text>
               )}
             </Pressable>
           );

@@ -1,15 +1,16 @@
 // Background presets for the clicker area. Pure data: drawn by components/background-pattern.tsx.
 
 export type PatternKind = "grid" | "crosses" | "dots" | "stripes" | "checker" | "hearts" | "plain";
-export type AnimatedKind = "rain" | "ecg" | "stars" | "cells" | "sakura" | "fireflies" | "snowfall" | "aurora";
+export type AnimatedKind = "rain" | "ecg" | "stars" | "cells" | "sakura" | "fireflies" | "snowfall" | "aurora" | "galaxy";
 export type Colors = { bg: string; line: string; accent?: string };
 
 /**
  * Background presets: each has its own pattern and its own colours per theme. Order is saved by
  * index, so add new ones at the end. Animated ones cost Care Coins (`price`); premium ones are bought
- * with Natal Gems in the Gem Shop (`gems`, see GEM_ITEMS).
+ * with Natal Gems in the Gem Shop (`gems`, see GEM_ITEMS). `darkOnly` ones show only in the dark
+ * theme; in the light theme the default background stands in.
  */
-export const BACKGROUNDS: { id: string; name: string; pattern: PatternKind | AnimatedKind; light: Colors; dark: Colors; price?: number; gems?: boolean }[] = [
+export const BACKGROUNDS: { id: string; name: string; pattern: PatternKind | AnimatedKind; light: Colors; dark: Colors; price?: number; gems?: boolean; darkOnly?: boolean }[] = [
   { id: "rose_grid", name: "Rose Grid", pattern: "grid", light: { bg: "#f9e8e8", line: "#f8cdd4" }, dark: { bg: "#0f1c24", line: "#1b3341" } },
   { id: "mint_crosses", name: "Mint Crosses", pattern: "crosses", light: { bg: "#e5f6ec", line: "#b9e4c9" }, dark: { bg: "#0c1d16", line: "#1a3a2b" } },
   { id: "lavender_dots", name: "Lavender Dots", pattern: "dots", light: { bg: "#eeeafc", line: "#cdc4f4" }, dark: { bg: "#15132a", line: "#2c2752" } },
@@ -26,7 +27,12 @@ export const BACKGROUNDS: { id: string; name: string; pattern: PatternKind | Ani
   { id: "fireflies", name: "Firefly Night", pattern: "fireflies", gems: true, light: { bg: "#e3f0e0", line: "#9cc79a", accent: "#c7e2c2" }, dark: { bg: "#08160f", line: "#123323", accent: "#0b2018" } },
   { id: "snowfall", name: "First Snow", pattern: "snowfall", gems: true, light: { bg: "#e6f1fb", line: "#ffffff", accent: "#cfe1f2" }, dark: { bg: "#0d1a2c", line: "#e8f2ff", accent: "#18304d" } },
   { id: "aurora", name: "Aurora Ward", pattern: "aurora", gems: true, light: { bg: "#dfe9f7", line: "#7fe0c4", accent: "#b08cf0" }, dark: { bg: "#070c1f", line: "#4fe0a8", accent: "#8a5cf0" } },
+  // Dark theme only (picked by Claude, 2026-10-29: 1 gem, from the first rebirth)
+  { id: "galaxy", name: "Galaxy", pattern: "galaxy", gems: true, darkOnly: true, light: { bg: "#05040f", line: "#ece8ff", accent: "#7b4dd8" }, dark: { bg: "#05040f", line: "#ece8ff", accent: "#7b4dd8" } },
 ];
+
+/** Whether a background shows in this theme (a dark-only one doesn't in the light theme). */
+export const showsInTheme = (index: number, theme: "light" | "dark") => theme === "dark" || !BACKGROUNDS[index % BACKGROUNDS.length].darkOnly;
 
 /** Free presets are always owned; priced ones once bought. */
 export const ownsBackground = (index: number, owned: string[]) => {

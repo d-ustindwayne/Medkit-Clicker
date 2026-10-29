@@ -17,6 +17,8 @@ type Palette = {
   glow: string;
   /** Hard shadow under big display text. */
   textShadow: string;
+  /** Secret achievements' outline and question mark (the confetti's gold, darker on light). */
+  gold: string;
 };
 
 // Palettes from src/media/photos/plan-and-brainstorm.png
@@ -33,6 +35,7 @@ export const palettes: Record<ThemeName, Palette> = {
     shadow: "#000000",
     glow: "#ffffff",
     textShadow: "#ffb3c1",
+    gold: "#c99700",
   },
   // Night shift: deep ward teal with the same red, kept bright enough to read.
   dark: {
@@ -47,6 +50,7 @@ export const palettes: Record<ThemeName, Palette> = {
     shadow: "#05090c",
     glow: "#4f8fae",
     textShadow: "#000000",
+    gold: "#ffd23f",
   },
 };
 
@@ -66,6 +70,7 @@ const toVars = (p: Palette) =>
     "--color-backdrop": toRgbChannels(p.backdrop),
     "--color-outline": toRgbChannels(p.outline),
     "--color-shadow": toRgbChannels(p.shadow),
+    "--color-gold": toRgbChannels(p.gold),
   });
 
 /** NativeWind CSS variables for each theme; apply on the root view. */

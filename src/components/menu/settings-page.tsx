@@ -117,6 +117,9 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
             onNext={() => updateSettings({ background: cycle(settings.background, 1, BACKGROUNDS.length) })}
           />
         </Field>
+        {owned && background.darkOnly && settings.theme !== "dark" && (
+          <Text className="font-body text-sm text-ink">{background.name} shows only in the dark theme.</Text>
+        )}
         {!owned && background.gems && (
           <Text className="font-body text-sm text-ink">Premium background: get it in the Gem Shop (swipe the shop to Gems).</Text>
         )}

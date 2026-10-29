@@ -21,6 +21,8 @@ type Props = {
 
 /** How long after start-up the second page is built, once the first screen has settled. */
 const PREWARM_MS = 1500;
+/** Longer than the slide to the next page: when the pages it passed are hidden, if nothing settled it sooner. */
+const SLIDE_MS = 450;
 const WEB = Platform.OS === "web";
 /**
  * Web: each page takes the full height, or its own lists grow instead of scrolling. It's also a snap
@@ -151,9 +153,18 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
     return () => clearTimeout(t);
   }, [pages.length]);
 
-  const settle = (next: number) => {
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => clearTimeout(hideTimer.current ?? undefined), []);
+  /**
+   * Lands on a page. `sliding`: the pages are still on their way there (a let-go title drag), so
+   * the pages they pass stay drawn until the slide ends; hiding them at once made the page being
+   * left vanish mid-slide.
+   */
+  const settle = (next: number, sliding = false) => {
     mount(next);
-    show(next, next);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    if (sliding) hideTimer.current = setTimeout(() => show(next, next), SLIDE_MS);
+    else show(next, next);
     if (next === page) return;
     playSfx("click");
     setPage(next);
@@ -162,6 +173,9 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
 
   // Dragging the title scrolls the pages with the finger, then snaps to the nearest one.
   const drag = useRef<{ x: number; y: number; t: number } | null>(null);
+  // While the title is dragged, the pages move by scrollTo, which on Android can report a finished
+  // scroll at every step; settling there would hide the page being left.
+  const titleDragging = useRef(false);
   const dragDx = (pageX: number) => pageX - (drag.current?.x ?? pageX);
   const titleDrag = {
     onTouchStart: (e: GestureResponderEvent) => {
@@ -171,7 +185,10 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
       const dx = Math.abs(dragDx(e.nativeEvent.pageX));
       return scrollEnabled && pages.length > 1 && dx > 8 && dx > Math.abs(e.nativeEvent.pageY - (drag.current?.y ?? 0));
     },
-    onResponderGrant: () => reveal(page - 1, page + 1),
+    onResponderGrant: () => {
+      titleDragging.current = true;
+      reveal(page - 1, page + 1);
+    },
     onResponderMove: (e: GestureResponderEvent) => {
       const x = Math.min(Math.max(page * width - dragDx(e.nativeEvent.pageX), 0), (pages.length - 1) * width);
       scroller.current?.scrollTo({ x, animated: false });
@@ -180,12 +197,14 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
       const dx = dragDx(e.nativeEvent.pageX);
       const step = stepFor(dx, e.nativeEvent.timestamp - (drag.current?.t ?? 0), width);
       const next = Math.min(Math.max(page + step, 0), pages.length - 1);
+      titleDragging.current = false;
       scroller.current?.scrollTo({ x: next * width, animated: true });
-      settle(next);
+      settle(next, true);
     },
     onResponderTerminate: () => {
+      titleDragging.current = false;
       scroller.current?.scrollTo({ x: page * width, animated: true });
-      settle(page);
+      settle(page, true);
     },
   };
 
@@ -250,6 +269,7 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
         style={{ width, flexGrow: 1, overflow: overflowVisible && !WEB ? "visible" : undefined }}
         onScrollBeginDrag={() => reveal(page - 1, page + 1)}
         onMomentumScrollEnd={(e) => {
+          if (titleDragging.current) return;
           settle(Math.round(e.nativeEvent.contentOffset.x / width));
         }}
         {...webScroll}
