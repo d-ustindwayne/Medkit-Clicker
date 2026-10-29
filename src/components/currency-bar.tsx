@@ -32,7 +32,7 @@ export function CurrencyBar() {
   const big = useWindowDimensions().width >= WIDE;
   return (
     <View className={big ? "gap-1.5" : "gap-1"} pointerEvents="none">
-      <Chip big={big} image={MEDKIT_IMAGE as number} value={state.healed} label={`${state.healed} patients`} />
+      <Chip big={big} image={MEDKIT_IMAGE as number} value={state.healed} label={`${state.healed} medkits`} />
       <Chip big={big} image={COIN.image as number} value={formatCount(coins)} label={`${coins} ${COIN.name}`} />
       <Chip big={big} image={GEM.image as number} value={formatCount(state.gems)} label={`${state.gems} ${GEM.name}`} />
     </View>

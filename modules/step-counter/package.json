@@ -1,0 +1,7 @@
+{
+  "name": "step-counter",
+  "version": "0.1.0",
+  "description": "Reads Android's step counter sensor for Medkit Clicker's walking rewards.",
+  "main": "index.ts",
+  "private": true
+}

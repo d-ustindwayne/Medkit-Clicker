@@ -204,7 +204,7 @@ onBeforeUnmount(() => {
   <EcgMonitor :progress="progress" :chapters="beats" :healed="healed" @go="go" />
   <MilestoneToast
     v-if="showMilestone"
-    :title="`${MILESTONE} patients healed!`"
+    :title="`${MILESTONE} medkits earned!`"
     text="You've got the touch. Keep healing in the full game, on Android or in your browser."
     @close="showMilestone = false"
   />
@@ -231,7 +231,7 @@ onBeforeUnmount(() => {
           <div class="column is-6-desktop is-6-widescreen">
             <h1 id="title" class="title-mark">Medkit<br />Clicker</h1>
             <p class="pitch">
-              A cosy pixel-art idle game about running a hospital. Tap the medkit to heal patients, stock up on
+              A cosy pixel-art idle game about running a hospital. Tap the medkit to earn medkits, stock up on
               supplies, and grow a little clinic into a grand medical center.
             </p>
             <div class="actions">
@@ -247,7 +247,7 @@ onBeforeUnmount(() => {
             </div>
             <p class="tap-hint">
               <button type="button" class="tap-button" @click="tapFromButton">Tap the medkit</button>
-              to heal a patient.
+              to earn a medkit.
             </p>
             <img v-if="noWebgl" class="pixel flat-medkit" :src="SPRITES.medkit" alt="The Medkit Clicker medkit" width="320" height="320" />
           </div>
@@ -264,8 +264,8 @@ onBeforeUnmount(() => {
               <p class="step"><PixelIcon name="cross" :size="12" /> Step 1 of 5</p>
               <h2 id="tap-title">Tap to heal</h2>
               <p>
-                Every tap on the medkit heals a patient, and healed patients are what you spend. Keep an eye on the
-                road outside: when an ambulance pulls up at the door, tap it to admit the patient for a burst of healing.
+                Every tap on the medkit earns medkits, and medkits are what you spend. Keep an eye on the road outside:
+                when an ambulance pulls up at the door, tap it to admit the patient for a burst of medkits.
               </p>
             </article>
           </div>
@@ -282,7 +282,7 @@ onBeforeUnmount(() => {
               <p class="step"><PixelIcon name="cross" :size="12" /> Step 2 of 5</p>
               <h2 id="supplies-title">Stock the supply room</h2>
               <p>
-                Spend patients on supplies that heal for you, from a bandage to a DNA strand. Each one you buy costs 14%
+                Spend medkits on supplies that earn for you, from a bandage to a DNA strand. Each one you buy costs 12%
                 more than the last, and your team keeps working for up to {{ GAME.offlineHours }} hours while the app is
                 closed.
               </p>
@@ -302,7 +302,7 @@ onBeforeUnmount(() => {
               <p class="step"><PixelIcon name="cross" :size="12" /> Step 3 of 5</p>
               <h2 id="achievements-title">Earn Care Coins</h2>
               <p>
-                {{ GAME.achievements }} achievements, from First Aid to healing a vigintillion patients, a few of them
+                {{ GAME.achievements }} achievements, from First Aid to earning a vigintillion medkits, a few of them
                 secret. Each one pays Care Coins, and coins buy boosts in the shop.
               </p>
               <BoostSlips />

@@ -16,6 +16,13 @@ import { HardShadow } from "@/components/ui/hard-shadow";
 import { MarqueeText } from "@/components/ui/marquee-text";
 import { Pager } from "@/components/ui/pager";
 import { ToastStack } from "@/components/toast-stack";
+import { DailyLogin } from "@/components/daily-login";
+import { FlyingBonus } from "@/components/flying-bonus";
+import { loadCustomBackground } from "@/lib/custom-bg";
+import { useWalkTracker } from "@/hooks/use-walk";
+import { useEvents, useEventsSync } from "@/hooks/use-events";
+import { isRunning } from "@/lib/event-store";
+import { updateWidget } from "@/widget/sync";
 import { UpdatePrompt } from "@/components/update-prompt";
 import { RoomPage } from "@/components/room/room-page";
 import { ownsBackground, showsInTheme } from "@/constants/backgrounds";
@@ -25,7 +32,7 @@ import { sectionOpen } from "@/constants/rewards";
 import { BOOSTS, LUCKY_MULT } from "@/constants/boosts";
 import { healingRate } from "@/constants/rebirth";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameActions, useGameReady, useGameSelector, useSettings } from "@/hooks/use-game";
+import { useGameActions, useGameReady, useGameSelector, useGameStore, useSettings } from "@/hooks/use-game";
 import { appIcon, iconFromPending, setAppIcon } from "@/lib/app-icon";
 import { askPhotosOnce } from "@/lib/stickers";
 import { useNow } from "@/hooks/use-now";
@@ -61,6 +68,9 @@ function MenuButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+/** An event without its own picture shows the winged heart. */
+const EVENT_ICON = require("@/imgs/achievements/winged_heart.png");
+
 /** How many boost chips show; more running than this fold into a "..." box with a count. */
 const SHOWN_BOOSTS = 3;
 
@@ -70,12 +80,20 @@ const SHOWN_BOOSTS = 3;
  */
 function ActiveBoosts() {
   const { boosts, luckyTaps } = useGameSelector((s) => ({ boosts: s.boosts, luckyTaps: s.luckyTaps }));
+  const events = useEvents();
   const now = useNow();
   const left = (ms: number) => {
     const s = Math.ceil(ms / 1000);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   };
   const chips = [
+    // Running events first: they're for everyone, and they end on their own.
+    ...events.filter((e) => isRunning(e, now) && (e.tapMult || e.rateMult)).map((e) => ({
+      key: `event-${e.id}`,
+      image: e.icon ? { uri: e.icon } : EVENT_ICON,
+      text: `${e.tapMult ? `x${e.tapMult} tap ` : ""}${e.rateMult ? `x${e.rateMult}/s ` : ""}${left(e.endsAt - now)}`,
+      label: `${e.title} event on`,
+    })),
     ...BOOSTS.filter((b) => (boosts[b.id] ?? 0) > now).map((b) => ({ key: b.id, image: b.image, text: left(boosts[b.id] - now), label: `${b.name} active` })),
     ...(luckyTaps > 0 ? [{ key: "lucky", image: BOOSTS.find((b) => b.effect.kind === "charges")!.image, text: `x${LUCKY_MULT} · ${luckyTaps}`, label: `${luckyTaps} lucky taps left` }] : []),
   ];
@@ -104,14 +122,16 @@ function ActiveBoosts() {
 /** Inter Bold averages a little under this many ems per character. */
 const CHAR_EM = 0.64;
 const COUNTER_PX = 48;
-/** Computers: one line ("1,234 Patients Healed"), a little bigger with the web's larger text. */
+/** Computers: one line ("1,234 Medkits"), a little bigger with the web's larger text. */
 const WIDE_COUNTER_PX = Platform.OS === "web" ? 54 : 48;
+/** The one-line count never gets smaller than this; past it, the count and its name stack. */
+const MIN_LINE_PX = 36;
 
 function Counter({ compact }: { compact: boolean }) {
   const { healed, owned, rebirths, boosts, room } = useGameSelector((s) => ({ healed: s.healed, owned: s.owned, rebirths: s.rebirths, boosts: s.boosts, room: s.room }));
   const palette = usePalette();
   const rate = healingRate({ owned, rebirths, boosts, room });
-  const label = `${Math.floor(healed) === 1 ? "Patient" : "Patients"} Healed`;
+  const label = Math.floor(healed) === 1 ? "Medkit" : "Medkits";
   const rateText = `${formatRate(rate)} ${rate === 1 ? "Medkit" : "Medkits"} per second`;
   // Hard pixel drop shadow; NativeWind has no text-shadow utilities.
   const shadow = { textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 };
@@ -120,9 +140,13 @@ function Counter({ compact }: { compact: boolean }) {
   // the full height whatever the size, so the medkit and the hospital below never move as it changes.
   const [boxW, setBoxW] = useState(0);
   const count = formatCount(healed);
-  const line = compact ? count : `${count} ${label}`;
   const maxPx = compact ? COUNTER_PX : WIDE_COUNTER_PX;
-  const countPx = boxW ? Math.min(maxPx, Math.floor(boxW / (line.length * CHAR_EM))) : maxPx;
+  const fit = (text: string) => (boxW ? Math.min(maxPx, Math.floor(boxW / (text.length * CHAR_EM))) : maxPx);
+  // In between phone and computer sizes (a tablet, a narrow browser window) the one-line count got
+  // tiny, so once it would drop below MIN_LINE_PX the name goes on its own line under the number.
+  const stacked = compact || fit(`${count} ${label}`) < MIN_LINE_PX;
+  const line = stacked ? count : `${count} ${label}`;
+  const countPx = fit(line);
   return (
     // Side padding clears the menu button (left) and the currency chips (right). The counter draws
     // above the pager, so the medkit and its orbit never cover the numbers (the shine goes behind them).
@@ -133,14 +157,14 @@ function Counter({ compact }: { compact: boolean }) {
             {line}
           </Text>
         </View>
-        {compact && <Text className="text-center font-display text-xl text-ink">{label}</Text>}
+        {stacked && <Text className={`text-center font-display text-ink ${compact ? "text-xl" : "text-2xl"}`}>{label}</Text>}
       </View>
       <View className="mt-2 max-w-full flex-row items-center gap-2">
         <View className="max-w-full rounded-full border-[1.5px] border-outline bg-surface px-4 py-1">
           {/* One line that shrinks to fit, so a long rate ("350.23 million") is never cut off. The web
               has no adjustsFontSizeToFit, so there it's scaled down (and scrolls if it still won't fit). */}
           {Platform.OS === "web" ? (
-            <MarqueeText shrink={0.6} className={`text-center font-display text-ink ${compact ? "text-sm" : "text-lg"}`}>{rateText}</MarqueeText>
+            <MarqueeText shrink={0.8} className={`text-center font-display text-ink ${compact ? "text-base" : "text-xl"}`}>{rateText}</MarqueeText>
           ) : (
             <Text className={`text-center font-display text-ink ${compact ? "text-sm" : "text-lg"}`} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
               {rateText}
@@ -155,6 +179,22 @@ function Counter({ compact }: { compact: boolean }) {
 /** The chosen background; an unbought paid one falls back to the default until it's bought. */
 function Backdrop({ width, height }: { width: number; height: number }) {
   const settings = useSettings();
+  // Walking rewards: read the step counter while they're on (Android).
+  useWalkTracker();
+  // Timed events from the server, and their gifts.
+  useEventsSync();
+  // The home-screen widget (Android) gets the latest numbers whenever the game is left.
+  const store = useGameStore();
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (s) => {
+      if (s === "background") updateWidget(store.get(), settings.theme);
+    });
+    return () => sub.remove();
+  }, [store, settings.theme]);
+  // The custom background photo, if one was picked.
+  useEffect(() => {
+    loadCustomBackground();
+  }, []);
   const ownedBackgrounds = useGameSelector((s) => s.ownedBackgrounds);
   const index = ownsBackground(settings.background, ownedBackgrounds) && showsInTheme(settings.background, settings.theme) ? settings.background : 0;
   return <BackgroundPattern index={index} theme={settings.theme} width={width} height={height} />;
@@ -253,6 +293,7 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
       />
       {/* Running boosts, above the shop; decorating needs that space for the item tray. */}
       {!editing && <ActiveBoosts />}
+      <FlyingBonus width={width} height={height * 0.7} active={page === 0 && !editing} />
     </View>
   );
 }
@@ -377,6 +418,7 @@ export default function GameScreen() {
       <HallOfFame />
       <Intro />
       <PendingIcon />
+      <DailyLogin />
       <UpdatePrompt />
       <MenuDrawer visible={menuOpen} onClose={() => setMenuOpen(false)} />
     </View>

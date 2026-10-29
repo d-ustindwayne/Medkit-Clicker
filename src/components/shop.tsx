@@ -4,7 +4,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import { BOOSTS, COIN, boostMultiplier, type Boost } from "@/constants/boosts";
-import { MEDKIT_IMAGE, MILESTONE_EVERY, SHOP_ITEMS, itemCost, itemMultiplier, type ShopItem } from "@/constants/items";
+import { MEDKIT_IMAGE, SHOP_ITEMS, itemCost, itemMultiplier, nextMilestone, type ShopItem } from "@/constants/items";
 import { HOSPITAL_SCENE } from "@/constants/scenes";
 import { Shine } from "@/components/fx/shine";
 import { GemShop } from "@/components/hospital/gem-shop";
@@ -79,7 +79,7 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
             {!hidden && (
               <Text className="font-body text-xs text-ink opacity-70">
                 +{formatRate(item.rate * itemMultiplier(owned))} per second each
-                {` · ${formatMult(itemMultiplier(owned + MILESTONE_EVERY - (owned % MILESTONE_EVERY)))} at ${owned + MILESTONE_EVERY - (owned % MILESTONE_EVERY)}`}
+                {` · ${formatMult(itemMultiplier(nextMilestone(owned)))} at ${nextMilestone(owned)}`}
               </Text>
             )}
           </View>

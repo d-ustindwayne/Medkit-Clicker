@@ -13,7 +13,10 @@ import { openSections } from "@/constants/rewards";
 import { useGameActions, useGameSelector, useGameStore, useSettings } from "@/hooks/use-game";
 import { useNow } from "@/hooks/use-now";
 import { COIN } from "@/constants/boosts";
-import { coinBalance } from "@/lib/game";
+import { CUSTOM_BG_COINS, coinBalance, customBgPrice } from "@/lib/game";
+import { formatCount } from "@/lib/format";
+import { pickCustomBackground } from "@/lib/custom-bg";
+import { useCustomBackground } from "@/lib/custom-bg-store";
 import { appIcon } from "@/lib/app-icon";
 import { cloudEnabled } from "@/lib/cloud";
 import { exportSave, importSave, type SaveFormat } from "@/lib/save-file";
@@ -24,7 +27,7 @@ const cycle = (i: number, delta: number, length: number) => (i + delta + length)
 export function SettingsPage({ onDone }: { onDone: () => void }) {
   const settings = useSettings();
   // Only what the page shows, so it doesn't redraw on every game tick while it's open.
-  const state = useGameSelector((s) => ({ ownedBackgrounds: s.ownedBackgrounds, unlockedSections: s.unlockedSections, devTools: s.devTools, coins: coinBalance(s) }));
+  const state = useGameSelector((s) => ({ ownedBackgrounds: s.ownedBackgrounds, unlockedSections: s.unlockedSections, devTools: s.devTools, coins: coinBalance(s), healed: Math.floor(s.healed), bgPrice: customBgPrice(s.runPeak), bgChanges: s.customBgChanges }));
   const store = useGameStore();
   const now = useNow(60_000);
   const music = useMusic();
@@ -33,6 +36,20 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
   const background = BACKGROUNDS[settings.background % BACKGROUNDS.length];
   const owned = ownsBackground(settings.background, state.ownedBackgrounds);
   const coins = state.coins;
+  const photo = useCustomBackground();
+  // The first photo is free; each change after that costs Care Coins and 20% of the run's best balance.
+  const firstPhoto = state.bgChanges === 0;
+  const canChange = firstPhoto || (coins >= CUSTOM_BG_COINS && state.healed >= state.bgPrice);
+  const onPickPhoto = async () => {
+    if (!canChange) return;
+    try {
+      if (!(await pickCustomBackground())) return;
+      dispatch({ type: "changeCustomBg" });
+      pushToast({ kind: "info", title: "Background set", body: firstPhoto ? "Your photo is the background now." : `Changed for ${CUSTOM_BG_COINS} ${COIN.name} and ${formatCount(state.bgPrice)} medkits.` });
+    } catch (e) {
+      pushToast({ kind: "info", title: "Couldn't use that photo", body: e instanceof Error ? e.message : "Try another one." });
+    }
+  };
 
   const onExport = async (format: SaveFormat) => {
     try {
@@ -120,6 +137,16 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
         {owned && background.darkOnly && settings.theme !== "dark" && (
           <Text className="font-body text-sm text-ink">{background.name} shows only in the dark theme.</Text>
         )}
+        {owned && background.pattern === "photo" && (
+          <View className="gap-2">
+            <Text className="font-body text-sm text-ink">
+              {firstPhoto
+                ? "Pick any photo for your background. The first one is free."
+                : `Changing the photo costs ${CUSTOM_BG_COINS} ${COIN.name} and ${formatCount(state.bgPrice)} medkits (20% of the most you've held this run).`}
+            </Text>
+            <PixelButton label={photo ? "Change photo" : "Choose photo"} tone="success" disabled={!canChange} onPress={onPickPhoto} />
+          </View>
+        )}
         {!owned && background.gems && (
           <Text className="font-body text-sm text-ink">Premium background: get it in the Gem Shop (swipe the shop to Gems).</Text>
         )}
@@ -170,7 +197,7 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
       <ConfirmDialog
         visible={confirmReset}
         title="Delete all progress?"
-        body="This erases everything on this device: patients, shop items, rebirths, achievements, codes you've entered and downloaded music. It can't be undone, so export a save first if you might want it back."
+        body="This erases everything on this device: medkits, shop items, rebirths, achievements, codes you've entered and downloaded music. It can't be undone, so export a save first if you might want it back."
         cancelLabel="Keep playing"
         confirmLabel="Delete progress"
         onCancel={() => setConfirmReset(false)}

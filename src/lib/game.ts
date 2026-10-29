@@ -6,11 +6,13 @@ import { LOSE_SECONDS, LOSE_TAPS, WIN_SECONDS, WIN_TAPS, minigameLevel, minigame
 import { GEM_ITEMS, GEM_LEVEL_COSTS, GEM_UPGRADES, gemBalance, gemLevel, type GemUpgradeId } from "@/constants/gems";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS } from "@/constants/hospital";
 import { REWARD_SECTIONS } from "@/constants/rewards";
-import { ROOMS, ROOM_ITEMS, fromOldArt, isUnlocked, roomBonus, snapPlacement, spotFor, type RoomState } from "@/constants/room";
+import { ROOMS, ROOM_ITEMS, STAFF_PER_ROOM, fromOldArt, isUnlocked, roomBonus, snapPlacement, spotFor, type RoomState } from "@/constants/room";
 import { SHOP_ITEMS, baseTap, itemCost, perSecond, type ItemId } from "@/constants/items";
+import { todaysGift, type DailyState } from "@/lib/daily";
+import { COINS_PER_KM, MEDKIT_SECONDS, addReading, newWalk, type StepReading, type WalkState } from "@/lib/walk";
 
 export type GameState = {
-  /** Spendable balance, shown as "Patients Healed". */
+  /** Spendable balance: medkits, the currency (saved under its old name). */
   healed: number;
   /** Everything ever earned, across rebirths; drives achievements and shop reveals. */
   totalHealed: number;
@@ -73,10 +75,23 @@ export type GameState = {
   fame: "none" | "sent" | "declined";
   /** Minigame id -> times won (for the minigame achievements). */
   minigameWins: Record<string, number>;
+  /** Minigame id -> times won without a mistake. */
+  minigamePerfect: Record<string, number>;
+  /** Minigames won in a row (a loss resets it), and the best run of wins. */
+  minigameStreak: number;
+  minigameBestStreak: number;
   /** An app icon chosen but not applied yet ("default" for the original); applied when the app is left. */
   pendingIcon: string | null;
   /** The how-to-play intro has been seen (shown once, on the first launch). */
   introSeen: boolean;
+  /** Daily login streak. */
+  daily: DailyState;
+  /** The most medkits held at once this run (prices the custom background). */
+  runPeak: number;
+  /** Times the custom background photo was set; the first is free. */
+  customBgChanges: number;
+  /** Walking rewards (Android step counter). */
+  walk: WalkState;
 };
 
 export type GameAction =
@@ -109,9 +124,18 @@ export type GameAction =
   | { type: "claimPromo"; hash: string; rewards: PromoItem[] }
   | { type: "devRebirth" }
   | { type: "setFame"; fame: "none" | "sent" | "declined" }
-  | { type: "minigameWon"; game: string }
+  | { type: "minigameWon"; game: string; perfect?: boolean }
+  | { type: "minigameLost" }
   | { type: "setPendingIcon"; icon: string | null }
   | { type: "setIntroSeen"; seen: boolean }
+  /** A new custom background photo was picked: free the first time, then CUSTOM_BG_COINS and customBgPrice. */
+  | { type: "changeCustomBg" }
+  /** Walking rewards on or off (turning on starts counting from the next reading). */
+  | { type: "setWalk"; on: boolean }
+  /** A step counter reading; pays any 500 m and 1 km rewards it completes. */
+  | { type: "walkReading"; reading: StepReading; today: string }
+  /** Claim today's daily gift (`today` is the local date, YYYY-MM-DD). */
+  | { type: "claimDaily"; today: string }
   /** Place an item (or move it, including from another room) at x, y: fractions of the room art. */
   | { type: "placeItem"; room: string; item: string; x: number; y: number }
   | { type: "removeItem"; room: string; item: string }
@@ -125,7 +149,7 @@ export type GameAction =
   | { type: "devAddCoins"; count: number };
 
 /**
- * One part of a promo code's reward (codes are set up with scripts/add-promo.ts): patients, Care
+ * One part of a promo code's reward (codes are set up with scripts/add-promo.ts): medkits, Care
  * Coins or Natal Gems; a paid background unlocked for free; or `seconds` of healing at the current rate.
  */
 export type PromoItem = { kind: "medkits" | "coins" | "gems" | "seconds"; amount: number } | { kind: "background"; id: string };
@@ -170,8 +194,15 @@ export const newGame = (): GameState => ({
   promoClaims: [],
   fame: "none",
   minigameWins: {},
+  minigamePerfect: {},
+  minigameStreak: 0,
+  minigameBestStreak: 0,
   pendingIcon: null,
   introSeen: false,
+  daily: { streak: 0, last: null },
+  runPeak: 0,
+  customBgChanges: 0,
+  walk: newWalk(),
 });
 
 /** Multiplier from a gem upgrade: 1 + per-level step x level. */
@@ -231,6 +262,28 @@ export const emergencyReward = (s: { owned: Record<ItemId, number>; rebirths: nu
   return Math.max(healingRate(base) * EMERGENCY_SECONDS, tapValue(base) * EMERGENCY_TAPS) * gemMult(s, "rapid_response", 0.25);
 };
 
+/** The flying heart's medkit burst: 90 seconds of production, at least 300 taps (boosts left out). */
+export const flyingReward = (s: { owned: Record<ItemId, number>; rebirths: number; taps?: number; room?: RoomState; gemUpgrades?: Record<string, number> }) => {
+  const base = { owned: s.owned, rebirths: s.rebirths, room: s.room };
+  return Math.max(healingRate(base) * 90, tapValue({ ...base, taps: s.taps, gemUpgrades: s.gemUpgrades }) * 300);
+};
+
+/** Medkits for `seconds` of a daily gift: that much production at the unboosted rate, at least 10 taps a minute. */
+export const dailyAmount = (s: { owned: Record<ItemId, number>; rebirths: number; room?: RoomState }, seconds: number) => {
+  const base = { owned: s.owned, rebirths: s.rebirths, room: s.room };
+  return Math.max(healingRate(base) * seconds, tapValue(base) * Math.max(10, seconds / 6));
+};
+
+/** Rounded down to its first digit: 213,532 -> 200,000; 413,131,411 -> 400,000,000. */
+export const roundDownToLeading = (n: number) => {
+  if (!(n >= 1)) return 0;
+  const p = 10 ** Math.floor(Math.log10(n));
+  return Math.floor(n / p) * p;
+};
+/** Changing the custom background photo (after the first): Care Coins, plus 20% of the run's highest balance. */
+export const CUSTOM_BG_COINS = 20;
+export const customBgPrice = (runPeak: number) => roundDownToLeading(runPeak * 0.2);
+
 /** Offline earnings cap: 4 hours, plus 1 hour per Night Owl level. */
 export const maxAwaySeconds = (s: { gemUpgrades?: Record<string, number> }) => (4 + gemLevel(s, "night_owl")) * 3600;
 
@@ -251,12 +304,16 @@ export const totalOwned = (owned: Record<ItemId, number>) =>
 
 /** Adds without ever overflowing to Infinity: an endless grind tops out at the largest number. */
 const capped = (a: number, b: number) => Math.min(Number.MAX_VALUE, a + (Number.isFinite(b) ? b : Number.MAX_VALUE));
-const earn = (state: GameState, amount: number): GameState => ({
-  ...state,
-  healed: capped(state.healed, amount),
-  totalHealed: capped(state.totalHealed, amount),
-  runHealed: capped(state.runHealed, amount),
-});
+const earn = (state: GameState, amount: number): GameState => {
+  const healed = capped(state.healed, amount);
+  return {
+    ...state,
+    healed,
+    totalHealed: capped(state.totalHealed, amount),
+    runHealed: capped(state.runHealed, amount),
+    runPeak: Math.max(state.runPeak, healed),
+  };
+};
 
 const withAchievements = (state: GameState): GameState => {
   let unlocked: GameState["achievements"] | null = null;
@@ -313,6 +370,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
         ...state,
         healed: 0,
         runHealed: 0,
+        runPeak: 0,
         // Head Start: each level gives 10 bandages and 5 gloves to begin with.
         owned: { ...emptyOwned(), bandage: 10 * gemLevel(state, "head_start"), gloves: 5 * gemLevel(state, "head_start") },
         rebirths: state.rebirths + 1,
@@ -435,15 +493,51 @@ const apply = (state: GameState, action: GameAction): GameState => {
     }
     case "setPendingIcon":
       return { ...state, pendingIcon: action.icon };
+    case "changeCustomBg": {
+      if (!state.ownedBackgrounds.includes("custom")) return state;
+      if (state.customBgChanges === 0) return { ...state, customBgChanges: 1 };
+      const price = customBgPrice(state.runPeak);
+      if (coinBalance(state) < CUSTOM_BG_COINS || state.healed < price) return state;
+      return { ...state, coinsSpent: state.coinsSpent + CUSTOM_BG_COINS, healed: state.healed - price, customBgChanges: state.customBgChanges + 1 };
+    }
+    case "setWalk":
+      return { ...state, walk: { ...state.walk, on: action.on, last: action.on ? state.walk.last : null } };
+    case "walkReading": {
+      if (!state.walk.on) return state;
+      const { walk, due500, due1k } = addReading(state.walk, action.reading, action.today);
+      let next: GameState = { ...state, walk };
+      if (due1k > 0) next = { ...next, bonusCoins: next.bonusCoins + due1k * COINS_PER_KM };
+      if (due500 > 0) next = earn(next, dailyAmount(next, MEDKIT_SECONDS * due500));
+      return next;
+    }
+    case "claimDaily": {
+      const gift = todaysGift(state.daily, action.today);
+      if (!gift) return state;
+      let next: GameState = { ...state, daily: { streak: gift.day, last: action.today } };
+      if (gift.coins) next = { ...next, bonusCoins: next.bonusCoins + gift.coins };
+      if (gift.gems) next = { ...next, bonusGems: next.bonusGems + gift.gems };
+      if (gift.seconds) next = earn(next, dailyAmount(next, gift.seconds));
+      return next;
+    }
     case "setIntroSeen":
       return state.introSeen === action.seen ? state : { ...state, introSeen: action.seen };
-    case "minigameWon":
-      return { ...state, minigameWins: { ...state.minigameWins, [action.game]: (state.minigameWins[action.game] ?? 0) + 1 } };
+    case "minigameWon": {
+      const streak = state.minigameStreak + 1;
+      return {
+        ...state,
+        minigameWins: { ...state.minigameWins, [action.game]: (state.minigameWins[action.game] ?? 0) + 1 },
+        minigamePerfect: action.perfect ? { ...state.minigamePerfect, [action.game]: (state.minigamePerfect[action.game] ?? 0) + 1 } : state.minigamePerfect,
+        minigameStreak: streak,
+        minigameBestStreak: Math.max(state.minigameBestStreak, streak),
+      };
+    }
+    case "minigameLost":
+      return state.minigameStreak === 0 ? state : { ...state, minigameStreak: 0 };
     case "setFame":
       return { ...state, fame: action.fame };
     case "devRebirth":
       // Dev tools: a rebirth without the patient requirement.
-      return { ...state, healed: 0, runHealed: 0, owned: emptyOwned(), rebirths: state.rebirths + 1, rebirthPoints: state.rebirthPoints + 1 };
+      return { ...state, healed: 0, runHealed: 0, runPeak: 0, owned: emptyOwned(), rebirths: state.rebirths + 1, rebirthPoints: state.rebirthPoints + 1 };
     case "setRoom": {
       const room = ROOMS.find((r) => r.id === action.room);
       if (!room || !isUnlocked(room.unlock, state)) return state;
@@ -456,7 +550,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
       // One of each item: take it out of wherever it is first.
       const placed = Object.fromEntries(Object.entries(state.room.placed).map(([k, v]) => [k, v.filter((p) => p.item !== item.id)]));
       const here = placed[room.id] ?? [];
-      if (here.length >= room.limit) return state;
+      if (roomCount(here, !!item.staff) >= (item.staff ? STAFF_PER_ROOM : room.limit)) return state;
       // Kept inside its zone, off the room's signs, windows and furniture, and (on the wall) off the
       // other wall items: it snaps to the nearest free spot, or stays put if the wall is full.
       const spot = spotFor(room, here, item, action.x, action.y);
@@ -484,6 +578,9 @@ const apply = (state: GameState, action: GameAction): GameState => {
       return newGame();
   }
 };
+
+/** Placed staff, or placed items that aren't staff (staff have their own limit). */
+export const roomCount = (here: { item: string }[], staff: boolean) => here.filter((p) => !!ROOM_ITEMS.find((i) => i.id === p.item)?.staff === staff).length;
 
 /** Redemptions are real-world purchases: keep the longer history so importing an old save can't refund them. */
 const keepRewards = (from: GameState, into: GameState): GameState => {
@@ -573,8 +670,15 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     promoClaims: Array.isArray(s.promoClaims) ? s.promoClaims : [],
     fame: s.fame === "sent" || s.fame === "declined" ? s.fame : "none",
     minigameWins: { ...(s.minigameWins ?? {}) },
+    minigamePerfect: { ...(s.minigamePerfect ?? {}) },
+    minigameStreak: typeof s.minigameStreak === "number" ? s.minigameStreak : 0,
+    minigameBestStreak: typeof s.minigameBestStreak === "number" ? s.minigameBestStreak : 0,
     pendingIcon: typeof s.pendingIcon === "string" ? s.pendingIcon : null,
     // Saves from before the intro existed belong to players who already know the game.
+    runPeak: typeof s.runPeak === "number" ? s.runPeak : s.healed,
+    walk: s.walk && typeof s.walk.meters === "number" ? { ...newWalk(), ...s.walk } : newWalk(),
+    customBgChanges: typeof s.customBgChanges === "number" ? s.customBgChanges : 0,
+    daily: s.daily && typeof s.daily.streak === "number" ? { streak: s.daily.streak, last: typeof s.daily.last === "string" ? s.daily.last : null } : base.daily,
     introSeen: s.introSeen === true || (typeof s.introSeen !== "boolean" && (s.taps ?? 0) > 0),
     room: s.room && typeof s.room.current === "string" ? upgradeRoom({ current: s.room.current, placed: { ...(s.room.placed ?? {}) }, layout: s.room.layout }) : base.room,
   };

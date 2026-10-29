@@ -69,3 +69,7 @@ docs/ASSET_INSPECTION.md
 docs/NOTIFICATIONS.md
 docs/ROOM.md
 docs/IOS.md
+
+# Local Expo modules: Gradle build output
+modules/*/android/build/
+modules/*/android/.cxx/

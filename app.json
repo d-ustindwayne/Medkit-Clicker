@@ -60,6 +60,32 @@
       "@react-native-community/datetimepicker",
       "expo-asset",
       [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "Progress",
+              "label": "Medkit Clicker",
+              "description": "Your medkits and how fast they're coming in.",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Medkit Clicker uses a photo you pick as your background.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-media-library",
         {
           "photosPermission": "Medkit Clicker saves stickers to your photos.",

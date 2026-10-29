@@ -20,6 +20,7 @@ import Svg, { Circle, Defs, G, LinearGradient, Path, Pattern, Rect, Stop } from 
 import { pixelPath } from "@/components/ui/pixel-icon";
 import { BACKGROUNDS, type AnimatedKind, type Colors, type PatternKind } from "@/constants/backgrounds";
 import type { ThemeName } from "@/constants/theme";
+import { useCustomBackground } from "@/lib/custom-bg-store";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 const TILE = 28;
@@ -521,6 +522,18 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
 
 type Props = { index: number; theme: ThemeName; width: number; height: number };
 
+/** The player's own photo, covering the backdrop; a little darker in the dark theme. */
+function CustomPhoto({ width, height, theme }: { width: number; height: number; theme: ThemeName }) {
+  const uri = useCustomBackground();
+  if (!uri) return null;
+  return (
+    <View style={{ width, height }}>
+      <Image source={{ uri }} style={{ width, height }} contentFit="cover" />
+      {theme === "dark" && <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.35)" }]} />}
+    </View>
+  );
+}
+
 /** Backdrop behind the medkit: a slowly drifting tiled pattern, or one of the animated scenes. */
 export const BackgroundPattern = memo(function BackgroundPattern({ index, theme, width, height }: Props) {
   const preset = BACKGROUNDS[index % BACKGROUNDS.length];
@@ -564,7 +577,8 @@ export const BackgroundPattern = memo(function BackgroundPattern({ index, theme,
       <TiltContext value={tilt}>
         <Animated.View style={[{ position: "absolute", left: -TILT_PAD, top: -TILT_PAD, width: bw, height: bh }, base]}>
           {isAnimated(pattern) && !reduceMotion && <AnimatedBackdrop kind={pattern} width={bw} height={bh} colors={colors} theme={theme} />}
-          {!isAnimated(pattern) && pattern !== "plain" && (
+          {pattern === "photo" && <CustomPhoto width={bw} height={bh} theme={theme} />}
+          {!isAnimated(pattern) && pattern !== "plain" && pattern !== "photo" && (
             // Drawn once into a texture on Android and then only moved, not redrawn every frame. The view
             // is sized to the whole pattern: the texture is cut to the view, and a screen-sized one left a
             // bare strip on the right as the pattern drifted left.

@@ -20,10 +20,8 @@ export type Rect = [number, number, number, number];
 
 export type Room = Scene & {
   unlock: Unlock;
-  /** How many items fit. */
+  /** How many items fit (staff not counted: up to STAFF_PER_ROOM of them on top). */
   limit: number;
-  /** Staff who walk around in it (character file numbers). */
-  staff: string[];
   /**
    * Where items can't go because the art already has something there: `wall` boxes (signs, windows,
    * doors, furniture) keep wall items off them; `floor` boxes are where furniture stands, so floor
@@ -52,12 +50,12 @@ const measured = (b: { wall: Rect[]; floor: Rect[] }) => {
 
 export const ROOMS: Room[] = [
   {
-    id: "empty", title: "Empty Room", image: require("@/imgs/scenes/room_empty.png"), ...shell, fillBottom: "#e9dcc8", unlock: null, limit: 6, staff: ["11_nurse_teal", "15_male_nurse"],
+    id: "empty", title: "Empty Room", image: require("@/imgs/scenes/room_empty.png"), ...shell, fillBottom: "#e9dcc8", unlock: null, limit: 6,
     sides: { left: require("@/imgs/scenes/room_empty_left.png"), right: require("@/imgs/scenes/room_empty_right.png") },
     blocked: measured({ wall: [[0.06, 0.22, 0.17, 0.66] /* door */, [0.72, 0.15, 0.93, 0.45] /* window */], floor: [] }),
   },
   {
-    id: "reception", title: "Reception", image: require("@/imgs/scenes/hospital_inside.png"), ...shell, fillBottom: "#dfe6ee", unlock: { achievements: 15 }, limit: 4, staff: ["12_nurse_pink", "16_doctor"],
+    id: "reception", title: "Reception", image: require("@/imgs/scenes/hospital_inside.png"), ...shell, fillBottom: "#dfe6ee", unlock: { achievements: 15 }, limit: 4,
     sides: { left: require("@/imgs/scenes/room_reception_left.png"), right: require("@/imgs/scenes/room_reception_right.png") },
     blocked: measured({
       wall: [
@@ -77,17 +75,17 @@ export const ROOMS: Room[] = [
     }),
   },
   {
-    id: "lab", title: "Lab", image: require("@/imgs/scenes/room_lab.png"), ...shell, fillBottom: "#cfe3ee", unlock: { rebirths: 1 }, limit: 6, staff: ["16_doctor", "14_nurse_lavender"],
+    id: "lab", title: "Lab", image: require("@/imgs/scenes/room_lab.png"), ...shell, fillBottom: "#cfe3ee", unlock: { rebirths: 1 }, limit: 6,
     sides: { left: require("@/imgs/scenes/room_lab_left.png"), right: require("@/imgs/scenes/room_lab_right.png") },
     blocked: measured({ wall: [[0.12, 0.14, 0.29, 0.31] /* LAB board */, [0.33, 0.13, 0.45, 0.36] /* window */, [0.47, 0.36, 0.98, 0.66] /* counter */], floor: [] }),
   },
   {
-    id: "pharmacy", title: "Pharmacy", image: require("@/imgs/scenes/room_pharmacy.png"), ...shell, fillBottom: "#efe4cf", unlock: { treated: 10 }, limit: 7, staff: ["13_nurse_navy", "11_nurse_teal"],
+    id: "pharmacy", title: "Pharmacy", image: require("@/imgs/scenes/room_pharmacy.png"), ...shell, fillBottom: "#efe4cf", unlock: { treated: 10 }, limit: 7,
     sides: { left: require("@/imgs/scenes/room_pharmacy_left.png"), right: require("@/imgs/scenes/room_pharmacy_right.png") },
     blocked: measured({ wall: [[0.03, 0.12, 0.35, 0.5] /* shelves */, [0.65, 0.12, 0.97, 0.5] /* shelves */, [0.45, 0.13, 0.56, 0.38] /* PHARMACY sign */], floor: [] }),
   },
   {
-    id: "kids", title: "Children's Ward", image: require("@/imgs/scenes/room_kids.png"), ...shell, fillBottom: "#fde7ef", unlock: { achievements: 40 }, limit: 8, staff: ["12_nurse_pink", "15_male_nurse", "14_nurse_lavender"],
+    id: "kids", title: "Children's Ward", image: require("@/imgs/scenes/room_kids.png"), ...shell, fillBottom: "#fde7ef", unlock: { achievements: 40 }, limit: 8,
     sides: { left: require("@/imgs/scenes/room_kids_left.png"), right: require("@/imgs/scenes/room_kids_right.png") },
     blocked: measured({ wall: [[0.11, 0.28, 0.66, 0.62] /* rainbow and its clouds */, [0.76, 0.14, 0.97, 0.46] /* window */], floor: [] }),
   },
@@ -104,7 +102,12 @@ export type RoomItem = {
   unlock: Unlock;
   /** Animation frames (the first is `image`), for items bought in the Gem Shop. */
   frames?: ImageSourcePropType[];
+  /** Staff: a nurse or doctor (a key of STAFF_FRAMES), drawn at character size and pacing near their spot. */
+  staff?: string;
 };
+
+/** Staff placed in one room, on top of its item limit. */
+export const STAFF_PER_ROOM = 3;
 
 export const ROOM_ITEMS: RoomItem[] = [
   { id: "potted_plant", name: "Potted Plant", image: require("@/imgs/room/potted_plant.png"), place: "floor", bonus: { rate: 0.01 }, unlock: null },
@@ -130,6 +133,13 @@ export const ROOM_ITEMS: RoomItem[] = [
   { id: "flower_vase", name: "Flower Vase", image: require("@/imgs/room/flower_vase.png"), place: "floor", bonus: { rate: 0.02 }, unlock: { item: "thermometer", owned: 5 } },
   { id: "bookshelf", name: "Bookshelf", image: require("@/imgs/room/bookshelf.png"), place: "floor", bonus: { rate: 0.02 }, unlock: { achievements: 25 } },
   { id: "string_lights", name: "String Lights", image: require("@/imgs/room/string_lights.png"), place: "wall", bonus: { rate: 0.02 }, unlock: { rebirths: 2 } },
+  // Staff: assigned to a room by dragging them in, like the items.
+  { id: "nurse_teal", name: "Nurse Teal", image: require("@/imgs/characters/11_nurse_teal.png"), place: "floor", bonus: { rate: 0.02 }, unlock: null, staff: "11_nurse_teal" },
+  { id: "nurse_male", name: "Nurse Sam", image: require("@/imgs/characters/15_male_nurse.png"), place: "floor", bonus: { tap: 0.02 }, unlock: { treated: 1 }, staff: "15_male_nurse" },
+  { id: "nurse_pink", name: "Nurse Pink", image: require("@/imgs/characters/12_nurse_pink.png"), place: "floor", bonus: { tap: 0.02 }, unlock: { achievements: 12 }, staff: "12_nurse_pink" },
+  { id: "nurse_navy", name: "Nurse Navy", image: require("@/imgs/characters/13_nurse_navy.png"), place: "floor", bonus: { rate: 0.02 }, unlock: { treated: 10 }, staff: "13_nurse_navy" },
+  { id: "nurse_lavender", name: "Nurse Lavender", image: require("@/imgs/characters/14_nurse_lavender.png"), place: "floor", bonus: { rate: 0.03 }, unlock: { rebirths: 1 }, staff: "14_nurse_lavender" },
+  { id: "doctor", name: "The Doctor", image: require("@/imgs/characters/16_doctor.png"), place: "floor", bonus: { tap: 0.03 }, unlock: { achievements: 35 }, staff: "16_doctor" },
   // Animated, from the Gem Shop
   { id: "aquarium", name: "Aquarium", image: require("@/imgs/room/aquarium_1.png"), frames: [require("@/imgs/room/aquarium_1.png"), require("@/imgs/room/aquarium_2.png"), require("@/imgs/room/aquarium_3.png"), require("@/imgs/room/aquarium_4.png")], place: "floor", bonus: { rate: 0.04 }, unlock: { gem: "aquarium" } },
   { id: "lava_lamp", name: "Lava Lamp", image: require("@/imgs/room/lava_lamp_1.png"), frames: [require("@/imgs/room/lava_lamp_1.png"), require("@/imgs/room/lava_lamp_2.png"), require("@/imgs/room/lava_lamp_3.png"), require("@/imgs/room/lava_lamp_4.png")], place: "floor", bonus: { tap: 0.04 }, unlock: { gem: "lava_lamp" } },

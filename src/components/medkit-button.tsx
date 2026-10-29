@@ -112,7 +112,7 @@ export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned,
       </View>
     </Animated.View>
   );
-  const a11y = { accessibilityRole: "button", accessibilityLabel: "Medkit", accessibilityHint: "Tap to heal patients" } as const;
+  const a11y = { accessibilityRole: "button", accessibilityLabel: "Medkit", accessibilityHint: "Tap to earn medkits" } as const;
 
   return (
     <View style={{ width: box, height: box }}>

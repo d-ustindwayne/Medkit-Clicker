@@ -199,6 +199,7 @@ function Ambulance({ call, width, onAdmit, onGone, night }: { call: Call; width:
   const glow = useAnimatedStyle(() => ({ opacity: flash.get() }));
   const float = useAnimatedStyle(() => ({ transform: [{ translateY: bob.get() }] }));
   const top = (LANES[1].y - WHEEL_BOTTOM) * px;
+  const labelPx = Math.min(22, Math.max(15, px * 7));
 
   const admit = () => {
     if (phase !== "parked") return;
@@ -218,10 +219,11 @@ function Ambulance({ call, width, onAdmit, onGone, night }: { call: Call; width:
         </Pressable>
       </Animated.View>
       {phase === "parked" && (
-        <Animated.View style={[{ position: "absolute", left: 0, right: 0, top: top - 34, alignItems: "center", zIndex: 4 }, float]}>
+        <Animated.View style={[{ position: "absolute", left: 0, right: 0, top: top - labelPx * 2.6, alignItems: "center", zIndex: 4 }, float]}>
           <Pressable accessibilityRole="button" onPress={admit} className="items-center rounded-lg border-2 border-outline bg-surface px-3 py-1">
-            <Text className="font-display text-sm text-danger">Patient: {call.condition}!</Text>
-            <Text className="font-body text-xs text-ink">Tap to admit</Text>
+            {/* Grows with the scene, so it stays readable on a big screen. */}
+            <Text className="font-display text-danger" style={{ fontSize: labelPx, lineHeight: labelPx * 1.3 }}>Patient: {call.condition}!</Text>
+            <Text className="font-body text-ink" style={{ fontSize: labelPx * 0.8, lineHeight: labelPx * 1.05 }}>Tap to admit</Text>
           </Pressable>
         </Animated.View>
       )}
@@ -330,7 +332,7 @@ function Street({ width, active, night }: { width: number; active: boolean; nigh
     dispatch({ type: "earn", amount });
     haptic.success();
     playSfx("buy");
-    pushToast({ kind: "info", title: "Patient admitted", body: `Emergency handled: +${formatCount(amount)} patients healed`, image: AMBULANCE });
+    pushToast({ kind: "info", title: "Patient admitted", body: `Emergency handled: +${formatCount(amount)} medkits`, image: AMBULANCE });
   };
 
   return (

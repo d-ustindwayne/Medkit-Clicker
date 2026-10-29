@@ -15,7 +15,7 @@ export function DevTools() {
   const buttons: [label: string, onPress: () => void][] = [
     ["+1 million", () => dispatch({ type: "earn", amount: 1e6 })],
     ["+1 billion", () => dispatch({ type: "earn", amount: 1e9 })],
-    ["×1000 patients", () => dispatch({ type: "earn", amount: Math.max(1000, healed * 999) })],
+    ["×1000 medkits", () => dispatch({ type: "earn", amount: Math.max(1000, healed * 999) })],
     ["+10 of each item", () => dispatch({ type: "devAddItems", count: 10 })],
     ["Skip 1 hour away", () => simulateAway(3600)],
     ["Unlock all achievements", () => dispatch({ type: "devUnlockAll" })],

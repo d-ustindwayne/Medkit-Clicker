@@ -149,7 +149,7 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
             <Text className="font-body text-xs text-ink opacity-70">{reward.description}</Text>
             <View className="flex-row items-center gap-1">
               <Image source={MEDKIT_IMAGE} style={{ width: 16, height: 16 }} contentFit="contain" />
-              <Text className="font-number text-base leading-5 text-ink">{formatCount(reward.cost)} patients</Text>
+              <Text className="font-number text-base leading-5 text-ink">{formatCount(reward.cost)} medkits</Text>
             </View>
           </View>
         </View>
@@ -173,7 +173,7 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
           <Text className="font-body text-sm text-ink">Available again in {formatWait(waitMs)}.</Text>
         )}
         {left > 0 && !lockedUntil && waitMs === 0 && <PixelButton tone="success" disabled={!affordable} onPress={() => setConfirming(true)} label="Redeem" />}
-        {left > 0 && !lockedUntil && !affordable && <Text className="font-body text-xs text-ink opacity-70">You need {formatCount(reward.cost - healed)} more patients.</Text>}
+        {left > 0 && !lockedUntil && !affordable && <Text className="font-body text-xs text-ink opacity-70">You need {formatCount(reward.cost - healed)} more medkits.</Text>}
 
         {history.length > 0 && (
           <View className="gap-2 border-t-[1.5px] border-dashed border-outline pt-3">
@@ -193,7 +193,7 @@ function RewardCard({ section, reward }: { section: RewardSection; reward: Rewar
       <ConfirmDialog
         visible={confirming}
         title={`Redeem ${reward.name.toLowerCase()}?`}
-        body={`This spends ${formatCount(reward.cost)} patients.${unlimited ? "" : ` You can redeem it ${left - 1 === 0 ? "no more times" : `${left - 1} more time${left - 1 === 1 ? "" : "s"}`} after this.`}`}
+        body={`This spends ${formatCount(reward.cost)} medkits.${unlimited ? "" : ` You can redeem it ${left - 1 === 0 ? "no more times" : `${left - 1} more time${left - 1 === 1 ? "" : "s"}`} after this.`}`}
         cancelLabel="Not yet"
         confirmLabel="Redeem"
         confirmTone="success"
@@ -252,7 +252,7 @@ export function RewardsPage({ sectionId }: { sectionId: string }) {
   return (
     <View className="gap-4">
       <View className="flex-row items-center justify-between border-2 border-outline bg-accent px-3 py-2">
-        <Text className="font-body text-sm text-ink">Your patients</Text>
+        <Text className="font-body text-sm text-ink">Your medkits</Text>
         <Text className="font-number text-lg text-ink">{formatCount(healed)}</Text>
       </View>
       <Text className="font-body text-sm leading-5 text-ink">

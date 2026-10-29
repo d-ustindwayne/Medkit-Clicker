@@ -96,7 +96,7 @@ export function AboutPage({ onSecret }: { onSecret?: () => void }) {
 
       <HardShadow offset={5}>
       <View className="border-2 border-outline bg-surface px-3 py-1">
-        <Stat label="Patients healed, all time" value={formatCount(s.totalHealed)} />
+        <Stat label="Medkits earned, all time" value={formatCount(s.totalHealed)} />
         <Stat label="Medkit taps" value={formatCount(s.taps)} />
         <Stat label="Ward patients treated" value={formatCount(s.treated)} />
         <Stat label="Rebirths" value={formatCount(s.rebirths)} />

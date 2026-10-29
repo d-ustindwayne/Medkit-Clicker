@@ -1,13 +1,17 @@
 import type { ImageSourcePropType } from "react-native";
 
+import { PATIENT_VARIANTS, VARIANTS_PER_PATIENT } from "@/constants/patient-variants";
+
 // Sick patients who turn up in My Room at random times. Each one has a quick minigame.
 // Timings, rewards and wording are PLACEHOLDERS.
 
-export type MinigameId = "injection" | "rhythm" | "bandage" | "pulse" | "pills" | "xray" | "germs" | "breath" | "memory";
+export type MinigameId = "injection" | "rhythm" | "bandage" | "pulse" | "pills" | "xray" | "germs" | "breath" | "memory" | "food" | "colour" | "find" | "maze" | "pipes";
 
 export type SickPatient = {
   id: string;
   image: ImageSourcePropType;
+  /** The sprite's file name, for its recoloured looks (constants/patient-variants.ts). */
+  sprite: string;
   condition: string;
   /** Shown when the minigame opens. */
   intro: string;
@@ -15,18 +19,36 @@ export type SickPatient = {
 };
 
 export const SICK_PATIENTS: SickPatient[] = [
-  { id: "fever", image: require("@/imgs/characters/02_islander_man_sick.png"), condition: "High fever", intro: "His fever is spiking. Stop the needle inside the vein!", game: "injection" },
-  { id: "collapse", image: require("@/imgs/characters/04_old_man_sick.png"), condition: "Collapsed", intro: "He collapsed in the waiting room. Keep the CPR rhythm!", game: "rhythm" },
-  { id: "flu", image: require("@/imgs/characters/05_chinese_woman_sick.png"), condition: "Bad flu", intro: "Time for a flu shot. Stop the needle inside the vein!", game: "injection" },
-  { id: "sprain", image: require("@/imgs/characters/09_dad_sick.png"), condition: "Sprained arm", intro: "Wrap that arm before the swelling sets in. Tap fast!", game: "bandage" },
-  { id: "breathless", image: require("@/imgs/characters/10_young_man_sick.png"), condition: "Short of breath", intro: "Coach his breathing. Tap in time with the heartbeat!", game: "rhythm" },
-  { id: "palpitations", image: require("@/imgs/characters/01_red_hair_woman.png"), condition: "Racing heart", intro: "Check her pulse. Count every beat!", game: "pulse" },
-  { id: "mixed_meds", image: require("@/imgs/characters/04_old_man_sick.png"), condition: "Mixed-up meds", intro: "His pills got mixed up. Sort out the right ones!", game: "pills" },
-  { id: "fall", image: require("@/imgs/characters/07_kid_gamer.png"), condition: "Skateboard fall", intro: "Ouch! Find the fracture on the X-ray.", game: "xray" },
-  { id: "tummy_bug", image: require("@/imgs/characters/08_teen_girl.png"), condition: "Tummy bug", intro: "Germs everywhere! Bust them before they spread.", game: "germs" },
-  { id: "panic", image: require("@/imgs/characters/03_blonde_woman.png"), condition: "Panic attack", intro: "Help her slow down. Breathe in, then let go at the top.", game: "breath" },
-  { id: "allergy", image: require("@/imgs/characters/06_teacher.png"), condition: "Allergy check", intro: "Match the medicines to find the right one.", game: "memory" },
+  { id: "fever", image: require("@/imgs/characters/02_islander_man_sick.png"), sprite: "02_islander_man_sick", condition: "High fever", intro: "His fever is spiking. Stop the needle inside the vein!", game: "injection" },
+  { id: "collapse", image: require("@/imgs/characters/04_old_man_sick.png"), sprite: "04_old_man_sick", condition: "Collapsed", intro: "He collapsed in the waiting room. Keep the CPR rhythm!", game: "rhythm" },
+  { id: "flu", image: require("@/imgs/characters/05_chinese_woman_sick.png"), sprite: "05_chinese_woman_sick", condition: "Bad flu", intro: "Time for a flu shot. Stop the needle inside the vein!", game: "injection" },
+  { id: "sprain", image: require("@/imgs/characters/09_dad_sick.png"), sprite: "09_dad_sick", condition: "Sprained arm", intro: "Wrap that arm before the swelling sets in. Tap fast!", game: "bandage" },
+  { id: "breathless", image: require("@/imgs/characters/10_young_man_sick.png"), sprite: "10_young_man_sick", condition: "Short of breath", intro: "Coach his breathing. Tap in time with the heartbeat!", game: "rhythm" },
+  { id: "palpitations", image: require("@/imgs/characters/01_red_hair_woman.png"), sprite: "01_red_hair_woman", condition: "Racing heart", intro: "Check her pulse. Count every beat!", game: "pulse" },
+  { id: "mixed_meds", image: require("@/imgs/characters/04_old_man_sick.png"), sprite: "04_old_man_sick", condition: "Mixed-up meds", intro: "His pills got mixed up. Sort out the right ones!", game: "pills" },
+  { id: "fall", image: require("@/imgs/characters/07_kid_gamer.png"), sprite: "07_kid_gamer", condition: "Skateboard fall", intro: "Ouch! Find the fracture on the X-ray.", game: "xray" },
+  { id: "tummy_bug", image: require("@/imgs/characters/08_teen_girl.png"), sprite: "08_teen_girl", condition: "Tummy bug", intro: "Germs everywhere! Bust them before they spread.", game: "germs" },
+  { id: "panic", image: require("@/imgs/characters/03_blonde_woman.png"), sprite: "03_blonde_woman", condition: "Panic attack", intro: "Help her slow down. Breathe in, then let go at the top.", game: "breath" },
+  { id: "allergy", image: require("@/imgs/characters/06_teacher.png"), sprite: "06_teacher", condition: "Allergy check", intro: "Match the medicines to find the right one.", game: "memory" },
+  { id: "diet", image: require("@/imgs/characters/09_dad_sick.png"), sprite: "09_dad_sick", condition: "Bad diet", intro: "His doctor wants him eating better. Catch the healthy food and dodge the junk!", game: "food" },
+  { id: "eye_test", image: require("@/imgs/characters/01_red_hair_woman.png"), sprite: "01_red_hair_woman", condition: "Eye test", intro: "A quick eye test: tap the square that's a different colour.", game: "colour" },
+  { id: "lost_item", image: require("@/imgs/characters/07_kid_gamer.png"), sprite: "07_kid_gamer", condition: "Lost something", intro: "He dropped something in the busy ward. Help him find it!", game: "find" },
+  { id: "circulation", image: require("@/imgs/characters/04_old_man_sick.png"), sprite: "04_old_man_sick", condition: "Poor circulation", intro: "Guide the blood cell through the veins to the exit.", game: "maze" },
+  { id: "dehydrated", image: require("@/imgs/characters/10_young_man_sick.png"), sprite: "10_young_man_sick", condition: "Dehydrated", intro: "Turn the pipes so the IV drip reaches him.", game: "pipes" },
 ];
+
+/** Every minigame, in the order they were added (the All-Rounder achievement needs a win in each). */
+export const MINIGAME_IDS: MinigameId[] = ["injection", "rhythm", "bandage", "pulse", "pills", "xray", "germs", "breath", "memory", "food", "colour", "find", "maze", "pipes"];
+
+/**
+ * How this visit's patient looks: the original or one of its recoloured looks (skin tone and
+ * clothes), picked from when they arrived, so it stays the same for the whole visit.
+ */
+export const patientLook = (p: SickPatient, arrivedAt?: number): ImageSourcePropType => {
+  if (arrivedAt === undefined) return p.image;
+  const k = Math.floor(arrivedAt / 7) % (VARIANTS_PER_PATIENT + 1);
+  return (k && PATIENT_VARIANTS[`${p.sprite}_v${k}`]) || p.image;
+};
 
 /** A new patient arrives 1-3 minutes after the last one leaves. */
 export const nextPatientDelay = () => (60 + Math.random() * 120) * 1000;
@@ -84,6 +106,25 @@ export const minigameTuning = (level: number) => {
     // takes some away.
     pairs: d < 0.2 ? 3 : d < 0.4 ? 4 : d < 0.6 ? 6 : d < 0.8 ? 8 : 10,
     memoryMs: Math.round(mix(15000, 11000)) + ((d < 0.2 ? 3 : d < 0.4 ? 4 : d < 0.6 ? 6 : d < 0.8 ? 8 : 10) - 3) * 3200,
+    // Healthy Shopping: more points to catch in 20 seconds, falling faster, with more junk.
+    foodTarget: Math.round(mix(12, 24)),
+    foodFallMs: Math.round(mix(2600, 1500)),
+    foodSpawnMs: Math.round(mix(750, 480)),
+    foodJunk: mix(0.3, 0.45),
+    // Odd Colour Out: more rounds on a bigger grid, with closer shades.
+    colourRounds: d < 0.5 ? 4 : 5,
+    colourGrid: d < 0.3 ? 3 : d < 0.7 ? 4 : 5,
+    colourDelta: mix(16, 7),
+    colourMs: Math.round(mix(14000, 11000)),
+    // Find It: more things scattered about.
+    findCount: Math.round(mix(14, 34)),
+    findMs: Math.round(mix(15000, 12000)),
+    // Blood Flow: a bigger maze, a bit more time for it.
+    mazeSize: d < 0.3 ? 5 : d < 0.6 ? 6 : d < 0.85 ? 7 : 8,
+    mazeMs: Math.round(mix(16000, 22000)),
+    // IV Line: a bigger grid of pipes.
+    pipeSize: d < 0.35 ? 4 : d < 0.75 ? 5 : 6,
+    pipeMs: Math.round(mix(25000, 35000)),
     // Harder games pay more: a win at the top level pays twice as much.
     rewardMult: 1 + d,
   };

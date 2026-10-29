@@ -45,24 +45,25 @@ const TOC = [
 
         <h2 id="basics">The basics</h2>
         <p>
-          Tap the medkit to heal patients. Healed patients are your main currency: spend them on supplies that heal for
-          you. Three currencies show in the top-right corner:
+          Tap the medkit to earn medkits, the main currency: spend them on supplies that earn more for you. Three
+          currencies show in the top-right corner:
         </p>
         <ul>
-          <li><strong>Patients</strong> (the medkit), from tapping and supplies.</li>
+          <li><strong>Medkits</strong>, from tapping and supplies.</li>
           <li><strong>Care Coins</strong>, from achievements and treating sick patients.</li>
           <li><strong>Natal Gems</strong>, one for each rebirth.</li>
         </ul>
         <p>
           Your team keeps working for up to {{ GAME.offlineHours }} hours while the app is closed, and you collect what
-          they healed when you come back. Swipe sideways on the main screen to reach My Room next to the medkit, and the
+          they made when you come back. Swipe sideways on the main screen to reach My Room next to the medkit, and the
           outside of the hospital next to the shop.
         </p>
 
         <h2 id="supplies">Supplies</h2>
         <p>
-          Supplies heal patients every second. There are 13, listed here from cheapest to most expensive. Each purchase
-          raises the next price by 14%.
+          Supplies earn medkits every second. There are 13, listed here from cheapest to most expensive. Each purchase
+          raises the next price by 12%, and each supply doubles its output at 10, 25, 50, 75 and 100 owned (then every
+          50 more), so even bandages stay worth buying.
         </p>
         <ol class="supply-list">
           <li v-for="s in SUPPLIES" :key="s.name">
@@ -74,12 +75,12 @@ const TOC = [
         <h2 id="emergencies">Emergencies</h2>
         <p>
           On the Hospital page, cars pass and visitors walk in. When an ambulance pulls up at the door, tap it to admit the
-          patient for a burst of healing.
+          patient for a burst of medkits.
         </p>
 
         <h2 id="achievements">Achievements</h2>
         <p>
-          There are {{ GAME.achievements }} achievements, from "First Aid" to healing a vigintillion patients. Each shows
+          There are {{ GAME.achievements }} achievements, from "First Aid" to earning a vigintillion medkits. Each shows
           its progress, a few are secret, and every one pays Care Coins.
         </p>
 

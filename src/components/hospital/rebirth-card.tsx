@@ -69,7 +69,7 @@ export function RebirthCard() {
       <ConfirmDialog
         visible={confirming}
         title="Rebirth now?"
-        body={`Your ${healedText} patients and all shop supplies reset. You keep achievements, rewards and settings, get a ${GEM.one}, and heal ×${formatDecimal(rebirthMultiplier(rebirths + 1))} for good.`}
+        body={`Your ${healedText} medkits and all shop supplies reset. You keep achievements, rewards and settings, get a ${GEM.one}, and earn ×${formatDecimal(rebirthMultiplier(rebirths + 1))} for good.`}
         cancelLabel="Keep playing"
         confirmLabel="Rebirth"
         confirmTone="success"

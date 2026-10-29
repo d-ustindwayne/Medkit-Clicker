@@ -10,7 +10,8 @@ export const router = createRouter({
     { path: "/docs", name: "docs", component: () => import("@/views/DocsView.vue") },
     { path: "/iphone", name: "iphone", component: () => import("@/views/IphoneView.vue") },
     { path: "/contact", name: "contact", component: () => import("@/views/ContactView.vue") },
-    { path: "/:pathMatch(.*)*", redirect: "/" },
+    // Anything else: the 404 page (GitHub Pages serves 404.html for it, with a real 404 status).
+    { path: "/:pathMatch(.*)*", name: "not-found", component: () => import("@/views/NotFoundView.vue") },
   ],
   scrollBehavior(to, _from, saved) {
     if (saved) return saved;
@@ -28,7 +29,10 @@ function setHead(selector: string, attr: "content" | "href", value: string) {
 // Title, description, canonical link and share-card tags follow the page (see lib/pages.ts).
 router.afterEach((to) => {
   const page = PAGES.find((p) => p.path === to.path);
-  const title = pageTitle(page);
+  const missing = to.name === "not-found";
+  const title = missing ? "Page not found | Medkit Clicker" : pageTitle(page);
+  // The 404 page stays out of search results.
+  setHead('meta[name="robots"]', "content", missing ? "noindex" : "index, follow, max-image-preview:large");
   const description = page?.description ?? DEFAULT_DESCRIPTION;
   const url = pageUrl(to.path);
   document.title = title;

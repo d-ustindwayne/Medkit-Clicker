@@ -68,6 +68,24 @@ CREATE TABLE IF NOT EXISTS promo_claims (
   PRIMARY KEY (code_sha256, device_id)
 );
 
+-- The editor's name for a promo code (the code itself, so it can be found again; codes are matched by hash).
+ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS label TEXT;
+
+-- Timed events (set in the web game's editor): during starts_at..ends_at every player gets the
+-- multipliers (added like boosts) and, once, the rewards. The server also creates this on start.
+CREATE TABLE IF NOT EXISTS events (
+  id          BIGSERIAL PRIMARY KEY,
+  title       TEXT NOT NULL,
+  description TEXT,
+  starts_at   TIMESTAMPTZ NOT NULL,
+  ends_at     TIMESTAMPTZ NOT NULL,
+  tap_mult    NUMERIC,                 -- e.g. 2 = x2 per tap; NULL = none
+  rate_mult   NUMERIC,                 -- e.g. 2 = x2 per second; NULL = none
+  rewards     JSONB,                   -- a gift, same shape as promo_codes.rewards
+  icon        TEXT,                    -- a small PNG as a data: URL
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Players who reached rebirth 50 and left their details (one entry per phone).
 CREATE TABLE IF NOT EXISTS hall_of_fame (
   id         BIGSERIAL PRIMARY KEY,

@@ -20,30 +20,31 @@ export type ShopItem = {
   name: string;
   image: ImageSourcePropType;
   baseCost: number;
-  /** Patients healed per second, per unit owned. */
+  /** Medkits per second, per unit owned. */
   rate: number;
   /** Drawn smaller than the others where the art fills its whole canvas, so all supplies look the same size. */
   iconScale?: number;
 };
 
-/** Each purchase multiplies the next price by this. */
-export const COST_GROWTH = 1.14;
+/** Each purchase multiplies the next price by this (1.14 until 0.8.0: buying 100 of anything cost too much). */
+export const COST_GROWTH = 1.12;
 
 /** Share of the per-second rate added to every medkit tap. */
-export const TAP_RATE_BONUS = 0.025;
+export const TAP_RATE_BONUS = 0.05;
 
 /**
  * Tap growth: taps get stronger the more you tap, so tapping carries the early game and stays worth
  * it. Every 100 taps ever made is a step, up to 23 (2,300 taps). Each step adds 1 to every tap and 1%
  * of per-second, so taps top out at 1 + 23 + 25.5% of per-second. It never goes down: rebirth keeps
  * it (only Delete progress resets it). Players see the bigger "+N", not steps or levels.
+ * (Tap growth adds 1.5% of per-second per step: taps top out at 1 + 23 + 39.5% of per-second.)
  */
 export const TAP_GROWTH_EVERY = 100;
 export const TAP_GROWTH_STEPS = 23;
-export const TAP_GROWTH_RATE = 0.01;
+export const TAP_GROWTH_RATE = 0.015;
 /** Tap growth steps (0-23) from lifetime taps. */
 export const tapGrowth = (taps: number) => Math.min(TAP_GROWTH_STEPS, Math.floor(taps / TAP_GROWTH_EVERY));
-/** Patients a bare tap heals before boosts: 1, plus tap growth, plus a share of per-second. */
+/** Medkits a bare tap earns before boosts: 1, plus tap growth, plus a share of per-second. */
 export const baseTap = (rate: number, taps = 0) => {
   const steps = tapGrowth(taps);
   return 1 + steps + rate * (TAP_RATE_BONUS + TAP_GROWTH_RATE * steps);
@@ -74,11 +75,21 @@ export const HOSPITAL_IMAGE: ImageSourcePropType = require("@/imgs/hospital.png"
 export const itemCost = (item: ShopItem, owned: number) =>
   Math.ceil(item.baseCost * COST_GROWTH ** owned);
 
-/** Every 25 of one item makes that item heal 30% more: x1.3 at 25, x1.6 at 50, x2.2 at 100. */
-export const MILESTONE_EVERY = 25;
-export const MILESTONE_BONUS = 0.3;
-// Rounded to cents so 1 + 0.3 x 9 is 3.7, not 3.6999999999999997.
-export const itemMultiplier = (count: number) => Math.round((1 + MILESTONE_BONUS * Math.floor(count / MILESTONE_EVERY)) * 100) / 100;
+/**
+ * Owning more of one item doubles that item's output at each milestone: 10, 25, 50, 75 and 100 owned,
+ * then every 50 more. So the first supplies stay worth buying all game: 50 bandages make as much as
+ * 40 gloves, and 100 bandages (x32) more than a stethoscope.
+ */
+export const MILESTONES = [10, 25, 50, 75, 100];
+export const MILESTONE_AFTER = 50;
+export const milestonesReached = (count: number) => {
+  const first = MILESTONES.filter((m) => count >= m).length;
+  const last = MILESTONES[MILESTONES.length - 1];
+  return first + (count > last ? Math.floor((count - last) / MILESTONE_AFTER) : 0);
+};
+/** The owned count where this item next doubles. */
+export const nextMilestone = (count: number) => MILESTONES.find((m) => m > count) ?? MILESTONES[MILESTONES.length - 1] + MILESTONE_AFTER * (Math.floor((count - MILESTONES[MILESTONES.length - 1]) / MILESTONE_AFTER) + 1);
+export const itemMultiplier = (count: number) => 2 ** milestonesReached(count);
 
 export const perSecond = (owned: Record<ItemId, number>) =>
   SHOP_ITEMS.reduce((sum, item) => {

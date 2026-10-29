@@ -12,10 +12,10 @@ import { useGameActions, useGameReady, useGameSelector, useSettings } from "@/ho
 
 /** How to play, one idea per step. */
 const STEPS: { title: string; body: string; image: ImageSourcePropType }[] = [
-  { title: "Tap the medkit", body: "Every tap heals patients. The big number at the top is how many you've healed.", image: MEDKIT_IMAGE },
+  { title: "Tap the medkit", body: "Every tap earns medkits. The big number at the top is how many you have.", image: MEDKIT_IMAGE },
   {
     title: "Stock up on supplies",
-    body: "Spend patients in the shop below. Supplies keep healing for you every second, even for up to 4 hours while the app is closed. Drag the shop's top edge up for a longer list.",
+    body: "Spend medkits in the shop below. Supplies keep earning medkits for you every second, even for up to 4 hours while the app is closed. Drag the shop's top edge up for a longer list.",
     image: SHOP_ITEMS[1].image,
   },
   {

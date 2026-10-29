@@ -9,10 +9,11 @@ import { MarqueeText } from "@/components/ui/marquee-text";
 import { AnimatedSprite } from "@/components/ui/animated-sprite";
 import { PixelIcon } from "@/components/ui/pixel-icon";
 import { WardPatient } from "@/components/ward/ward-patient";
-import { CHARACTER_PX, DRAG_DEPTH, ITEM_PX, ROOMS, depth, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, spotFor, unlockHint, type Placement, type RoomItem } from "@/constants/room";
+import { CHARACTER_PX, DRAG_DEPTH, ITEM_PX, ROOMS, STAFF_PER_ROOM, depth, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, spotFor, unlockHint, type Placement, type RoomItem } from "@/constants/room";
 import { STAFF_FRAMES, WALK_FRAME_MS, WALK_SEQUENCE } from "@/constants/staff";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector } from "@/hooks/use-game";
+import { roomCount } from "@/lib/game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
@@ -42,33 +43,28 @@ function WalkFrame({ step, index, image, size }: { step: SharedValue<number>; in
   );
 }
 
-/** One staff member pacing the floor with a 3-frame walk cycle. */
-const Walker = memo(function Walker({ id, width, height, lane }: { id: string; width: number; height: number; lane: number }) {
+/** A placed nurse or doctor pacing a short way either side of their spot, with a 3-frame walk cycle. */
+const Pacing = memo(function Pacing({ id, size, seed }: { id: string; size: number; seed: number }) {
   const reduceMotion = useReduceMotion();
-  const size = width * (CHARACTER_PX / ART_W);
   const x = useSharedValue(0);
   const step = useSharedValue(0);
   useEffect(() => {
     if (reduceMotion) return;
-    // Each lane walks a different stretch at a different pace so they don't march in step.
-    x.set(0);
+    // Each one paces at its own speed so they don't march in step.
+    x.set(-1);
     step.set(0);
-    x.set(withRepeat(withTiming(1, { duration: 9000 + lane * 2600, easing: Easing.inOut(Easing.quad) }), -1, true));
+    x.set(withRepeat(withTiming(1, { duration: 3200 + (seed % 5) * 700, easing: Easing.inOut(Easing.quad) }), -1, true));
     step.set(withRepeat(withTiming(WALK_SEQUENCE.length, { duration: WALK_SEQUENCE.length * WALK_FRAME_MS, easing: Easing.linear }), -1, false));
     return () => {
       cancelAnimation(x);
       cancelAnimation(step);
     };
-  }, [x, step, lane, reduceMotion]);
-  const span = width - size * 1.2;
-  const style = useAnimatedStyle(() => ({ transform: [{ translateX: (lane % 2 ? 1 - x.get() : x.get()) * span }] }));
+  }, [x, step, seed, reduceMotion]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() * size * 0.35 }] }));
   const frames = STAFF_FRAMES[id];
-  // Lanes across the front of the (4:3) floor, a little apart.
-  const footY = 0.95 - lane * 0.05;
+  if (reduceMotion || !frames) return <Image source={frames?.[0]} style={{ width: size, height: size }} contentFit="contain" />;
   return (
-    // Sorted with the furniture by where their feet are: a nurse walks behind a bed that stands lower
-    // on screen and in front of one that stands higher.
-    <Animated.View pointerEvents="none" style={[{ position: "absolute", left: size * 0.1, top: height * footY - size, width: size, height: size, zIndex: depth(footY) }, style]}>
+    <Animated.View style={[{ width: size, height: size }, style]}>
       {frames.map((src, i) => (
         <WalkFrame key={i} step={step} index={i} image={src} size={size} />
       ))}
@@ -76,9 +72,8 @@ const Walker = memo(function Walker({ id, width, height, lane }: { id: string; w
   );
 });
 
-function Staff({ ids, width, height }: { ids: string[]; width: number; height: number }) {
-  return ids.map((s, i) => <Walker key={s} id={s} width={width} height={height} lane={i} />);
-}
+/** How big an item is drawn in a room `width` wide: staff at character size, the rest at 1.5x their 32px. */
+const itemSize = (item: RoomItem, width: number) => (item.staff ? width * (CHARACTER_PX / ART_W) : width * (ITEM_PX / ART_W) * 1.5);
 
 /**
  * A placed item; draggable (and removable) in edit mode. Its position lives in animation values, so
@@ -95,7 +90,7 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove, onDragC
    */
   onDragChange?: (dragging: boolean) => void;
 }) {
-  const size = width * (ITEM_PX / ART_W) * 1.5;
+  const size = itemSize(item, width);
   const left = p.x * width - size / 2;
   const top = p.y * height - size;
   const baseX = useSharedValue(left);
@@ -171,7 +166,13 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove, onDragC
       accessibilityLabel={item.name}
       style={[{ position: "absolute", left: 0, top: 0, width: size, height: size, zIndex: dragging ? DRAG_DEPTH : depth(p.y) }, style]}
     >
-      {item.frames ? <AnimatedSprite frames={item.frames} size={size} /> : <Image source={item.image} style={{ width: size, height: size }} contentFit="contain" />}
+      {item.staff && !editing ? (
+        <Pacing id={item.staff} size={size} seed={Math.round(p.x * 100)} />
+      ) : item.frames ? (
+        <AnimatedSprite frames={item.frames} size={size} />
+      ) : (
+        <Image source={item.image} style={{ width: size, height: size }} contentFit="contain" />
+      )}
       {editing && (
         <>
           <View pointerEvents="none" className="absolute inset-0 border border-dashed border-ink/60" />
@@ -184,7 +185,7 @@ function PlacedItem({ p, item, width, height, editing, onMove, onRemove, onDragC
   );
 }
 
-/** "My Room": decorate hospital rooms with unlocked items; staff walk around and patients turn up. */
+/** "My Room": decorate hospital rooms with unlocked items and staff; patients turn up. */
 /** `hideControls`: the shop is pulled up, so the room is small; its decorate button steps aside. */
 export function RoomPage({ width, editing, onEditingChange, hideControls = false }: { width: number; editing: boolean; onEditingChange: (on: boolean) => void; hideControls?: boolean }) {
   const state = useGameSelector((s) => ({ room: s.room, achievements: s.achievements, rebirths: s.rebirths, treated: s.treated, owned: s.owned, gemItems: s.gemItems }));
@@ -228,10 +229,12 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
       playSfx("click");
       return dispatch({ type: "removeItem", room: room.id, item: item.id });
     }
-    if (placed.length >= room.limit) {
+    if (roomCount(placed, !!item.staff) >= (item.staff ? STAFF_PER_ROOM : room.limit)) {
       haptic.denied();
       playSfx("invalid");
-      return pushToast({ kind: "info", title: "Room is full", body: `${room.title} holds ${room.limit} items. Put one away first.` });
+      return pushToast(item.staff
+        ? { kind: "info", title: "Enough staff here", body: `${room.title} has room for ${STAFF_PER_ROOM} staff. Send one away first.` }
+        : { kind: "info", title: "Room is full", body: `${room.title} holds ${room.limit} items. Put one away first.` });
     }
     // Spread new items out so they don't all land in one spot.
     const x = 0.15 + ((placed.length * 0.37) % 0.7);
@@ -249,7 +252,7 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
     pushToast({ kind: "info", title: "No space on the wall", body: `Move or put away a wall item to make room for the ${item.name}.`, image: item.image });
   };
 
-  const ghostSize = roomW * (ITEM_PX / ART_W) * 1.5;
+  const ghostSizeOf = (item: RoomItem) => itemSize(item, roomW);
   // Drag-and-drop from the tray: drag a tile upward and a ghost follows the finger; drop it on the room.
   const rootRef = useRef<View>(null);
   const sceneRef = useRef<View>(null);
@@ -304,7 +307,7 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
     onResponderMove: (e: GestureResponderEvent) => {
       const root = boxes.current?.root;
       lastPoint.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
-      if (root) setGhost({ item, left: e.nativeEvent.pageX - root.x - ghostSize / 2, top: e.nativeEvent.pageY - root.y - ghostSize });
+      if (root) setGhost({ item, left: e.nativeEvent.pageX - root.x - ghostSizeOf(item) / 2, top: e.nativeEvent.pageY - root.y - ghostSizeOf(item) });
     },
     onResponderRelease: (e: GestureResponderEvent) => drop(item, e.nativeEvent.pageX, e.nativeEvent.pageY),
     // Taken away mid-drag (the tray tried to scroll): still drop it where the finger last was.
@@ -337,7 +340,7 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
     // room) places it in the room.
     if (!b || pageY > b.y + b.h) return;
     if (!isUnlocked(item.unlock, state)) return tapItem(item); // shows the unlock hint
-    if (!placed.some((p) => p.item === item.id) && placed.length >= room.limit) return tapItem(item); // "room is full"
+    if (!placed.some((p) => p.item === item.id) && roomCount(placed, !!item.staff) >= (item.staff ? STAFF_PER_ROOM : room.limit)) return tapItem(item); // "room is full"
     // Items stand on their feet, so the drop point is the bottom of the item.
     const fx = Math.min(0.95, Math.max(0.05, (pageX - b.x) / b.w));
     const fy = Math.min(1, Math.max(0, (pageY - b.y) / b.h + 0.045));
@@ -376,7 +379,7 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
             </Pressable>
             <View className="flex-1 items-center px-1">
               <MarqueeText className="font-pixel text-[10px] tracking-[1px] text-ink">{room.title.toUpperCase()}</MarqueeText>
-              <MarqueeText className="font-number text-xs text-ink">{`${placed.length}/${room.limit} items · +${Math.round(rate * 100)}%/s +${Math.round(tap * 100)}%/tap`}</MarqueeText>
+              <MarqueeText className="font-number text-xs text-ink">{`${roomCount(placed, false)}/${room.limit} items · ${roomCount(placed, true)}/${STAFF_PER_ROOM} staff · +${Math.round(rate * 100)}%/s +${Math.round(tap * 100)}%/tap`}</MarqueeText>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Next room" onPress={() => cycleRoom(1)} className="h-9 w-8 items-center justify-center">
               <PixelIcon name="right" size={12} />
@@ -422,7 +425,6 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
                 />
               );
             })}
-            {!editing && <Staff ids={room.staff} width={width} height={height} />}
             {!editing && <WardPatient width={width} height={height} />}
           </ScenePage>
           </View>
@@ -451,7 +453,6 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
               />
             );
           })}
-          {!editing && <Staff ids={room.staff} width={roomW} height={height} />}
           {!editing && <WardPatient width={roomW} height={height} />}
         </ScenePage>
         </View>
@@ -499,8 +500,8 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
       )}
 
       {ghost && (
-        <View pointerEvents="none" style={{ position: "absolute", left: ghost.left, top: ghost.top, width: ghostSize, height: ghostSize, opacity: 0.85, zIndex: DRAG_DEPTH + 1 }}>
-          <Image source={ghost.item.image} style={{ width: ghostSize, height: ghostSize }} contentFit="contain" />
+        <View pointerEvents="none" style={{ position: "absolute", left: ghost.left, top: ghost.top, width: ghostSizeOf(ghost.item), height: ghostSizeOf(ghost.item), opacity: 0.85, zIndex: DRAG_DEPTH + 1 }}>
+          <Image source={ghost.item.image} style={{ width: ghostSizeOf(ghost.item), height: ghostSizeOf(ghost.item) }} contentFit="contain" />
         </View>
       )}
     </View>

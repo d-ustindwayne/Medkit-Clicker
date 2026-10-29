@@ -112,7 +112,7 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       pushToast({
         kind: "info",
         title: "Welcome back",
-        body: `Your team healed ${formatCount(earned)} patients in ${formatDuration(away)}.`,
+        body: `Your team made ${formatCount(earned)} medkits in ${formatDuration(away)}.`,
       });
     },
     [pushToast, dispatch],

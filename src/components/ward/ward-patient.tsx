@@ -5,7 +5,7 @@ import { depth } from "@/constants/room";
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
 import { TreatModal } from "@/components/ward/treat-modal";
-import { SICK_PATIENTS, type SickPatient } from "@/constants/patients";
+import { SICK_PATIENTS, patientLook, type SickPatient } from "@/constants/patients";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameSelector } from "@/hooks/use-game";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
@@ -71,7 +71,7 @@ export function WardPatient({ width, height }: { width: number; height: number }
             // People lower on screen stand in front (and in front of the furniture).
             style={{ position: "absolute", left: width * spot.x - size / 2, top: height * spot.y - size, width: size, height: size, zIndex: depth(spot.y) }}
           >
-            <Image source={p.info.image} style={{ width: size, height: size }} contentFit="contain" />
+            <Image source={patientLook(p.info, p.arrivedAt)} style={{ width: size, height: size }} contentFit="contain" />
             <Animated.View style={[{ position: "absolute", top: -size * 0.12, alignSelf: "center" }, bubble]}>
               <View className="items-center justify-center rounded-full border-2 border-outline bg-primary px-2">
                 <Text className="font-pixel text-base text-ink">!</Text>

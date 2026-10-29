@@ -55,6 +55,8 @@ jobs:
           EXPO_PUBLIC_CODE_DEV: ${{ vars.EXPO_PUBLIC_CODE_DEV }}
           EXPO_PUBLIC_CODE_JASMINE: ${{ vars.EXPO_PUBLIC_CODE_JASMINE }}
           EXPO_PUBLIC_CODE_JASMINE_EXPIRES: ${{ vars.EXPO_PUBLIC_CODE_JASMINE_EXPIRES }}
+          # The editor's Google sign-in (Dev Tools, Editor). Empty: the editor says it isn't set up.
+          EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.EXPO_PUBLIC_GOOGLE_CLIENT_ID }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -32,7 +32,7 @@ import { SHOW_KEY_HINTS, useKeys } from "@/hooks/use-keys";
 // few variants that open up as the player's level rises (see pickVariant).
 
 /** A countdown in seconds that calls `onEnd` once at zero. */
-function useCountdown(ms: number, onEnd: () => void) {
+export function useCountdown(ms: number, onEnd: () => void) {
   const [left, setLeft] = useState(ms);
   const end = useRef(onEnd);
   useEffect(() => {
@@ -53,12 +53,12 @@ function useCountdown(ms: number, onEnd: () => void) {
   return left;
 }
 
-const Hint = ({ children }: { children: string }) => <Text className="text-center font-body text-sm text-ink opacity-70">{children}</Text>;
+export const Hint = ({ children }: { children: string }) => <Text className="text-center font-body text-sm text-ink opacity-70">{children}</Text>;
 /** The keyboard controls, shown only where there are any (the web version). */
 export const KeyHint = ({ children }: { children: string }) => (SHOW_KEY_HINTS ? <Text className="text-center font-pixel text-[10px] tracking-[1px] text-ink opacity-60">KEYS: {children}</Text> : null);
 
 /** A thin timer bar that drains as time runs out and turns red near the end. */
-function TimeBar({ left, total }: { left: number; total: number }) {
+export function TimeBar({ left, total }: { left: number; total: number }) {
   const k = Math.max(0, left / total);
   return (
     <View className="h-2 w-full border-[1.5px] border-outline bg-surface">
@@ -906,6 +906,7 @@ function MemoryGame({ onDone, tuning }: GameProps) {
   // can be flipped while a wrong pair is turning back over.
   const picks = useRef<number[]>([]);
   const busy = useRef(peek);
+  const mistakes = useRef(0);
   useEffect(() => {
     if (!peek) return;
     const t = setTimeout(() => {
@@ -933,9 +934,10 @@ function MemoryGame({ onDone, tuning }: GameProps) {
         busy.current = false;
         juice.pop();
         playSfx("buy");
-        if (m.length === cards.length) setTimeout(() => done(true), 450);
+        if (m.length === cards.length) setTimeout(() => done(true, mistakes.current === 0), 450);
       }, 300);
     } else {
+      mistakes.current += 1;
       setTimeout(() => {
         juice.shake();
         playSfx("invalid");

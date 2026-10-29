@@ -6,22 +6,23 @@ import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 export { pickVariant, shuffle } from "@/lib/random";
 
-export type GameProps = { onDone: (won: boolean) => void; tuning: MinigameTuning };
+/** `perfect`: won without a single mistake (games that can tell; for the achievements). */
+export type GameProps = { onDone: (won: boolean, perfect?: boolean) => void; tuning: MinigameTuning };
 
 /** 0 for a new player, rising to 1 with progress (see minigameLevel). */
 export const hardness = (t: MinigameTuning) => t.level;
 
 /** Keeps the latest onDone without re-running timers when the parent re-renders. */
-export function useDone(onDone: (won: boolean) => void) {
+export function useDone(onDone: (won: boolean, perfect?: boolean) => void) {
   const ref = useRef(onDone);
   const finished = useRef(false);
   useEffect(() => {
     ref.current = onDone;
   }, [onDone]);
-  return (won: boolean) => {
+  return (won: boolean, perfect?: boolean) => {
     if (finished.current) return;
     finished.current = true;
-    ref.current(won);
+    ref.current(won, perfect);
   };
 }
 

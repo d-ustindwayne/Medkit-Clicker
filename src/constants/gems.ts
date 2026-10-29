@@ -8,7 +8,7 @@ export const GEM_LEVEL_COSTS = [1, 2, 3, 5, 8];
 
 export type GemUpgrade = { id: string; name: string; description: string; per: string; image: ImageSourcePropType };
 export const GEM_UPGRADES: GemUpgrade[] = [
-  { id: "steady_hands", name: "Steady Hands", description: "Each tap heals more.", per: "+10% per tap", image: require("@/imgs/shop/gloves.png") },
+  { id: "steady_hands", name: "Steady Hands", description: "Each tap earns more.", per: "+10% per tap", image: require("@/imgs/shop/gloves.png") },
   { id: "night_owl", name: "Night Owl", description: "Your team works longer while you're away.", per: "+1 h offline", image: require("@/imgs/achievements/clock_moon.png") },
   { id: "bedside_manner", name: "Bedside Manner", description: "Ward patients pay more.", per: "+20% ward rewards", image: require("@/imgs/room/hospital_bed.png") },
   { id: "rapid_response", name: "Rapid Response", description: "Emergencies pay more.", per: "+25% emergency rewards", image: require("@/imgs/hospital/ambulance.png") },
@@ -51,6 +51,8 @@ export const GEM_ITEMS: GemItem[] = [
   { id: "aurora", name: "Aurora Ward", kind: "background", cost: 6, rebirths: 10, image: require("@/imgs/gems/p_sparkle.png") },
   // PLACEHOLDER icon (the sparkle) until the Galaxy gets its own sprite
   { id: "galaxy", name: "Galaxy", kind: "background", cost: 1, rebirths: 1, image: require("@/imgs/gems/p_sparkle.png") },
+  // Your own photo as the background: unlock it here, pick the photo in Settings. PLACEHOLDER icon
+  { id: "custom", name: "Your Photo", kind: "background", cost: 5, rebirths: 1, image: require("@/imgs/misc/decorate.png") },
   // Animated My Room items (listed in ROOM_ITEMS with the same ids)
   { id: "aquarium", name: "Aquarium", kind: "room", cost: 3, rebirths: 3, image: require("@/imgs/room/aquarium_1.png") },
   { id: "lava_lamp", name: "Lava Lamp", kind: "room", cost: 3, rebirths: 7, image: require("@/imgs/room/lava_lamp_1.png") },

@@ -1,6 +1,7 @@
 // Background presets for the clicker area. Pure data: drawn by components/background-pattern.tsx.
 
-export type PatternKind = "grid" | "crosses" | "dots" | "stripes" | "checker" | "hearts" | "plain";
+/** "photo": the player's own picture (the custom background). */
+export type PatternKind = "grid" | "crosses" | "dots" | "stripes" | "checker" | "hearts" | "plain" | "photo";
 export type AnimatedKind = "rain" | "ecg" | "stars" | "cells" | "sakura" | "fireflies" | "snowfall" | "aurora" | "galaxy";
 export type Colors = { bg: string; line: string; accent?: string };
 
@@ -29,6 +30,8 @@ export const BACKGROUNDS: { id: string; name: string; pattern: PatternKind | Ani
   { id: "aurora", name: "Aurora Ward", pattern: "aurora", gems: true, light: { bg: "#dfe9f7", line: "#7fe0c4", accent: "#b08cf0" }, dark: { bg: "#070c1f", line: "#4fe0a8", accent: "#8a5cf0" } },
   // Dark theme only (picked by Claude, 2026-10-29: 1 gem, from the first rebirth)
   { id: "galaxy", name: "Galaxy", pattern: "galaxy", gems: true, darkOnly: true, light: { bg: "#05040f", line: "#ece8ff", accent: "#7b4dd8" }, dark: { bg: "#05040f", line: "#ece8ff", accent: "#7b4dd8" } },
+  // The player's own photo: unlocked for 5 Natal Gems, then picked in Settings (0.8.0)
+  { id: "custom", name: "Your Photo", pattern: "photo", gems: true, light: { bg: "#f9e8e8", line: "#f9e8e8" }, dark: { bg: "#0f1c24", line: "#0f1c24" } },
 ];
 
 /** Whether a background shows in this theme (a dark-only one doesn't in the light theme). */

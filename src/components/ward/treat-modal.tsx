@@ -3,6 +3,7 @@ import { Image } from "@/components/ui/image";
 import { Modal, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
+import { NEW_GAMES } from "@/components/ward/new-games";
 import { KeyHint, MORE_GAMES } from "@/components/ward/more-games";
 import { pickVariant, shuffle, useDone, useJuice, type GameProps } from "@/components/ward/game-kit";
 import { HardShadow } from "@/components/ui/hard-shadow";
@@ -10,7 +11,7 @@ import { PixelButton } from "@/components/ui/pixel-button";
 import { PixelIcon } from "@/components/ui/pixel-icon";
 import { TapPressable } from "@/components/ui/press-down";
 import { COIN } from "@/constants/boosts";
-import { minigameTuning, type SickPatient } from "@/constants/patients";
+import { minigameTuning, patientLook, type SickPatient } from "@/constants/patients";
 import { themeVars } from "@/constants/theme";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameStore, useSettings } from "@/hooks/use-game";
@@ -414,7 +415,7 @@ function BandageTaps({ onDone, tuning, alternate }: GameProps & { alternate: boo
   );
 }
 
-const GAMES = { injection: InjectionGame, rhythm: RhythmGame, bandage: BandageGame, ...MORE_GAMES };
+const GAMES = { injection: InjectionGame, rhythm: RhythmGame, bandage: BandageGame, ...MORE_GAMES, ...NEW_GAMES };
 
 /** Treating a ward patient: intro, the patient's minigame, then the result. */
 /** `arrivedAt` is the waiting patient being treated; leave it out to just play (Dev Tools). */
@@ -435,13 +436,13 @@ export function TreatModal({ patient, arrivedAt, onClose }: { patient: SickPatie
   // more patients are treated and healing per second grows.
   const [tuning] = useState(() => minigameTuning(wardLevel(store.get())));
 
-  const finish = (won: boolean) => {
+  const finish = (won: boolean, perfect?: boolean) => {
     // Worked out before the treat action, which counts the patient and so could raise the level.
     const s = store.get();
     const amount = treatReward(s, won);
     const coins = won ? treatCoins(s) : 0;
     if (arrivedAt !== undefined) dispatch({ type: "treat", won, arrivedAt });
-    if (won) dispatch({ type: "minigameWon", game: patient.game });
+    dispatch(won ? { type: "minigameWon", game: patient.game, perfect } : { type: "minigameLost" });
     setResult({ won, amount, coins });
     setPhase("result");
   };
@@ -454,7 +455,7 @@ export function TreatModal({ patient, arrivedAt, onClose }: { patient: SickPatie
         <HardShadow offset={6} className="w-full max-w-sm">
           <View accessibilityViewIsModal className="gap-4 border-2 border-outline bg-surface p-5">
             <View className="flex-row items-center gap-3">
-              <Image source={patient.image} style={{ width: 64, height: 64 }} contentFit="contain" />
+              <Image source={patientLook(patient, arrivedAt)} style={{ width: 64, height: 64 }} contentFit="contain" />
               <View className="flex-1">
                 <Text className="font-pixel text-xs tracking-[2px] text-primary">PATIENT</Text>
                 <Text accessibilityRole="header" className="font-display text-xl text-ink">
@@ -476,7 +477,7 @@ export function TreatModal({ patient, arrivedAt, onClose }: { patient: SickPatie
               <>
                 <Text className="font-display text-lg text-ink">{result.won ? "Patient stabilized!" : "Transferred to another ward"}</Text>
                 <Text className="font-body text-base leading-6 text-ink">
-                  {result.won ? `Great work. You healed ${formatCount(result.amount)} patients` : `They'll be fine. You still healed ${formatCount(result.amount)} patients.`}
+                  {result.won ? `Great work. You earned ${formatCount(result.amount)} medkits.` : `They'll be fine. You still earned ${formatCount(result.amount)} medkits.`}
                 </Text>
                 {result.won && (
                   <View className="gap-1.5">
@@ -487,7 +488,7 @@ export function TreatModal({ patient, arrivedAt, onClose }: { patient: SickPatie
                       </Text>
                     </View>
                     {tuning.rewardMult > 1.005 && (
-                      <Text className="font-body text-sm text-ink opacity-70">Difficulty bonus: {formatMult(tuning.rewardMult)} patients</Text>
+                      <Text className="font-body text-sm text-ink opacity-70">Difficulty bonus: {formatMult(tuning.rewardMult)} medkits</Text>
                     )}
                   </View>
                 )}

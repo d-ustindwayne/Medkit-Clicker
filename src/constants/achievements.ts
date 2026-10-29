@@ -1,11 +1,12 @@
 import type { ImageSourcePropType } from "react-native";
 
 import { SHOP_ITEMS, type ItemId } from "@/constants/items";
+import { MINIGAME_IDS } from "@/constants/patients";
+import { ROOM_ITEMS } from "@/constants/room";
 import { healingRate } from "@/constants/rebirth";
 import type { GameState } from "@/lib/game";
 import { formatCount } from "@/lib/format";
 
-const MINIGAMES = ["injection", "rhythm", "bandage", "pulse", "pills", "xray", "germs", "breath", "memory"];
 
 export type Achievement = {
   id: string;
@@ -25,7 +26,7 @@ export type Achievement = {
 
 type Milestone = [threshold: number, name: string];
 
-// Lifetime patients healed. The tail is deliberately absurd: the game is meant to run for a long time.
+// Lifetime medkits earned. The tail is deliberately absurd: the game is meant to run for a long time.
 const healedMilestones: Milestone[] = [
   [1, "First Aid"],
   [100, "Clinical Rotation"],
@@ -48,6 +49,16 @@ const healedMilestones: Milestone[] = [
   [1e45, "The Last Patient"],
   [1e63, "Vigintillion Vitals"],
 ];
+
+/**
+ * Past a trillion, a milestone at every second number name: quintillion (10^18), septillion (10^24),
+ * nonillion, undecillion and on to 10^306. The ones the list above already has keep their names.
+ */
+const bigMilestones = Array.from({ length: 49 }, (_, i) => 10 ** (18 + i * 6)).filter((n) => !healedMilestones.some(([m]) => m === n));
+const unitName = (n: number) => {
+  const unit = formatCount(n).split(" ")[1] ?? "";
+  return `${unit.charAt(0).toUpperCase()}${unit.slice(1)} Medkits`;
+};
 
 const tapMilestones: Milestone[] = [
   [100, "Steady Hands"],
@@ -135,14 +146,34 @@ const CLOCK_MOON = require("@/imgs/achievements/clock_moon.png");
 const tierTrophy = (i: number, count: number) => [TROPHY.bronze, TROPHY.platinum, TROPHY.gold, TROPHY.diamond][Math.min(3, Math.floor((i / count) * 4))];
 
 const totalOwned = (s: GameState) => Object.values(s.owned).reduce((a, b) => a + b, 0);
+const totalWins = (s: GameState) => Object.values(s.minigameWins).reduce((a, b) => a + b, 0);
+const STAFF_IDS = ROOM_ITEMS.filter((i) => i.staff).map((i) => i.id);
+
+/** The 0.8.0 minigames: their medal art is the game's own PLACEHOLDER sprite until medals are drawn. */
+const NEW_GAME_MEDALS: [game: string, name: string, description: string, image: ImageSourcePropType][] = [
+  ["food", "Healthy Choices", "Win the Healthy Shopping minigame.", require("@/imgs/minigames/cart.png")],
+  ["colour", "Shade Spotter", "Win the Odd Colour Out minigame.", require("@/imgs/gems/p_sparkle.png")],
+  ["find", "Lost and Found", "Win the Find It minigame.", require("@/imgs/room/notice_board.png")],
+  ["maze", "Good Circulation", "Win the Blood Flow minigame.", require("@/imgs/shop/blood_vial.png")],
+  ["pipes", "Plumbing the Depths", "Win the IV Line minigame.", require("@/imgs/shop/iv_bag.png")],
+];
 
 const LIST: Achievement[] = [
   ...healedMilestones.map(([n, name], i) => ({
     id: `healed_${n}`,
     name,
-    description: n === 1 ? "Heal your first patient." : `Heal ${formatCount(n)} patients.`,
+    description: n === 1 ? "Earn your first medkit." : `Earn ${formatCount(n)} medkits.`,
     image: tierTrophy(i, healedMilestones.length),
     coins: 1 + Math.floor(i / 3),
+    check: (s: GameState) => s.totalHealed >= n,
+    progress: (s: GameState) => s.totalHealed / n,
+  })),
+  ...bigMilestones.map((n, i) => ({
+    id: `healed_${n}`,
+    name: unitName(n),
+    description: `Earn 1 ${formatCount(n).split(" ")[1]} medkits.`,
+    image: i % 2 ? TROPHY.purple : TROPHY.diamond,
+    coins: 6,
     check: (s: GameState) => s.totalHealed >= n,
     progress: (s: GameState) => s.totalHealed / n,
   })),
@@ -178,7 +209,7 @@ const LIST: Achievement[] = [
   ...rateMilestones.map(([n, name], i) => ({
     id: `rate_${n}`,
     name,
-    description: `Heal ${formatCount(n)} patients per second.`,
+    description: `Earn ${formatCount(n)} medkits per second.`,
     image: WINGED_HEART,
     coins: 1 + i,
     check: (s: GameState) => healingRate(s) >= n,
@@ -253,7 +284,7 @@ const LIST: Achievement[] = [
   {
     id: "the_limit",
     name: "The Edge of Infinity",
-    description: "Heal 179.769 uncentillion patients, the most a phone can count.",
+    description: "Earn 179.769 uncentillion medkits, the most a phone can count.",
     image: TROPHY.diamond,
     secret: true,
     coins: 10,
@@ -340,13 +371,142 @@ const LIST: Achievement[] = [
     coins: 2,
     check: (s) => (s.minigameWins["memory"] ?? 0) >= 1,
   },
+  ...NEW_GAME_MEDALS.map(([game, name, description, image]) => ({
+    id: `game_${game}`,
+    name,
+    description,
+    image,
+    coins: 2,
+    check: (s: GameState) => (s.minigameWins[game] ?? 0) >= 1,
+  })),
   {
     id: "game_all",
     name: "All-Rounder",
     description: "Win every ward minigame at least once.",
     image: TROPHY.star,
     coins: 5,
-    check: (s) => MINIGAMES.every((g) => (s.minigameWins[g] ?? 0) >= 1),
+    check: (s) => MINIGAME_IDS.every((g) => (s.minigameWins[g] ?? 0) >= 1),
+  },
+  // Minigame feats (0.8.0)
+  {
+    id: "game_memory_perfect",
+    name: "Photographic Memory",
+    description: "Win the memory minigame without a single wrong pair.",
+    image: require("@/imgs/achievements/games/medal_memory.png"),
+    coins: 4,
+    check: (s) => (s.minigamePerfect["memory"] ?? 0) >= 1,
+  },
+  {
+    id: "game_colour_perfect",
+    name: "Eagle Eye",
+    description: "Win Odd Colour Out without a wrong tap.",
+    image: require("@/imgs/gems/p_sparkle.png"),
+    coins: 4,
+    check: (s) => (s.minigamePerfect["colour"] ?? 0) >= 1,
+  },
+  {
+    id: "game_food_perfect",
+    name: "Clean Eating",
+    description: "Win Healthy Shopping without catching any junk food.",
+    image: require("@/imgs/misc/apple.png"),
+    coins: 4,
+    check: (s) => (s.minigamePerfect["food"] ?? 0) >= 1,
+  },
+  {
+    id: "game_streak_5",
+    name: "On a Roll",
+    description: "Win 5 ward minigames in a row.",
+    image: MEDAL,
+    coins: 4,
+    check: (s) => s.minigameBestStreak >= 5,
+    progress: (s) => s.minigameBestStreak / 5,
+  },
+  {
+    id: "game_streak_15",
+    name: "Unbeatable Shift",
+    description: "Win 15 ward minigames in a row.",
+    image: TROPHY.gold,
+    coins: 8,
+    check: (s) => s.minigameBestStreak >= 15,
+    progress: (s) => s.minigameBestStreak / 15,
+  },
+  {
+    id: "game_wins_25",
+    name: "Ward Veteran",
+    description: "Win 25 ward minigames.",
+    image: TROPHY.nurse,
+    coins: 4,
+    check: (s) => totalWins(s) >= 25,
+    progress: (s) => totalWins(s) / 25,
+  },
+  {
+    id: "game_wins_100",
+    name: "Ward Legend",
+    description: "Win 100 ward minigames.",
+    image: TROPHY.platinum,
+    coins: 8,
+    check: (s) => totalWins(s) >= 100,
+    progress: (s) => totalWins(s) / 100,
+  },
+  // Secrets (0.8.0)
+  {
+    id: "full_house",
+    name: "Full House",
+    description: "Have three patients waiting in My Room at once.",
+    image: TROPHY.nurse,
+    secret: true,
+    coins: 3,
+    check: (s) => s.patients.length >= 3,
+  },
+  {
+    id: "staff_meeting",
+    name: "Staff Meeting",
+    description: "Put every nurse and the doctor to work in My Room.",
+    image: ICONS.clipboard,
+    secret: true,
+    coins: 3,
+    check: (s) => STAFF_IDS.every((id) => Object.values(s.room.placed).some((list) => list.some((p) => p.item === id))),
+  },
+  // Absurdly specific, but not secret: the challenge is knowing they exist (0.8.0)
+  {
+    id: "exactly_777",
+    name: "Jackpot",
+    description: "Have exactly 777 medkits (not a single one more).",
+    image: TROPHY.star,
+    coins: 3,
+    check: (s) => Math.floor(s.healed) === 777,
+  },
+  {
+    id: "bandage_hoarder",
+    name: "Bandage Hoarder",
+    description: "Own 150 bandages and not a single pair of gloves.",
+    image: SHOP_ITEMS[0].image,
+    coins: 4,
+    check: (s) => s.owned.bandage >= 150 && s.owned.gloves === 0,
+  },
+  {
+    id: "hands_off",
+    name: "Hands Off",
+    description: "Reach 1,000 medkits per second having tapped the medkit fewer than 100 times, ever.",
+    image: WINGED_HEART,
+    coins: 4,
+    check: (s) => s.taps < 100 && healingRate(s) >= 1_000,
+  },
+  {
+    id: "the_answer",
+    name: "The Answer",
+    description: "Own exactly 42 of four different supplies at the same time.",
+    image: ICONS.supplyShelf,
+    coins: 4,
+    check: (s) => Object.values(s.owned).filter((n) => n === 42).length >= 4,
+  },
+  {
+    id: "penny_pincher",
+    name: "Penny Pincher",
+    description: "Have a trillion medkits in hand while owning fewer than 60 supplies.",
+    image: ICONS.medkit,
+    coins: 4,
+    check: (s) => s.healed >= 1e12 && totalOwned(s) < 60,
   },
 ];
 

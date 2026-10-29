@@ -13,7 +13,7 @@ export const GAME = {
   year: 2026,
   license: "Apache License 2.0",
   // Everyone's achievements, as the game's menu counts them (the code-locked one isn't included).
-  achievements: 127,
+  achievements: 192,
   offlineHours: 4,
 };
 
@@ -34,19 +34,19 @@ export const SUPPLIES = [
 ];
 
 export const BOOSTS = [
-  { name: "Emergency Funding", cost: 1, description: "Instantly heal 20 seconds' worth of patients." },
-  { name: "Adrenaline Shot", cost: 2, description: "2x patients per tap for 3 minutes." },
-  { name: "Patient Rush", cost: 2, description: "Instantly heal 100 taps' worth of patients." },
-  { name: "Double Shift", cost: 3, description: "2x patients per second for 5 minutes." },
-  { name: "Code Blue", cost: 3, description: "5x patients per tap for 60 seconds." },
-  { name: "Lucky Stethoscope", cost: 4, description: "Your next 50 taps heal 10x." },
-  { name: "Clearance Sale", cost: 4, description: "Shop prices 25% off for 3 minutes." },
-  { name: "Research Grant", cost: 5, description: "Instantly heal 5 minutes' worth of patients." },
-  { name: "Flu Season Surge", cost: 6, description: "7x patients per second for 77 seconds." },
-  { name: "Triple Espresso", cost: 8, description: "3x per tap and per second for 2 minutes." },
-  { name: "Night Shift Crew", cost: 8, description: "1.5x patients per second for 30 minutes." },
-  { name: "Charity Gala", cost: 12, description: "Instantly heal 1 hour's worth of patients." },
-  { name: "Time Warp", cost: 25, description: "Instantly heal 4 hours' worth of patients." },
+  { name: "Emergency Funding", cost: 1, description: "Instantly get 1 minute's worth of medkits." },
+  { name: "Adrenaline Shot", cost: 2, description: "3x medkits per tap for 5 minutes." },
+  { name: "Patient Rush", cost: 2, description: "Instantly get 300 taps' worth of medkits." },
+  { name: "Double Shift", cost: 3, description: "2x medkits per second for 10 minutes." },
+  { name: "Code Blue", cost: 3, description: "10x medkits per tap for 90 seconds." },
+  { name: "Lucky Stethoscope", cost: 4, description: "Your next 100 taps earn 25x." },
+  { name: "Clearance Sale", cost: 4, description: "Shop prices 30% off for 5 minutes." },
+  { name: "Research Grant", cost: 5, description: "Instantly get 15 minutes' worth of medkits." },
+  { name: "Flu Season Surge", cost: 6, description: "7x medkits per second for 177 seconds." },
+  { name: "Triple Espresso", cost: 8, description: "3x per tap and per second for 5 minutes." },
+  { name: "Night Shift Crew", cost: 8, description: "2x medkits per second for 45 minutes." },
+  { name: "Charity Gala", cost: 12, description: "Instantly get 2 hours' worth of medkits." },
+  { name: "Time Warp", cost: 25, description: "Instantly get 8 hours' worth of medkits." },
 ];
 
 export const HOSPITAL_TIERS = [
@@ -138,6 +138,11 @@ export const MINIGAMES = [
   "Germ buster",
   "Deep breaths",
   "Match the meds",
+  "Healthy shopping (catch the good food)",
+  "Odd colour out",
+  "Find it in the busy ward",
+  "Blood-cell maze",
+  "IV pipe puzzle",
 ];
 
 const staff = (id: string, name: string) => ({

@@ -17,8 +17,8 @@ const describe = (rewards: PromoItem[]) =>
   rewards
     .map((r) => {
       if (r.kind === "background") return `${BACKGROUNDS.find((b) => b.id === r.id)?.name ?? "A new"} background`;
-      if (r.kind === "seconds") return `${r.amount} seconds of patients`;
-      return `+${formatCount(r.amount)} ${r.kind === "medkits" ? "patients" : r.kind === "coins" ? "Care Coins" : "Natal Gems"}`;
+      if (r.kind === "seconds") return `${r.amount} seconds of medkits`;
+      return `+${formatCount(r.amount)} ${r.kind === "medkits" ? "medkits" : r.kind === "coins" ? "Care Coins" : "Natal Gems"}`;
     })
     .join(", ");
 

@@ -6,7 +6,8 @@
 // Env: DATABASE_URL (Postgres), DATABASE_CA (Aiven's CA certificate text, or a path to it),
 // SERVER_SECRET (any long random string), NTFY_TOPIC (optional: ntfy.sh topic Dustin subscribes
 // to), NTFY_TOKEN (optional: an ntfy.sh access token, so alerts aren't rate-limited by shared IPs),
-// PORT (default 8787).
+// PORT (default 8787). The editor (events and promo codes, in the web game's Dev Tools) also needs
+// GOOGLE_CLIENT_ID (the OAuth client's ID) and ADMIN_EMAIL (the one Google account allowed in).
 import { SQL } from "bun";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -30,6 +31,57 @@ const NTFY_TOPIC = process.env.NTFY_TOPIC;
 // Render share their IPs with other apps, so alerts get refused (HTTP 429).
 const NTFY_TOKEN = process.env.NTFY_TOKEN;
 if (!process.env.DATABASE_URL || SECRET.length < 16) throw new Error("Set DATABASE_URL and SERVER_SECRET (16+ chars).");
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? "";
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
+
+// Tables added after the first schema (also in db/schema.sql). Only ever adds; safe on every start.
+await sql.unsafe(`CREATE TABLE IF NOT EXISTS events (
+    id          BIGSERIAL PRIMARY KEY,
+    title       TEXT NOT NULL,
+    description TEXT,
+    starts_at   TIMESTAMPTZ NOT NULL,
+    ends_at     TIMESTAMPTZ NOT NULL,
+    tap_mult    NUMERIC,
+    rate_mult   NUMERIC,
+    rewards     JSONB,
+    icon        TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+  ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS label TEXT;`);
+
+/**
+ * The editor's Google sign-in: the browser sends Google's ID token, Google confirms it, and only
+ * ADMIN_EMAIL gets in. Confirmed tokens are remembered until they expire (an hour at most).
+ */
+const confirmed = new Map<string, number>();
+async function isAdmin(req: Request) {
+  if (!GOOGLE_CLIENT_ID || !ADMIN_EMAIL) return false;
+  const token = req.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
+  if (!token) return false;
+  const until = confirmed.get(token);
+  if (until && until > Date.now()) return true;
+  const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`).catch(() => null);
+  if (!res?.ok) return false;
+  const info = (await res.json()) as { aud?: string; email?: string; email_verified?: string | boolean; exp?: string };
+  const ok = info.aud === GOOGLE_CLIENT_ID && info.email?.toLowerCase() === ADMIN_EMAIL && String(info.email_verified) === "true";
+  if (ok) confirmed.set(token, Number(info.exp) * 1000);
+  return ok;
+}
+
+/** Rewards as the game reads them (see PromoItem in src/lib/game.ts); anything else is dropped. */
+type Reward = { kind: "medkits" | "coins" | "gems" | "seconds"; amount: number } | { kind: "background"; id: string };
+const cleanRewards = (list: unknown): Reward[] =>
+  (Array.isArray(list) ? list : []).flatMap((r) => {
+    const x = r as { kind?: string; amount?: unknown; id?: unknown };
+    if (x.kind === "background" && typeof x.id === "string" && x.id) return [{ kind: "background" as const, id: x.id.slice(0, 40) }];
+    const amount = Number(x.amount);
+    return ["medkits", "coins", "gems", "seconds"].includes(x.kind ?? "") && amount > 0 && Number.isFinite(amount) ? [{ kind: x.kind as "coins", amount }] : [];
+  });
+/** A multiplier between 1 and 100, or null. */
+const mult = (v: unknown) => {
+  const n = Number(v);
+  return n > 1 && n <= 100 ? n : null;
+};
 
 /** Same normalisation as the app (src/lib/codes.ts) and scripts/add-code.ts: trim and lowercase. */
 const normalize = (code: string) => code.trim().toLowerCase();
@@ -115,7 +167,7 @@ Bun.serve({
   async fetch(req) {
     const origin = allowedOrigin(req.headers.get("origin"));
     const cors: Record<string, string> = origin
-      ? { "access-control-allow-origin": origin, "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type, authorization", "access-control-max-age": "86400", vary: "Origin" }
+      ? { "access-control-allow-origin": origin, "access-control-allow-methods": "GET, POST, DELETE, OPTIONS", "access-control-allow-headers": "content-type, authorization", "access-control-max-age": "86400", vary: "Origin" }
       : {};
     if (req.method === "OPTIONS") return new Response(null, { status: origin ? 204 : 403, headers: cors });
     const res = await route(req);
@@ -162,6 +214,70 @@ async function route(req: Request): Promise<Response> {
       });
       if (result.status !== 200) return json({ error: result.status === 404 ? "That code didn't match anything." : "That code was already used." }, result.status);
       return json(result.body);
+    }
+
+    // Timed events: what's on now and in the next week, for every player.
+    if (path === "/events" && req.method === "GET") {
+      const rows = await sql`SELECT id, title, description, starts_at, ends_at, tap_mult, rate_mult, rewards, icon FROM events
+        WHERE ends_at > now() AND starts_at < now() + interval '7 days' ORDER BY starts_at LIMIT 20`;
+      return json(rows.map(eventJson));
+    }
+
+    // The editor (Google sign-in, ADMIN_EMAIL only): events and promo codes.
+    if (path.startsWith("/admin/")) {
+      if (!(await isAdmin(req))) return json({ error: "Sign in with the editor's Google account." }, 401);
+      if (path === "/admin/whoami") return json({ ok: true });
+      if (path === "/admin/events" && req.method === "GET") {
+        const rows = await sql`SELECT id, title, description, starts_at, ends_at, tap_mult, rate_mult, rewards, icon FROM events ORDER BY starts_at DESC LIMIT 100`;
+        return json(rows.map(eventJson));
+      }
+      if (path === "/admin/events" && req.method === "POST") {
+        const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+        const title = String(b.title ?? "").trim().slice(0, 80);
+        const starts = new Date(String(b.startsAt)), ends = new Date(String(b.endsAt));
+        if (!title || Number.isNaN(+starts) || Number.isNaN(+ends) || ends <= starts) return json({ error: "Give it a title, a start and an end after the start." }, 400);
+        const icon = typeof b.icon === "string" && b.icon.startsWith("data:image/") && b.icon.length < 300_000 ? b.icon : null;
+        const rewards = cleanRewards(b.rewards);
+        const [row] = await sql`INSERT INTO events (title, description, starts_at, ends_at, tap_mult, rate_mult, rewards, icon)
+          VALUES (${title}, ${String(b.description ?? "").slice(0, 300) || null}, ${starts}, ${ends}, ${mult(b.tapMult)}, ${mult(b.rateMult)}, ${rewards.length ? JSON.stringify(rewards) : null}::text::jsonb, ${icon}) RETURNING id`;
+        return json({ ok: true, id: Number(row.id) });
+      }
+      const ev = path.match(/^\/admin\/events\/(\d+)$/);
+      if (ev && req.method === "DELETE") {
+        await sql`DELETE FROM events WHERE id = ${Number(ev[1])}`;
+        return json({ ok: true });
+      }
+      if (path === "/admin/promos" && req.method === "GET") {
+        const rows = await sql`SELECT p.code_sha256, p.label, p.kind, p.amount, p.rewards, p.max_claims, p.message, p.expires_at, p.created_at,
+          (SELECT count(*)::int FROM promo_claims c WHERE c.code_sha256 = p.code_sha256) AS claims FROM promo_codes p ORDER BY p.created_at DESC LIMIT 200`;
+        return json(rows.map((r: Record<string, unknown>) => ({
+          hash: r.code_sha256, label: r.label, maxClaims: r.max_claims, claims: r.claims, message: r.message, expiresAt: r.expires_at, createdAt: r.created_at,
+          rewards: Array.isArray(r.rewards) ? r.rewards : typeof r.rewards === "string" ? JSON.parse(r.rewards) : [{ kind: r.kind, amount: Number(r.amount) }],
+        })));
+      }
+      if (path === "/admin/promos" && req.method === "POST") {
+        const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+        const code = String(b.code ?? "").trim();
+        const rewards = cleanRewards(b.rewards);
+        if (code.length < 4 || code.length > 60 || rewards.length === 0) return json({ error: "A code of 4-60 characters and at least one reward." }, 400);
+        const max = Number(b.maxClaims) > 0 ? Math.floor(Number(b.maxClaims)) : null;
+        const expires = b.expiresAt ? new Date(String(b.expiresAt)) : null;
+        if (expires && Number.isNaN(+expires)) return json({ error: "That end date doesn't look right." }, 400);
+        // Same as scripts/add-promo.ts: one medkits/coins/gems reward keeps the old columns for older app versions.
+        const first = rewards[0];
+        const single = rewards.length === 1 && "amount" in first && first.kind !== "seconds" ? first : null;
+        await sql`INSERT INTO promo_codes (code_sha256, label, kind, amount, rewards, max_claims, message, expires_at)
+          VALUES (${sha256(normalize(code))}, ${code}, ${single?.kind ?? "bundle"}, ${single?.amount ?? 1}, ${single ? null : JSON.stringify(rewards)}::text::jsonb, ${max}, ${String(b.message ?? "").slice(0, 200) || null}, ${expires})
+          ON CONFLICT (code_sha256) DO UPDATE SET label = EXCLUDED.label, kind = EXCLUDED.kind, amount = EXCLUDED.amount, rewards = EXCLUDED.rewards,
+            max_claims = EXCLUDED.max_claims, message = EXCLUDED.message, expires_at = EXCLUDED.expires_at`;
+        return json({ ok: true });
+      }
+      const promo = path.match(/^\/admin\/promos\/([0-9a-f]{64})$/);
+      if (promo && req.method === "DELETE") {
+        await sql`DELETE FROM promo_codes WHERE code_sha256 = ${promo[1]}`;
+        return json({ ok: true });
+      }
+      return json({ error: "Not found" }, 404);
     }
 
     // Rebirth 50: players can leave their name, email and feedback (once per phone).
@@ -252,5 +368,14 @@ async function route(req: Request): Promise<Response> {
     }
 
     return json({ error: "Not found" }, 404);
+}
+/** An event row as the game and the editor read it. */
+function eventJson(r: Record<string, unknown>) {
+  return {
+    id: Number(r.id), title: r.title, description: r.description,
+    startsAt: new Date(r.starts_at as string).getTime(), endsAt: new Date(r.ends_at as string).getTime(),
+    tapMult: r.tap_mult === null ? null : Number(r.tap_mult), rateMult: r.rate_mult === null ? null : Number(r.rate_mult),
+    rewards: typeof r.rewards === "string" ? JSON.parse(r.rewards) : (r.rewards ?? []), icon: r.icon,
+  };
 }
 console.log(`Medkit Clicker API on :${process.env.PORT ?? 8787}`);

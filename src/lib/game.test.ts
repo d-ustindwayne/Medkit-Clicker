@@ -2,11 +2,11 @@ import { describe, expect, test } from "bun:test";
 
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { BOOSTS, boostMultiplier } from "@/constants/boosts";
-import { SHOP_ITEMS, TAP_GROWTH_STEPS, TAP_GROWTH_RATE, TAP_RATE_BONUS, itemCost, itemMultiplier, perSecond } from "@/constants/items";
+import { SHOP_ITEMS, TAP_GROWTH_STEPS, TAP_GROWTH_RATE, TAP_RATE_BONUS, itemCost, itemMultiplier, nextMilestone, perSecond } from "@/constants/items";
 import { SICK_PATIENTS, minigameLevel, minigameTuning } from "@/constants/patients";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, dayPhase, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
-import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, canPlace, roomBonus, snapPlacement, spotFor } from "@/constants/room";
+import { ROOMS, ROOM_BONUS_CAP, ROOM_ITEMS, STAFF_PER_ROOM, ZONES, canPlace, roomBonus, snapPlacement, spotFor } from "@/constants/room";
 import { formatCount, formatMult, formatRate, formatShort } from "@/lib/format";
 import { bulkCost, cooldownLeft, coinBalance, coinsEarned, emergencyReward, maxAwaySeconds, gameReducer, newGame, normalizeSave, priceOf, tapValue, type GameAction, type GameState } from "@/lib/game";
 
@@ -40,7 +40,7 @@ describe("shop", () => {
     const s = run(newGame(), { type: "earn", amount: 100 }, { type: "buy", item: "bandage" });
     expect(s.owned.bandage).toBe(1);
     expect(s.healed).toBe(85);
-    expect(itemCost(SHOP_ITEMS[0], 1)).toBe(18);
+    expect(itemCost(SHOP_ITEMS[0], 1)).toBe(17);
   });
 
   test("can't buy without enough patients", () => {
@@ -100,10 +100,10 @@ describe("boosts", () => {
 
   test("Adrenaline Shot doubles taps, and buying again extends it", () => {
     const s = run(withCoins(), { type: "useBoost", id: "adrenaline" });
-    expect(boostMultiplier(s.boosts, "tap")).toBe(2);
+    expect(boostMultiplier(s.boosts, "tap")).toBe(3);
     // Tap boosts add up: Adrenaline (x2) with Code Blue (x5) and Lucky Stethoscope (x10) is x17.
     const now = Date.now();
-    expect(boostMultiplier({ adrenaline: now + 1000, code_blue: now + 1000 }, "tap", now, [10])).toBe(17);
+    expect(boostMultiplier({ adrenaline: now + 1000, code_blue: now + 1000 }, "tap", now, [10])).toBe(23);
     expect(boostMultiplier({ double_shift: now + 1000, flu_season: now + 1000 }, "rate", now)).toBe(9);
     const first = s.boosts.adrenaline;
     const again = run(s, { type: "useBoost", id: "adrenaline" });
@@ -113,15 +113,15 @@ describe("boosts", () => {
   test("Clearance Sale takes 25% off shop prices", () => {
     const s = run(withCoins(), { type: "useBoost", id: "clearance_sale" });
     const item = SHOP_ITEMS[5];
-    expect(priceOf(s, item)).toBe(Math.ceil(itemCost(item, 0) * 0.75));
+    expect(priceOf(s, item)).toBe(Math.ceil(itemCost(item, 0) * 0.7));
   });
 
-  test("Lucky Stethoscope makes taps heal 10x and counts down", () => {
+  test("Lucky Stethoscope makes taps earn 25x and counts down", () => {
     const s = run(withCoins(), { type: "useBoost", id: "lucky_stethoscope" });
-    expect(s.luckyTaps).toBe(50);
+    expect(s.luckyTaps).toBe(100);
     const plain = tapValue({ owned: s.owned, rebirths: s.rebirths });
-    expect(tapValue(s)).toBe(plain * 10);
-    expect(run(s, { type: "tap" }).luckyTaps).toBe(49);
+    expect(tapValue(s)).toBe(plain * 25);
+    expect(run(s, { type: "tap" }).luckyTaps).toBe(99);
     // A batch of fast taps uses the lucky ones first.
     // With another tap boost, a lucky tap pays exactly what the medkit shows: the boosts add up.
     const both = { ...s, luckyTaps: 1, boosts: { adrenaline: Date.now() + 60_000 } };
@@ -129,7 +129,7 @@ describe("boosts", () => {
     const batch = run({ ...s, luckyTaps: 2 }, { type: "tap", count: 5 });
     expect(batch.luckyTaps).toBe(0);
     expect(batch.taps).toBe(s.taps + 5);
-    expect(batch.healed - s.healed).toBeCloseTo(plain * (2 * 10 + 3));
+    expect(batch.healed - s.healed).toBeCloseTo(plain * (2 * 25 + 3));
   });
 
   test("instant boosts pay out patients", () => {
@@ -204,7 +204,8 @@ describe("My Room", () => {
     let s: GameState = { ...run(newGame(), { type: "devUnlockAll" }, { type: "devAddItems", count: 30 }), rebirths: 3, treated: 30 };
     const limit = ROOMS.find((r) => r.id === "reception")!.limit;
     for (const item of ROOM_ITEMS) s = run(s, { type: "placeItem", room: "reception", item: item.id, x: 0.5, y: 0.9 });
-    expect(s.room.placed.reception).toHaveLength(limit);
+    // Items fill the room's limit; staff have their own on top.
+    expect(s.room.placed.reception).toHaveLength(limit + STAFF_PER_ROOM);
   });
 
   test("locked rooms can't be chosen; unlocked ones can", () => {
@@ -266,11 +267,22 @@ describe("server sync", () => {
 });
 
 describe("item milestones", () => {
-  test("every 25 of an item makes it heal 30% more", () => {
+  test("an item doubles at 10, 25, 50, 75, 100 owned, then every 50", () => {
     const owned = (n: number) => ({ ...newGame().owned, gloves: n });
-    expect(perSecond(owned(24))).toBeCloseTo(24 * SHOP_ITEMS[1].rate);
-    expect(perSecond(owned(25))).toBeCloseTo(25 * SHOP_ITEMS[1].rate * 1.3);
-    expect(perSecond(owned(100))).toBeCloseTo(100 * SHOP_ITEMS[1].rate * 2.2);
+    expect(perSecond(owned(9))).toBeCloseTo(9 * SHOP_ITEMS[1].rate);
+    expect(perSecond(owned(10))).toBeCloseTo(10 * SHOP_ITEMS[1].rate * 2);
+    expect(perSecond(owned(25))).toBeCloseTo(25 * SHOP_ITEMS[1].rate * 4);
+    expect(perSecond(owned(100))).toBeCloseTo(100 * SHOP_ITEMS[1].rate * 32);
+    expect(itemMultiplier(149)).toBe(32);
+    expect(itemMultiplier(150)).toBe(64);
+    expect(nextMilestone(0)).toBe(10);
+    expect(nextMilestone(75)).toBe(100);
+    expect(nextMilestone(100)).toBe(150);
+    expect(nextMilestone(160)).toBe(200);
+  });
+  test("100 bandages are worth more than a stethoscope", () => {
+    const bandages = perSecond({ ...newGame().owned, bandage: 100 });
+    expect(bandages).toBeGreaterThan(SHOP_ITEMS.find((i) => i.id === "stethoscope")!.rate);
   });
 });
 
@@ -311,8 +323,7 @@ describe("rounding", () => {
     expect(formatRate(12.456)).toBe("12.46");
   });
   test("milestone multipliers are exact", () => {
-    expect(itemMultiplier(225)).toBe(3.7);
-    expect(formatMult(itemMultiplier(225))).toBe("x3.7");
+    expect(formatMult(itemMultiplier(225))).toBe("x128");
     expect(formatMult(1.005 + 0.3)).toBe("x1.31");
   });
 });
