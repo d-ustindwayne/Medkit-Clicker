@@ -3,13 +3,13 @@ import { gemsForRebirth, healingRate, rebirthMultiplier } from "@/constants/rebi
 import { BACKGROUNDS } from "@/constants/backgrounds";
 import { BOOSTS, LUCKY_MULT, boostMultiplier, type Boost } from "@/constants/boosts";
 import { LOSE_SECONDS, LOSE_TAPS, WIN_SECONDS, WIN_TAPS, minigameLevel, minigameTuning, winCoins } from "@/constants/patients";
-import { GEM_ITEMS, GEM_LEVEL_COSTS, GEM_UPGRADES, gemBalance, gemLevel, type GemUpgradeId } from "@/constants/gems";
+import { GEM_ITEMS, GEM_LEVEL_COSTS, GEM_UPGRADES, HEAD_START, gemBalance, gemBonus, gemLevel, type GemUpgradeId } from "@/constants/gems";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS } from "@/constants/hospital";
 import { REWARD_SECTIONS } from "@/constants/rewards";
 import { ROOMS, ROOM_ITEMS, STAFF_PER_ROOM, fromOldArt, isUnlocked, itemUnlocked, roomBonus, snapPlacement, spotFor, type RoomState } from "@/constants/room";
 import { SHOP_ITEMS, baseTap, itemCost, perSecond, type ItemId } from "@/constants/items";
 import { todaysGift, type DailyState } from "@/lib/daily";
-import { COINS_PER_KM, MEDKIT_SECONDS, addReading, newWalk, type StepReading, type WalkState } from "@/lib/walk";
+import { DAILY_CAP_M, REWARD_EVERY_M, addReading, newWalk, walkRewards, type StepReading, type WalkReward, type WalkState } from "@/lib/walk";
 
 export type GameState = {
   /** Spendable balance: medkits, the currency (saved under its old name). */
@@ -152,7 +152,10 @@ export type GameAction =
   // Developer tools only (Settings, __DEV__ builds).
   | { type: "devAddItems"; count: number }
   | { type: "devUnlockAll" }
-  | { type: "devAddCoins"; count: number };
+  | { type: "devAddCoins"; count: number }
+  /** Dev tools: walk `meters` today without the step counter (its last reading is left alone). */
+  | { type: "devWalk"; meters: number; today: string }
+  | { type: "devPatch"; patch: Partial<GameState> };
 
 /**
  * One part of a promo code's or event's reward (set up in the Console or with scripts/add-promo.ts):
@@ -219,13 +222,13 @@ export const newGame = (): GameState => ({
 });
 
 /** Multiplier from a gem upgrade: 1 + per-level step x level. */
-const gemMult = (s: { gemUpgrades?: Record<string, number> }, id: GemUpgradeId, step: number) => 1 + step * gemLevel(s, id);
+const gemMult = (s: { gemUpgrades?: Record<string, number> }, id: Exclude<GemUpgradeId, "head_start">, sign = 1) => 1 + sign * gemBonus(s, id);
 
 /** Patients per medkit tap, including tap growth, the rebirth boost and (when passed) active boosts. */
 export const tapValue = (s: { owned: Record<ItemId, number>; rebirths: number; taps?: number; boosts?: Record<string, number>; luckyTaps?: number; room?: RoomState; gemUpgrades?: Record<string, number> }) =>
   baseTap(perSecond(s.owned), s.taps) *
   rebirthMultiplier(s.rebirths) *
-  gemMult(s, "steady_hands", 0.1) *
+  gemMult(s, "steady_hands") *
   (1 + roomBonus(s.room, "tap")) *
   boostMultiplier(s.boosts, "tap", Date.now(), (s.luckyTaps ?? 0) > 0 ? [LUCKY_MULT] : []);
 
@@ -263,7 +266,7 @@ export const treatReward = (s: TreatState, won: boolean) => {
   const amount = won
     ? Math.max(healingRate(base) * WIN_SECONDS, tapValue(base) * WIN_TAPS) * minigameTuning(wardLevel(s)).rewardMult
     : Math.max(healingRate(base) * LOSE_SECONDS, tapValue(base) * LOSE_TAPS);
-  return amount * gemMult(s, "bedside_manner", 0.2);
+  return amount * gemMult(s, "bedside_manner");
 };
 
 /** Care Coins for a ward win. */
@@ -272,7 +275,7 @@ export const treatCoins = (s: TreatState) => winCoins(wardLevel(s));
 /** Patients admitted by tapping the emergency ambulance on the Hospital page. */
 export const emergencyReward = (s: { owned: Record<ItemId, number>; rebirths: number; gemUpgrades?: Record<string, number> }) => {
   const base = { owned: s.owned, rebirths: s.rebirths };
-  return Math.max(healingRate(base) * EMERGENCY_SECONDS, tapValue(base) * EMERGENCY_TAPS) * gemMult(s, "rapid_response", 0.25);
+  return Math.max(healingRate(base) * EMERGENCY_SECONDS, tapValue(base) * EMERGENCY_TAPS) * gemMult(s, "rapid_response");
 };
 
 /** The flying heart's medkit burst: 90 seconds of production, at least 300 taps (boosts left out). */
@@ -298,15 +301,15 @@ export const CUSTOM_BG_COINS = 20;
 export const customBgPrice = (runPeak: number) => roundDownToLeading(runPeak * 0.2);
 
 /** Offline earnings cap: 4 hours, plus 1 hour per Night Owl level. */
-export const maxAwaySeconds = (s: { gemUpgrades?: Record<string, number> }) => (4 + gemLevel(s, "night_owl")) * 3600;
+export const maxAwaySeconds = (s: { gemUpgrades?: Record<string, number> }) => (4 + gemBonus(s, "night_owl")) * 3600;
 
 /** What the next unit of an item costs right now, including a running sale. */
 export const priceOf = (s: Pick<GameState, "owned" | "boosts"> & { gemUpgrades?: Record<string, number> }, item: (typeof SHOP_ITEMS)[number]) =>
-  Math.ceil(itemCost(item, s.owned[item.id]) * boostMultiplier(s.boosts, "price") * gemMult(s, "bulk_orders", -0.02));
+  Math.ceil(itemCost(item, s.owned[item.id]) * boostMultiplier(s.boosts, "price") * gemMult(s, "bulk_orders", -1));
 
 /** What the next `count` units of an item cost together (each one priced as priceOf would when bought). */
 export const bulkCost = (s: Pick<GameState, "owned" | "boosts"> & { gemUpgrades?: Record<string, number> }, item: (typeof SHOP_ITEMS)[number], count: number) => {
-  const mult = boostMultiplier(s.boosts, "price") * gemMult(s, "bulk_orders", -0.02);
+  const mult = boostMultiplier(s.boosts, "price") * gemMult(s, "bulk_orders", -1);
   let total = 0;
   for (let k = 0; k < count; k++) total += Math.ceil(itemCost(item, s.owned[item.id] + k) * mult);
   return total;
@@ -340,6 +343,18 @@ const applyBoost = (state: GameState, boost: Boost): GameState => {
   const base = { owned: state.owned, rebirths: state.rebirths };
   const amount = e.rateSeconds ? Math.max(healingRate(base) * e.rateSeconds, tapValue(base) * 10) : tapValue(base) * (e.taps ?? 0);
   return earn(state, amount);
+};
+
+/** Pays one walking reward. */
+const payWalk = (state: GameState, r: WalkReward): GameState => {
+  if (r.kind === "medkits") return earn(state, dailyAmount(state, r.seconds));
+  if (r.kind === "coins") return { ...state, bonusCoins: state.bonusCoins + r.amount };
+  if (r.kind === "gem") {
+    const gems = { ...state, bonusGems: state.bonusGems + r.count };
+    return r.seconds ? earn(gems, dailyAmount(gems, r.seconds)) : gems;
+  }
+  const boost = BOOSTS.find((b) => b.id === r.id);
+  return boost ? applyBoost(state, boost) : state;
 };
 
 const withAchievements = (state: GameState): GameState => {
@@ -398,8 +413,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
         healed: 0,
         runHealed: 0,
         runPeak: 0,
-        // Head Start: each level gives 10 bandages and 5 gloves to begin with.
-        owned: { ...emptyOwned(), bandage: 10 * gemLevel(state, "head_start"), gloves: 5 * gemLevel(state, "head_start") },
+        // Head Start: free supplies to begin with, more at each level.
+        owned: { ...emptyOwned(), ...HEAD_START[Math.min(HEAD_START.length - 1, gemLevel(state, "head_start"))] },
         rebirths: state.rebirths + 1,
         rebirthPoints: state.rebirthPoints + gems,
       };
@@ -544,11 +559,8 @@ const apply = (state: GameState, action: GameAction): GameState => {
       return { ...state, walk: { ...state.walk, on: action.on, last: action.on ? state.walk.last : null } };
     case "walkReading": {
       if (!state.walk.on) return state;
-      const { walk, due500, due1k } = addReading(state.walk, action.reading, action.today);
-      let next: GameState = { ...state, walk };
-      if (due1k > 0) next = { ...next, bonusCoins: next.bonusCoins + due1k * COINS_PER_KM };
-      if (due500 > 0) next = earn(next, dailyAmount(next, MEDKIT_SECONDS * due500));
-      return next;
+      const { walk, rewards } = addReading(state.walk, action.reading, action.today);
+      return rewards.reduce(payWalk, { ...state, walk });
     }
     case "claimDaily": {
       const gift = todaysGift(state.daily, action.today);
@@ -616,6 +628,14 @@ const apply = (state: GameState, action: GameAction): GameState => {
       return { ...state, achievements: Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, state.achievements[a.id] ?? Date.now()])) };
     case "devAddCoins":
       return { ...state, coinsSpent: state.coinsSpent - action.count };
+    case "devWalk": {
+      const w = state.walk.day === action.today ? state.walk : { ...state.walk, day: action.today, meters: 0, paid500: 0, paid1k: 0 };
+      const meters = Math.min(DAILY_CAP_M, w.meters + action.meters);
+      const paid = Math.floor(meters / REWARD_EVERY_M);
+      return walkRewards(action.today, w.paid500, paid).reduce(payWalk, { ...state, walk: { ...w, meters, paid500: paid, paid1k: Math.floor(meters / 1000) } });
+    }
+    case "devPatch":
+      return { ...state, ...action.patch };
     case "reset":
       return newGame();
   }

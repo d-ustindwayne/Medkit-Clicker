@@ -1,7 +1,7 @@
 {
   "name": "medkit-clicker",
   "main": "./index.ts",
-  "version": "0.8.13",
+  "version": "0.8.21",
   "dependencies": {
     "@expo/ui": "~57.0.26",
     "@react-native-async-storage/async-storage": "2.2.0",

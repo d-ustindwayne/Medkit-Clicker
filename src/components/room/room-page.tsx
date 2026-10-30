@@ -1,4 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Backed } from "@/components/ui/backed";
 import { Image } from "@/components/ui/image";
 import { Pressable, ScrollView, Text, View, useWindowDimensions, type GestureResponderEvent, type ImageSourcePropType } from "react-native";
 import Animated, { cancelAnimation, Easing, FadeIn, FadeInDown, FadeOut, SlideInDown, SlideOutDown, type SharedValue, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
@@ -498,7 +499,9 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
                     onPress={() => tapItem(item)}
                     className={`w-14 items-center border-2 p-0.5 ${here ? "border-success bg-success/20" : "border-outline bg-surface"}`}
                   >
-                    <Image source={item.image} style={{ width: 32, height: 32, opacity: open ? 1 : 0.35 }} contentFit="contain" tintColor={open ? undefined : "#5f6b7b"} />
+                    <Backed size={32}>
+                      <Image source={item.image} style={{ width: 32, height: 32, opacity: open ? 1 : 0.35 }} contentFit="contain" tintColor={open ? undefined : "#5f6b7b"} />
+                    </Backed>
                     <Text className="font-body text-[9px] leading-3 text-ink" numberOfLines={1}>
                       {open ? bonus : "locked"}
                     </Text>

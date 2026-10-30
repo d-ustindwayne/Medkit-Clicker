@@ -26,6 +26,8 @@ const ICON_DIRS = ["shop", "achievements", "boosts", "misc", "skins", "minigames
 /** Particles are meant to be small; photos and generated looks have no hand-made source. */
 const NOT_ICONS = [/gems\/p_/, /dustin_photo/];
 const NO_SOURCE_NEEDED = [/dustin_photo/, /characters\/variants\//, /stickers\//];
+/** Drawn by scripts (textures/: galaxy-texture.ts), not pixel art: none of these checks apply. */
+const NOT_PIXEL_ART = [/textures\//];
 const BG = { light: [249, 232, 232], dark: [15, 28, 36] };
 
 type Art = { w: number; h: number; px: Uint8Array; k: number; exact: boolean };
@@ -66,6 +68,7 @@ const contrast = (a: number[], b: number[]) => {
 function check(file: string) {
   const rel = path.relative(ROOT, file).replaceAll("\\", "/");
   const issues: string[] = [];
+  if (NOT_PIXEL_ART.some((r) => r.test(rel))) return issues;
   const art = readArt(file);
   const { w, h, px } = art;
   const opaque = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && px[(y * w + x) * 4 + 3] > 0;

@@ -3,22 +3,45 @@ import type { ImageSourcePropType } from "react-native";
 // The Natal Gem shop: permanent upgrades bought in levels, and cosmetics that rebirths unlock.
 // Gems come from rebirthing (1 each). Decided with Dustin on 2026-10-20.
 
-/** Every upgrade has 5 levels; level n costs GEM_LEVEL_COSTS[n - 1]. */
-export const GEM_LEVEL_COSTS = [1, 2, 3, 5, 8];
+/** Every upgrade has 6 levels; level n costs GEM_LEVEL_COSTS[n - 1]. Owner's numbers (0.8.21). */
+export const GEM_LEVEL_COSTS = [1, 2, 2, 4, 6, 10];
 
 export type GemUpgrade = { id: string; name: string; description: string; per: string; image: ImageSourcePropType };
 export const GEM_UPGRADES: GemUpgrade[] = [
-  { id: "steady_hands", name: "Steady Hands", description: "Each tap earns more.", per: "+10% per tap", image: require("@/imgs/shop/gloves.png") },
-  { id: "night_owl", name: "Night Owl", description: "Your team works longer while you're away.", per: "+1 h offline", image: require("@/imgs/achievements/clock_moon.png") },
-  { id: "bedside_manner", name: "Bedside Manner", description: "Ward patients pay more.", per: "+20% ward rewards", image: require("@/imgs/room/hospital_bed.png") },
-  { id: "rapid_response", name: "Rapid Response", description: "Emergencies pay more.", per: "+25% emergency rewards", image: require("@/imgs/hospital/ambulance.png") },
-  { id: "bulk_orders", name: "Bulk Orders", description: "Supplies cost less.", per: "-2% shop prices", image: require("@/imgs/gems/bulk_orders.png") },
-  { id: "head_start", name: "Head Start", description: "Each new run starts with free supplies.", per: "+10 bandages, +5 gloves", image: require("@/imgs/shop/bandage_roll.png") },
+  { id: "steady_hands", name: "Steady Hands", description: "Each tap earns more.", per: "+12% per tap each level, +20% at level 6.", image: require("@/imgs/gems/steady_hands.png") },
+  { id: "night_owl", name: "Night Owl", description: "Your team works longer while you're away.", per: "+2 h offline each level, +6 h at level 6 (up to 20 h).", image: require("@/imgs/gems/night_owl.png") },
+  { id: "bedside_manner", name: "Bedside Manner", description: "Ward patients pay more.", per: "+10% ward rewards each level, +30% at level 6.", image: require("@/imgs/gems/bedside_manner.png") },
+  { id: "rapid_response", name: "Rapid Response", description: "Emergencies pay more.", per: "+20% emergency rewards each level, +50% at level 6.", image: require("@/imgs/gems/rapid_response.png") },
+  { id: "bulk_orders", name: "Bulk Orders", description: "Supplies cost less.", per: "-4% shop prices each level, -10% at level 6.", image: require("@/imgs/gems/bulk_orders.png") },
+  { id: "head_start", name: "Head Start", description: "Each new run starts with free supplies.", per: "Up to 75 bandages, 50 gloves and 25 facemasks at level 6.", image: require("@/imgs/gems/head_start.png") },
+];
+
+/** What each level of an upgrade adds (Head Start uses HEAD_START instead). */
+const GEM_STEPS: Record<Exclude<GemUpgradeId, "head_start">, number[]> = {
+  steady_hands: [0.12, 0.12, 0.12, 0.12, 0.12, 0.2],
+  night_owl: [2, 2, 2, 2, 2, 6],
+  bedside_manner: [0.1, 0.1, 0.1, 0.1, 0.1, 0.3],
+  rapid_response: [0.2, 0.2, 0.2, 0.2, 0.2, 0.5],
+  bulk_orders: [0.04, 0.04, 0.04, 0.04, 0.04, 0.1],
+};
+/** Head Start: the supplies a new run starts with at each level (0-6). */
+export const HEAD_START = [
+  { bandage: 0, gloves: 0, facemask: 0 },
+  { bandage: 10, gloves: 5, facemask: 0 },
+  { bandage: 15, gloves: 10, facemask: 0 },
+  { bandage: 25, gloves: 10, facemask: 5 },
+  { bandage: 30, gloves: 20, facemask: 10 },
+  { bandage: 40, gloves: 20, facemask: 20 },
+  { bandage: 75, gloves: 50, facemask: 25 },
 ];
 export type GemUpgradeId = "steady_hands" | "night_owl" | "bedside_manner" | "rapid_response" | "bulk_orders" | "head_start";
 
 /** Level of an upgrade (0-5) in a save. */
 export const gemLevel = (s: { gemUpgrades?: Record<string, number> }, id: GemUpgradeId) => s.gemUpgrades?.[id] ?? 0;
+
+/** The total an upgrade adds at its current level (+0.36 for three levels of Steady Hands, and so on). */
+export const gemBonus = (s: { gemUpgrades?: Record<string, number> }, id: Exclude<GemUpgradeId, "head_start">) =>
+  GEM_STEPS[id].slice(0, gemLevel(s, id)).reduce((a, b) => a + b, 0);
 
 export type GemItemKind = "skin" | "tap" | "background" | "room" | "icon" | "sticker";
 export type GemItem = {
@@ -48,10 +71,9 @@ export const GEM_ITEMS: GemItem[] = [
   { id: "sakura", name: "Sakura Breeze", kind: "background", cost: 3, rebirths: 2, image: require("@/imgs/gems/p_petal.png") },
   { id: "fireflies", name: "Firefly Night", kind: "background", cost: 4, rebirths: 5, image: require("@/imgs/gems/bg_fireflies.png") },
   { id: "snowfall", name: "First Snow", kind: "background", cost: 4, rebirths: 7, image: require("@/imgs/gems/bg_snow.png") },
-  { id: "aurora", name: "Aurora Ward", kind: "background", cost: 6, rebirths: 10, image: require("@/imgs/gems/p_sparkle.png") },
-  // PLACEHOLDER icon (the sparkle) until the Galaxy gets its own sprite
-  { id: "galaxy", name: "Galaxy", kind: "background", cost: 1, rebirths: 1, image: require("@/imgs/gems/p_sparkle.png") },
-  // Your own photo as the background: unlock it here, pick the photo in Settings. PLACEHOLDER icon
+  { id: "aurora", name: "Aurora Ward", kind: "background", cost: 6, rebirths: 10, image: require("@/imgs/gems/bg_aurora.png") },
+  { id: "galaxy", name: "Galaxy", kind: "background", cost: 1, rebirths: 1, image: require("@/imgs/gems/bg_galaxy.png") },
+  // Your own photo as the background: unlock it here, pick the photo in Settings.
   { id: "custom", name: "Your Photo", kind: "background", cost: 5, rebirths: 1, image: require("@/imgs/gems/bg_photo.png") },
   // Animated My Room items (listed in ROOM_ITEMS with the same ids)
   { id: "aquarium", name: "Aquarium", kind: "room", cost: 3, rebirths: 3, image: require("@/imgs/room/aquarium_1.png") },

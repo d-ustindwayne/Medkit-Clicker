@@ -2,7 +2,7 @@
   "expo": {
     "name": "Medkit Clicker",
     "slug": "mc",
-    "version": "0.8.13",
+    "version": "0.8.21",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mc",
@@ -21,7 +21,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.medkitclicker.app",
-      "versionCode": 6
+      "versionCode": 7
     },
     "web": {
       "output": "single",

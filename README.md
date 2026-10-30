@@ -73,7 +73,7 @@ Each one rewards you with medkits and coins.
 
 ### 📅 Every day, every step
 
-Open the game each day for a daily gift that grows over a 7-day streak. On Android you can also turn on walking rewards: your phone counts your steps, and every 500 m and every kilometre (up to 8 km a day) pays out in the game. Android phones can add a home-screen widget that shows your medkits at a glance.
+Open the game each day for a daily gift that grows over a 7-day streak. On Android you can also turn on walking rewards: your phone counts your steps, and every 500 m (up to 8 km a day) pays a surprise reward that grows the further you walk, with two Natal Gems and 2 hours of medkits at 8 km. Android phones can add a home-screen widget that shows your medkits at a glance.
 
 ### 🎁 Redeem codes and rewards
 

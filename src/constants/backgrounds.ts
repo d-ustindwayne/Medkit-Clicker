@@ -12,7 +12,7 @@ export type Colors = { bg: string; line: string; accent?: string };
  * theme; in the light theme the default background stands in.
  */
 export const BACKGROUNDS: { id: string; name: string; pattern: PatternKind | AnimatedKind; light: Colors; dark: Colors; price?: number; gems?: boolean; darkOnly?: boolean }[] = [
-  { id: "rose_grid", name: "Rose Grid", pattern: "grid", light: { bg: "#f9e8e8", line: "#f8cdd4" }, dark: { bg: "#0f1c24", line: "#1b3341" } },
+  { id: "rose_grid", name: "Classic Grid", pattern: "grid", light: { bg: "#f9e8e8", line: "#f8cdd4" }, dark: { bg: "#0f1c24", line: "#1b3341" } },
   { id: "mint_crosses", name: "Mint Crosses", pattern: "crosses", light: { bg: "#e5f6ec", line: "#b9e4c9" }, dark: { bg: "#0c1d16", line: "#1a3a2b" } },
   { id: "lavender_dots", name: "Lavender Dots", pattern: "dots", light: { bg: "#eeeafc", line: "#cdc4f4" }, dark: { bg: "#15132a", line: "#2c2752" } },
   { id: "peach_stripes", name: "Peach Stripes", pattern: "stripes", light: { bg: "#fff1e2", line: "#ffd9b3" }, dark: { bg: "#21160c", line: "#3b2914" } },
@@ -43,3 +43,6 @@ export const ownsBackground = (index: number, owned: string[]) => {
   return (!b.price && !b.gems) || owned.includes(b.id);
 };
 
+
+/** Behind pictures with see-through parts (custom backgrounds, item tiles): the Classic Grid's colour. */
+export const imageBacking = (theme: "light" | "dark") => BACKGROUNDS.find((b) => b.id === "rose_grid")![theme].bg;

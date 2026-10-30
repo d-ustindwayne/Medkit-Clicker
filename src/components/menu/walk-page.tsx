@@ -3,7 +3,7 @@ import { PermissionsAndroid, Platform, Text, View } from "react-native";
 import { SettingsGroup, Toggle } from "@/components/ui/controls";
 import { useGameActions, useGameSelector } from "@/hooks/use-game";
 import { dayKey } from "@/lib/daily";
-import { COINS_EVERY_M, COINS_PER_KM, DAILY_CAP_M, MEDKITS_EVERY_M, MEDKIT_SECONDS } from "@/lib/walk";
+import { DAILY_CAP_M, GEM_FROM_M, REWARD_EVERY_M } from "@/lib/walk";
 import { StepCounter } from "../../../modules/step-counter";
 
 const km = (m: number) => `${(m / 1000).toFixed(m < 10_000 ? 2 : 1)} km`;
@@ -17,7 +17,7 @@ export function WalkPage() {
   const { dispatch, pushToast } = useGameActions();
   // Distance from an earlier day doesn't count for today.
   const meters = walk.day === dayKey() ? walk.meters : 0;
-  const nextMedkits = Math.min(DAILY_CAP_M, (Math.floor(meters / MEDKITS_EVERY_M) + 1) * MEDKITS_EVERY_M);
+  const nextReward = Math.min(DAILY_CAP_M, (Math.floor(meters / REWARD_EVERY_M) + 1) * REWARD_EVERY_M);
   const done = meters >= DAILY_CAP_M;
 
   const toggle = async (on: boolean) => {
@@ -37,7 +37,7 @@ export function WalkPage() {
   return (
     <View className="gap-4">
       <Text className="font-body text-base leading-6 text-ink">
-        Go for a walk and your hospital gets a reward. Every {MEDKITS_EVERY_M} m pays {MEDKIT_SECONDS / 60} minutes of medkits, and every {COINS_EVERY_M / 1000} km pays {COINS_PER_KM} Care Coins, up to {DAILY_CAP_M / 1000} km a day.
+        Go for a walk and your hospital gets a reward. Every {REWARD_EVERY_M} m pays a surprise: medkits, Care Coins or a boost, bigger the further you walk that day. From {GEM_FROM_M / 1000} km one might be a Natal Gem, and reaching {DAILY_CAP_M / 1000} km pays two Natal Gems and 2 hours of medkits.
       </Text>
       <SettingsGroup title="WALKING" icon="heart">
         <Toggle label="Count my steps" value={walk.on} onChange={toggle} />
@@ -59,7 +59,7 @@ export function WalkPage() {
               })}
             </View>
             <Text className="font-body text-sm text-ink">
-              {done ? "That's the most for today. See you tomorrow!" : `Next reward at ${km(nextMedkits)}.`}
+              {done ? "That's the most for today. See you tomorrow!" : `Next reward at ${km(nextReward)}.`}
             </Text>
             <Text className="font-body text-xs text-ink opacity-70">Steps are read by your phone even while the game is closed; rewards arrive the next time you open it. A step counts as about 75 cm.</Text>
           </View>

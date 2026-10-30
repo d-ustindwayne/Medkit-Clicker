@@ -4,6 +4,7 @@ import { useVideoPlayer, VideoView, type VideoPlayer } from "expo-video";
 import { StyleSheet, View } from "react-native";
 
 import { Image } from "@/components/ui/image";
+import { imageBacking } from "@/constants/backgrounds";
 import type { ThemeName } from "@/constants/theme";
 import { mediaFrame, type CustomBg } from "@/lib/custom-bg-store";
 
@@ -52,7 +53,7 @@ export function CustomMedia({ bg, width, height, theme }: { bg: CustomBg; width:
   const f = mediaFrame(bg, width, height);
   const style = { position: "absolute" as const, left: f.left, top: f.top, width: f.width, height: f.height };
   return (
-    <View pointerEvents="none" style={{ width, height, overflow: "hidden" }}>
+    <View pointerEvents="none" style={{ width, height, overflow: "hidden", backgroundColor: imageBacking(theme) }}>
       {bg.kind === "video" ? (
         <ClipVideo uri={bg.uri} start={bg.start} length={bg.length} style={style} />
       ) : (

@@ -38,6 +38,7 @@ import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector, useGameStore } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useNow } from "@/hooks/use-now";
+import { onDevSignal } from "@/lib/dev-signals";
 import { formatCount } from "@/lib/format";
 import { emergencyReward } from "@/lib/game";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
@@ -321,7 +322,15 @@ function Street({ width, active, night }: { width: number; active: boolean; nigh
     timers[0] = setTimeout(car, 600);
     timers[1] = setTimeout(visitor, 1200);
     timers[2] = setTimeout(ambulance, between([8, 20]) * 1000);
-    return () => timers.forEach(clearTimeout);
+    // Dev tools: an ambulance right now (if none is at the door).
+    const off = onDevSignal("ambulance", () => {
+      clearTimeout(timers[2]);
+      ambulance();
+    });
+    return () => {
+      timers.forEach(clearTimeout);
+      off();
+    };
   }, [active]);
 
   const [carGone] = useState(() => (id: number) => setCars((list) => list.filter((c) => c.id !== id)));

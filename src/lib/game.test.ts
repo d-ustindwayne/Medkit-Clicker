@@ -363,16 +363,18 @@ describe("bulk buying", () => {
 
 describe("gem shop", () => {
   const withGems = (n: number, extra: Partial<GameState> = {}) => ({ ...newGame(), rebirths: n, rebirthPoints: n, ...extra });
-  test("upgrade levels cost 1, 2, 3, 5, 8 and stop at 5", () => {
+  test("upgrade levels cost 1, 2, 2, 4, 6, 10 and stop at 6", () => {
     let s = withGems(30);
-    for (let i = 0; i < 6; i++) s = run(s, { type: "buyGemUpgrade", id: "steady_hands" });
-    expect(s.gemUpgrades.steady_hands).toBe(5);
-    expect(s.gemsSpent).toBe(19);
-    expect(tapValue(s)).toBeCloseTo(tapValue({ ...s, gemUpgrades: {} }) * 1.5);
+    for (let i = 0; i < 7; i++) s = run(s, { type: "buyGemUpgrade", id: "steady_hands" });
+    expect(s.gemUpgrades.steady_hands).toBe(6);
+    expect(s.gemsSpent).toBe(25);
+    // +12% a level, +20% at level 6.
+    expect(tapValue(s)).toBeCloseTo(tapValue({ ...s, gemUpgrades: {} }) * 1.8);
   });
-  test("Night Owl adds an hour of offline time per level", () => {
+  test("Night Owl adds 2 hours of offline time a level, 6 at level 6 (20 h in all)", () => {
     expect(maxAwaySeconds(newGame())).toBe(4 * 3600);
-    expect(maxAwaySeconds({ gemUpgrades: { night_owl: 3 } })).toBe(7 * 3600);
+    expect(maxAwaySeconds({ gemUpgrades: { night_owl: 3 } })).toBe(10 * 3600);
+    expect(maxAwaySeconds({ gemUpgrades: { night_owl: 6 } })).toBe(20 * 3600);
   });
   test("cosmetics need enough rebirths, gems and (for code-only ones) the code", () => {
     expect(run(withGems(1), { type: "buyGemItem", id: "skin_night" }).gemItems).toEqual([]); // needs 4 rebirths
@@ -384,8 +386,10 @@ describe("gem shop", () => {
   });
   test("Head Start gives free supplies on rebirth", () => {
     const s = run({ ...withGems(0), gemUpgrades: { head_start: 2 }, runHealed: 1e9 }, { type: "rebirth" });
-    expect(s.owned.bandage).toBe(20);
+    expect(s.owned.bandage).toBe(15);
     expect(s.owned.gloves).toBe(10);
+    const max = run({ ...withGems(0), gemUpgrades: { head_start: 6 }, runHealed: 1e9 }, { type: "rebirth" });
+    expect([max.owned.bandage, max.owned.gloves, max.owned.facemask]).toEqual([75, 50, 25]);
   });
 });
 

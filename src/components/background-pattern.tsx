@@ -1,4 +1,4 @@
-import { createContext, memo, use, useEffect, useState } from "react";
+import { createContext, memo, use, useEffect, useId, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { AppState, StyleSheet, View } from "react-native";
 import Animated, {
@@ -80,7 +80,10 @@ function TiltSensor({ tilt }: { tilt: Tilt }) {
       const tx = Math.max(-1, Math.min(1, (r.x - g.x) / 4));
       const ty = Math.max(-1, Math.min(1, (g.y - r.y) / 4));
       const t = tilt.get();
-      tilt.set({ x: t.x + (tx - t.x) * 0.15, y: t.y + (ty - t.y) * 0.15 });
+      const nx = t.x + (tx - t.x) * 0.15, ny = t.y + (ty - t.y) * 0.15;
+      // A phone lying still changes nothing, so nothing on screen needs moving (or redrawing).
+      if (Math.abs(nx - t.x) < 0.002 && Math.abs(ny - t.y) < 0.002) return;
+      tilt.set({ x: nx, y: ny });
     },
   );
   useEffect(() => () => tilt.set({ x: 0, y: 0 }), [tilt]);
@@ -123,9 +126,12 @@ function Tile({ kind, color }: { kind: PatternKind; color: string }) {
   }
 }
 
+/** An SVG id unique to this component (gradient ids are shared by the whole page on the web). */
+const useSvgId = (name: string) => `${name}${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+
 /** A tint that fades out towards the middle of the screen, with no hard edge. `from` is the solid side. */
 function Wash({ width, height, color, opacity, from }: { width: number; height: number; color: string; opacity: number; from: "top" | "bottom" }) {
-  const id = `wash-${from}`;
+  const id = useSvgId(`wash${from}`);
   return (
     <Svg width={width} height={height} style={{ position: "absolute", left: 0, [from]: 0 }}>
       <Defs>
@@ -139,18 +145,84 @@ function Wash({ width, height, color, opacity, from }: { width: number; height: 
   );
 }
 
-/** Purple Rain: a streak falling at its own speed. */
-const Drop = memo(function Drop({ i, height, left, color }: { i: number; height: number; left: number; color: string }) {
+/** A soft round glow (drawn once), for moonlight, fireflies and warm light. */
+function Glow({ size, color, opacity, style }: { size: number; color: string; opacity: number; style?: object }) {
+  const id = useSvgId("glow");
+  return (
+    <Svg width={size} height={size} style={[{ position: "absolute" }, style]} pointerEvents="none">
+      <Defs>
+        <RadialGradient id={id} cx="50%" cy="50%" r="50%">
+          <Stop offset="0" stopColor={color} stopOpacity={opacity} />
+          <Stop offset="0.5" stopColor={color} stopOpacity={opacity * 0.35} />
+          <Stop offset="1" stopColor={color} stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+      <Circle cx={size / 2} cy={size / 2} r={size / 2} fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
+/** Purple Rain: a streak falling at its own speed. Far ones are thinner, fainter and slower. */
+const Drop = memo(function Drop({ i, height, left, color, far = false }: { i: number; height: number; left: number; color: string; far?: boolean }) {
   const y = useSharedValue(0);
-  const len = 10 + noise(i, 2) * 14;
-  const ms = 900 + noise(i, 3) * 900;
+  const len = far ? 6 + noise(i, 2) * 6 : 10 + noise(i, 2) * 14;
+  const ms = (900 + noise(i, 3) * 900) * (far ? 1.7 : 1);
   useEffect(() => {
     y.set(withDelay(noise(i, 4) * ms, withRepeat(withTiming(1, { duration: ms, easing: Easing.linear }), -1, false)));
   }, [y, i, ms]);
   const tilt = use(TiltContext);
-  const depth = (len - 10) / 14;
+  const depth = far ? 0 : (len - 10) / 14;
   const style = useAnimatedStyle(() => ({ transform: [...tiltShift(tilt, depth), { translateY: -len + y.get() * (height + len * 2) }] }));
-  return <Animated.View style={[{ position: "absolute", left, top: 0, width: 2, height: len, backgroundColor: color, opacity: 0.35 + noise(i, 5) * 0.5 }, style]} />;
+  return <Animated.View style={[{ position: "absolute", left, top: 0, width: far ? 1 : 2, height: len, backgroundColor: color, opacity: far ? 0.18 + noise(i, 5) * 0.2 : 0.35 + noise(i, 5) * 0.5 }, style]} />;
+});
+
+/** Purple Rain: a ring spreading on a puddle where a drop lands. */
+const Ripple = memo(function Ripple({ i, width, height, color }: { i: number; width: number; height: number; color: string }) {
+  const t = useSharedValue(0);
+  const ms = 1100 + noise(i, 51) * 700;
+  useEffect(() => {
+    t.set(withDelay(noise(i, 52) * 2500, withRepeat(withSequence(withTiming(1, { duration: ms, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 0 }), withTiming(0, { duration: 600 + noise(i, 53) * 1400 })), -1, false)));
+  }, [t, i, ms]);
+  const w = 18 + noise(i, 54) * 16;
+  const style = useAnimatedStyle(() => ({ opacity: t.get() === 0 ? 0 : 0.55 * (1 - t.get()), transform: [{ scale: 0.2 + t.get() * 0.8 }] }));
+  return (
+    <Animated.View
+      style={[{ position: "absolute", left: noise(i, 55) * (width - w), top: height * (0.8 + noise(i, 56) * 0.16), width: w, height: w * 0.28, borderRadius: w, borderWidth: 1.5, borderColor: color }, style]}
+    />
+  );
+});
+
+/** Night Shift Sky: a shooting star now and then, across the top of the sky. */
+const ShootingStar = memo(function ShootingStar({ width, height, color }: { width: number; height: number; color: string }) {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.set(withRepeat(withSequence(withTiming(0, { duration: 7000 }), withTiming(1, { duration: 900, easing: Easing.in(Easing.quad) }), withTiming(0, { duration: 0 })), -1, false));
+    return () => cancelAnimation(t);
+  }, [t]);
+  const style = useAnimatedStyle(() => ({
+    opacity: t.get() === 0 ? 0 : Math.sin(t.get() * Math.PI),
+    transform: [{ translateX: width * (0.15 + t.get() * 0.5) }, { translateY: height * (0.08 + t.get() * 0.14) }, { rotate: "18deg" }],
+  }));
+  return (
+    <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: 70, height: 2, flexDirection: "row" }, style]}>
+      <View style={{ flex: 3, backgroundColor: color, opacity: 0.25 }} />
+      <View style={{ flex: 2, backgroundColor: color, opacity: 0.6 }} />
+      <View style={{ width: 4, height: 3, marginTop: -0.5, backgroundColor: color }} />
+    </Animated.View>
+  );
+});
+
+/** Blood Stream: a platelet, a small speck carried along faster than the cells. */
+const Platelet = memo(function Platelet({ i, width, height, color }: { i: number; width: number; height: number; color: string }) {
+  const x = useSharedValue(0);
+  const ms = 5000 + noise(i, 61) * 5000;
+  useEffect(() => {
+    x.set(withDelay(noise(i, 62) * ms, withRepeat(withTiming(1, { duration: ms, easing: Easing.linear }), -1, false)));
+  }, [x, i, ms]);
+  const top = height * (0.1 + noise(i, 63) * 0.8);
+  const s = 3 + Math.round(noise(i, 64) * 2);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateX: -10 + x.get() * (width + 20) }, { translateY: Math.sin(x.get() * 18 + i) * 5 }] }));
+  return <Animated.View style={[{ position: "absolute", left: 0, top, width: s, height: s, borderRadius: s, backgroundColor: color, opacity: 0.45 }, style]} />;
 });
 
 /** Night Shift Sky: a twinkling star. */
@@ -210,15 +282,15 @@ const Cell = memo(function Cell({ i, width, top, colors }: { i: number; width: n
 });
 
 /** Sakura Breeze and First Snow: a sprite drifting down and sideways, swaying and turning. */
-const Faller = memo(function Faller({ i, width, height, image, px, wind, spin }: { i: number; width: number; height: number; image: number; px: number; wind: number; spin: boolean }) {
+const Faller = memo(function Faller({ i, width, height, image, px, wind, spin, far = false }: { i: number; width: number; height: number; image: number; px: number; wind: number; spin: boolean; far?: boolean }) {
   const y = useSharedValue(0);
-  const ms = 6000 + noise(i, 21) * 6000;
+  const ms = (6000 + noise(i, 21) * 6000) * (far ? 1.6 : 1);
   useEffect(() => {
     y.set(withDelay(noise(i, 22) * ms, withRepeat(withTiming(1, { duration: ms, easing: Easing.linear }), -1, false)));
   }, [y, i, ms]);
   const x0 = noise(i, 23) * width;
   const tilt = use(TiltContext);
-  const depth = noise(i, 24);
+  const depth = far ? 0 : noise(i, 24);
   const style = useAnimatedStyle(() => {
     const k = y.get();
     return {
@@ -231,7 +303,7 @@ const Faller = memo(function Faller({ i, width, height, image, px, wind, spin }:
     };
   });
   return (
-    <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: px, height: px, opacity: 0.6 + noise(i, 24) * 0.4 }, style]}>
+    <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: px, height: px, opacity: far ? 0.3 + noise(i, 24) * 0.2 : 0.6 + noise(i, 24) * 0.4 }, style]}>
       <Image source={image} style={{ width: px, height: px }} contentFit="contain" />
     </Animated.View>
   );
@@ -258,12 +330,13 @@ const Firefly = memo(function Firefly({ i, width, height }: { i: number; width: 
   }));
   return (
     <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: 18, height: 18 }, style]}>
+      <Glow size={54} color="#e9ff8f" opacity={0.45} style={{ left: -18, top: -18 }} />
       <Image source={SPRITES.firefly} style={{ width: 18, height: 18 }} contentFit="contain" />
     </Animated.View>
   );
 });
 
-/** Aurora Ward: a wide ribbon of light that waves and breathes. */
+/** Aurora Ward: a wide curtain of light, brightest at its lower edge and fading upward, that waves and breathes. */
 const AuroraBand = memo(function AuroraBand({ i, width, height, color }: { i: number; width: number; height: number; color: string }) {
   const t = useSharedValue(0);
   useEffect(() => {
@@ -271,90 +344,83 @@ const AuroraBand = memo(function AuroraBand({ i, width, height, color }: { i: nu
   }, [t, i]);
   const tilt = use(TiltContext);
   const style = useAnimatedStyle(() => ({
-    opacity: 0.18 + 0.22 * t.get(),
+    opacity: 0.35 + 0.35 * t.get(),
     transform: [...tiltShift(tilt, 0.15 + i * 0.2), { translateX: -width * 0.25 + t.get() * width * 0.25 * (i % 2 ? -1 : 1) }, { rotate: `${-12 + i * 9 + t.get() * 6}deg` }, { scaleY: 0.8 + t.get() * 0.4 }],
   }));
-  return <Animated.View style={[{ position: "absolute", left: -width * 0.25, top: height * (0.12 + i * 0.13), width: width * 1.5, height: height * 0.14, borderRadius: height * 0.07, backgroundColor: color }, style]} />;
+  const id = useSvgId("aurora");
+  const w = width * 1.5, h = height * 0.2;
+  return (
+    <Animated.View style={[{ position: "absolute", left: -width * 0.25, top: height * (0.06 + i * 0.12), width: w, height: h }, style]}>
+      <Svg width={w} height={h}>
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={color} stopOpacity={0} />
+            <Stop offset="0.7" stopColor={color} stopOpacity={0.5} />
+            <Stop offset="0.9" stopColor={color} stopOpacity={0.9} />
+            <Stop offset="1" stopColor={color} stopOpacity={0} />
+          </LinearGradient>
+        </Defs>
+        <Rect width={w} height={h} rx={h / 2} fill={`url(#${id})`} />
+      </Svg>
+    </Animated.View>
+  );
 });
+
+/** Rolling hills along the bottom (drawn once): a far row and a near one. */
+function Hills({ width, height, far, near, top = 0.82 }: { width: number; height: number; far: string; near: string; top?: number }) {
+  const y = height * top;
+  const backD = `M 0 ${height} L 0 ${y} C ${width * 0.2} ${y - height * 0.07} ${width * 0.35} ${y - height * 0.02} ${width * 0.55} ${y - height * 0.05} S ${width * 0.85} ${y - height * 0.08} ${width} ${y - height * 0.02} L ${width} ${height} Z`;
+  const frontD = `M 0 ${height} L 0 ${y + height * 0.06} C ${width * 0.25} ${y + height * 0.01} ${width * 0.45} ${y + height * 0.08} ${width * 0.7} ${y + height * 0.04} S ${width * 0.95} ${y + height * 0.03} ${width} ${y + height * 0.06} L ${width} ${height} Z`;
+  return (
+    <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Path d={backD} fill={far} />
+      <Path d={frontD} fill={near} />
+    </Svg>
+  );
+}
+
+/** Firefly Night: tufts of grass along the top of the ground (drawn once). */
+function Grass({ width, top, color }: { width: number; top: number; color: string }) {
+  let d = `M 0 ${top + 14}`;
+  for (let x = 0; x < width; x += 9) {
+    const h = 6 + noise(x, 71) * 12;
+    d += ` L ${x + 3} ${top + 14 - h} L ${x + 5} ${top + 14} L ${x + 7} ${top + 14 - h * 0.6} L ${x + 9} ${top + 14}`;
+  }
+  d += ` L ${width} ${top + 16} L 0 ${top + 16} Z`;
+  return (
+    <Svg width={width} height={top + 16} style={{ position: "absolute", left: 0, top: 0 }} pointerEvents="none">
+      <Path d={d} fill={color} />
+    </Svg>
+  );
+}
 
 /** Galaxy: one turn of the spiral takes this long. */
 const GALAXY_TURN_MS = 240_000;
-/** Soft glows laid along each arm, and the pixel stars scattered over them. */
-const GALAXY_GLOWS = 44;
-const GALAXY_STARS = 110;
-/** The arms' colours from the core outwards: rose, violet, then teal at the tips. */
-const ARM_COLOURS = ["#ff9ad5", "#c08cff", "#8f7bff", "#6fd6ff"];
+/** The turn moves on this often: it's so slow that 20 steps a second look smooth, at a third of the work. */
+const GALAXY_STEP_MS = 50;
+const GALAXY_TEXTURE = require("@/imgs/textures/galaxy.png");
 /**
- * Galaxy: a two-armed spiral drawn as soft overlapping glows (rose near the core, violet, then
- * teal at the tips) around a bright pink-white core, with square pixel stars sprinkled along the
- * arms, seen at a slant and slowly turning. Not a real galaxy, a pretty one. It's drawn once and
- * only turned: on Android it's kept as a texture, so the turning costs no redrawing.
+ * Galaxy: a two-armed spiral of soft glows (rose near the core, violet, then teal at the tips)
+ * around a bright pink-white core, with pixel stars along the arms, seen at a slant and slowly
+ * turning. Not a real galaxy, a pretty one. It's a picture (scripts/galaxy-texture.ts draws it):
+ * drawing ~200 SVG gradients on the phone made this background slow.
  */
-const GalaxySpiral = memo(function GalaxySpiral({ width, height, colors }: { width: number; height: number; colors: Colors }) {
+const GalaxySpiral = memo(function GalaxySpiral({ width, height }: { width: number; height: number }) {
   // Wider than the screen, so the arms sweep out well past the medkit in the middle.
   const d = Math.max(width, height) * 1.25;
   const spin = useSharedValue(0);
   useEffect(() => {
-    spin.set(withRepeat(withTiming(1, { duration: GALAXY_TURN_MS, easing: Easing.linear }), -1, false));
-    return () => cancelAnimation(spin);
+    const start = Date.now();
+    const id = setInterval(() => spin.set(((Date.now() - start) % GALAXY_TURN_MS) / GALAXY_TURN_MS), GALAXY_STEP_MS);
+    return () => clearInterval(id);
   }, [spin]);
   const tilt = use(TiltContext);
   const turn = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.get() * 360}deg` }] }));
   const lean = useAnimatedStyle(() => ({ transform: [...tiltShift(tilt, 0.3), { rotate: "-18deg" }, { scaleY: 0.58 }] }));
-  const r = d / 2;
-  // A point on arm `arm` (0 or 1), `k` of the way out (0 core, 1 tip).
-  const onArm = (arm: number, k: number, jitter = 0) => {
-    const a = arm * Math.PI + k * Math.PI * 2.6 + jitter;
-    const dist = r * (0.07 + k * 0.86);
-    return { x: r + Math.cos(a) * dist, y: r + Math.sin(a) * dist };
-  };
-  const glows = Array.from({ length: GALAXY_GLOWS * 2 }, (_, i) => {
-    const arm = i % 2;
-    // Spaced evenly along the arm (the arm gets longer per turn further out), so the tips don't break up.
-    const t = Math.floor(i / 2) / (GALAXY_GLOWS - 1);
-    const k = Math.sqrt(t);
-    return { ...onArm(arm, k, (noise(i, 46) - 0.5) * 0.06), rr: r * (0.15 - k * 0.07), fill: `url(#gxArm${Math.min(3, Math.floor(t * 4))})` };
-  });
-  const stars = Array.from({ length: GALAXY_STARS }, (_, i) => {
-    const k = noise(i, 41);
-    const p = onArm(i % 2, k, (noise(i, 42) - 0.5) * (0.5 + k * 0.5));
-    const spread = r * 0.06 * (noise(i, 43) - 0.5);
-    const s = noise(i, 44) > 0.88 ? 5 : noise(i, 44) > 0.45 ? 3 : 2;
-    return { x: p.x + spread, y: p.y + spread, s, o: 0.95 - k * 0.45 };
-  });
   return (
     <Animated.View style={[{ position: "absolute", left: (width - d) / 2, top: (height - d) / 2, width: d, height: d }, lean]}>
-      <Animated.View style={[{ width: d, height: d }, turn]} renderToHardwareTextureAndroid>
-        <Svg width={d} height={d}>
-          <Defs>
-            <RadialGradient id="gxHalo" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor={colors.accent ?? colors.line} stopOpacity={0.45} />
-              <Stop offset="0.55" stopColor="#3b2c8f" stopOpacity={0.18} />
-              <Stop offset="1" stopColor="#0b0a2a" stopOpacity={0} />
-            </RadialGradient>
-            {ARM_COLOURS.map((c, j) => (
-              <RadialGradient key={c} id={`gxArm${j}`} cx="50%" cy="50%" r="50%">
-                <Stop offset="0" stopColor={c} stopOpacity={0.42 - j * 0.05} />
-                <Stop offset="0.55" stopColor={c} stopOpacity={0.14} />
-                <Stop offset="1" stopColor={c} stopOpacity={0} />
-              </RadialGradient>
-            ))}
-            <RadialGradient id="gxCore" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#ffffff" stopOpacity={1} />
-              <Stop offset="0.22" stopColor="#ffe2f4" stopOpacity={0.95} />
-              <Stop offset="0.55" stopColor="#ff9ad5" stopOpacity={0.45} />
-              <Stop offset="1" stopColor="#9b5cff" stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Circle cx={r} cy={r} r={r * 0.62} fill="url(#gxHalo)" />
-          {glows.map((g, i) => (
-            <Circle key={i} cx={g.x} cy={g.y} r={g.rr} fill={g.fill} />
-          ))}
-          <Circle cx={r} cy={r} r={r * 0.24} fill="url(#gxCore)" />
-          {stars.map((p, i) => (
-            <Rect key={i} x={Math.round(p.x)} y={Math.round(p.y)} width={p.s} height={p.s} fill={colors.line} opacity={p.o} />
-          ))}
-        </Svg>
+      <Animated.View style={[{ width: d, height: d }, turn]}>
+        <Image source={GALAXY_TEXTURE} style={{ width: d, height: d }} contentFit="fill" />
       </Animated.View>
     </Animated.View>
   );
@@ -400,6 +466,8 @@ function TraceLayer({ trace, width, height, color, side, cursor }: { trace: Trac
     <Animated.View style={[{ position: "absolute", left: 0, top: 0, width, height, overflow: "hidden" }, outer]}>
       <Animated.View style={inner}>
         <Svg width={width} height={height}>
+          {/* A soft glow under the line, like a lit screen. */}
+          <Path d={trace.d} fill="none" stroke={color} strokeWidth={10} strokeLinejoin="round" opacity={0.12} />
           <Path d={trace.d} fill="none" stroke={color} strokeWidth={3} strokeLinejoin="round" />
           <Path d={trace.d2} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" opacity={0.4} />
         </Svg>
@@ -482,19 +550,35 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
       return (
         <>
           <Wash width={width} height={height * 0.45} color={colors.accent ?? colors.line} opacity={0.35} from="bottom" />
+          {many(18).map((i) => (
+            <Drop key={`far${i}`} i={i + 40} height={height} left={noise(i + 40) * width} color={colors.line} far />
+          ))}
+          {many(8).map((i) => (
+            <Ripple key={`ripple${i}`} i={i} width={width} height={height} color={colors.line} />
+          ))}
           {many(24).map((i) => (
             <Drop key={i} i={i} height={height} left={noise(i) * width} color={i % 3 ? colors.line : (colors.accent ?? colors.line)} />
           ))}
         </>
       );
     case "ecg":
-      return <Ecg width={width} height={height} colors={colors} theme={theme} />;
+      return (
+        <>
+          <Ecg width={width} height={height} colors={colors} theme={theme} />
+          {/* Darker towards the edges, like a monitor's screen. */}
+          <Wash width={width} height={height * 0.25} color={theme === "dark" ? "#000000" : (colors.accent ?? colors.line)} opacity={theme === "dark" ? 0.45 : 0.7} from="top" />
+          <Wash width={width} height={height * 0.25} color={theme === "dark" ? "#000000" : (colors.accent ?? colors.line)} opacity={theme === "dark" ? 0.45 : 0.7} from="bottom" />
+        </>
+      );
     case "stars":
       return (
         <>
+          <Wash width={width} height={height * 0.6} color={colors.accent ?? colors.line} opacity={0.85} from="top" />
           {many(30).map((i) => (
             <Star key={i} i={i} left={noise(i, 9) * width} top={noise(i, 10) * height} color={colors.line} />
           ))}
+          <ShootingStar width={width} height={height} color={colors.line} />
+          <Glow size={150} color={colors.line} opacity={0.4} style={{ right: width * 0.12 - 54, top: height * 0.12 - 54 }} />
           <Svg width={42} height={42} style={{ position: "absolute", right: width * 0.12, top: height * 0.12 }}>
             <G transform="scale(6)">
               <Path d={MOON} fill={colors.line} />
@@ -505,6 +589,12 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
     case "cells":
       return (
         <>
+          {/* The vessel walls: darker at the top and bottom. */}
+          <Wash width={width} height={height * 0.3} color={colors.accent ?? colors.line} opacity={0.4} from="top" />
+          <Wash width={width} height={height * 0.3} color={colors.accent ?? colors.line} opacity={0.4} from="bottom" />
+          {many(18).map((i) => (
+            <Platelet key={`p${i}`} i={i} width={width} height={height} color={colors.line} />
+          ))}
           {many(14).map((i) => (
             <Cell key={i} i={i} width={width} top={noise(i, 14) * height} colors={colors} />
           ))}
@@ -514,6 +604,11 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
       return (
         <>
           <Wash width={width} height={height * 0.55} color={colors.accent ?? colors.line} opacity={0.4} from="top" />
+          {/* Warm light from the top corner. */}
+          <Glow size={width * 1.1} color={theme === "dark" ? "#ff9ec4" : "#fff1c9"} opacity={theme === "dark" ? 0.22 : 0.7} style={{ right: -width * 0.45, top: -width * 0.45 }} />
+          {many(14).map((i) => (
+            <Faller key={`far${i}`} i={i + 30} width={width} height={height} image={SPRITES.petal} px={7 + noise(i + 30, 25) * 3} wind={0.6} spin far />
+          ))}
           {many(16).map((i) => (
             <Faller key={i} i={i} width={width} height={height} image={i % 3 ? SPRITES.petal : SPRITES.petal2} px={14 + noise(i, 25) * 10} wind={0.8} spin />
           ))}
@@ -522,8 +617,10 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
     case "fireflies":
       return (
         <>
+          <Wash width={width} height={height * 0.55} color={theme === "dark" ? "#1b2f5a" : "#b7d3f0"} opacity={0.55} from="top" />
           <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: height * 0.22, backgroundColor: colors.line }} />
           <View style={{ position: "absolute", left: 0, right: 0, bottom: height * 0.22, height: height * 0.06, backgroundColor: colors.accent }} />
+          <Grass width={width} top={height * 0.72 - 14} color={colors.accent ?? colors.line} />
           {many(14).map((i) => (
             <Firefly key={i} i={i} width={width} height={height} />
           ))}
@@ -532,7 +629,11 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
     case "snowfall":
       return (
         <>
-          <View style={{ position: "absolute", left: -20, right: -20, bottom: -height * 0.05, height: height * 0.16, borderTopLeftRadius: height * 0.2, borderTopRightRadius: height * 0.3, backgroundColor: colors.line, opacity: 0.85 }} />
+          <Wash width={width} height={height * 0.6} color={colors.accent ?? colors.line} opacity={0.8} from="top" />
+          {many(16).map((i) => (
+            <Faller key={`far${i}`} i={i + 30} width={width} height={height} image={SPRITES.snow} px={5 + noise(i + 30, 26) * 3} wind={-0.2} spin={false} far />
+          ))}
+          <Hills width={width} height={height} top={0.86} far={colors.accent ?? colors.line} near={colors.line} />
           {many(22).map((i) => (
             <Faller key={i} i={i} width={width} height={height} image={SPRITES.snow} px={10 + noise(i, 26) * 10} wind={-0.3} spin={false} />
           ))}
@@ -545,18 +646,19 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
           {many(24).map((i) => (
             <Star key={i} i={i} left={noise(i, 9) * width} top={noise(i, 10) * height} color={colors.line} />
           ))}
-          <GalaxySpiral width={width} height={height} colors={colors} />
+          <GalaxySpiral width={width} height={height} />
         </>
       );
     case "aurora":
       return (
         <>
+          {many(20).map((i) => (
+            <Star key={i} i={i} left={noise(i, 9) * width} top={noise(i, 10) * height * 0.8} color={theme === "dark" ? "#e8f2ff" : colors.line} />
+          ))}
           {many(3).map((i) => (
             <AuroraBand key={i} i={i} width={width} height={height} color={i === 1 ? (colors.accent ?? colors.line) : colors.line} />
           ))}
-          {many(20).map((i) => (
-            <Star key={i} i={i} left={noise(i, 9) * width} top={noise(i, 10) * height} color={colors.line} />
-          ))}
+          <Hills width={width} height={height} far={theme === "dark" ? "#0b1430" : "#b9c9e6"} near={theme === "dark" ? "#050916" : "#9fb3d6"} />
         </>
       );
   }
@@ -609,7 +711,8 @@ export const BackgroundPattern = memo(function BackgroundPattern({ index, theme,
   const pattern = preset.pattern;
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: "hidden", backgroundColor: colors.bg }]}>
-      {!reduceMotion && active && <TiltSensor tilt={tilt} />}
+      {/* Not for your own photo or video: moving a whole-screen picture or video every frame made it slow. */}
+      {!reduceMotion && active && pattern !== "photo" && <TiltSensor tilt={tilt} />}
       <TiltContext value={tilt}>
         <Animated.View style={[{ position: "absolute", left: -TILT_PAD, top: -TILT_PAD, width: bw, height: bh }, base]}>
           {isAnimated(pattern) && !reduceMotion && <AnimatedBackdrop kind={pattern} width={bw} height={bh} colors={colors} theme={theme} />}

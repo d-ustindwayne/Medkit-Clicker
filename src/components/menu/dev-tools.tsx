@@ -3,13 +3,30 @@ import { Text, View } from "react-native";
 
 import { PixelButton } from "@/components/ui/pixel-button";
 import { TreatModal } from "@/components/ward/treat-modal";
+import { GEM_LEVEL_COSTS, GEM_UPGRADES } from "@/constants/gems";
 import { SICK_PATIENTS, type SickPatient } from "@/constants/patients";
-import { useGameActions, useGameState } from "@/hooks/use-game";
+import { useGameActions, useGameState, useGameStore } from "@/hooks/use-game";
+import { WALK_IMAGE, describeWalk } from "@/hooks/use-walk";
+import { dayKey } from "@/lib/daily";
+import { devSignal } from "@/lib/dev-signals";
+import { DAILY_CAP_M, REWARD_EVERY_M, walkRewards } from "@/lib/walk";
 
 /** Shortcuts for testing. Shown in development builds, or after entering the developer code. */
 export function DevTools() {
-  const { dispatch, simulateAway } = useGameActions();
+  const { dispatch, simulateAway, pushToast } = useGameActions();
   const { healed } = useGameState();
+  const store = useGameStore();
+  const note = (title: string, body: string) => pushToast({ kind: "info", title, body });
+
+  const walk = (meters: number) => {
+    const s = store.get(), today = dayKey();
+    const w = s.walk.day === today ? s.walk : { meters: 0, paid500: 0 };
+    const paid = Math.floor(Math.min(DAILY_CAP_M, w.meters + meters) / REWARD_EVERY_M);
+    dispatch({ type: "devWalk", meters, today });
+    const body = describeWalk(s, walkRewards(today, w.paid500, paid));
+    pushToast({ kind: "info", title: "Nice walk!", body: body || "Nothing more today: 8 km is the most.", image: WALK_IMAGE });
+  };
+  const maxLevels = Object.fromEntries(GEM_UPGRADES.map((u) => [u.id, GEM_LEVEL_COSTS.length]));
   const [playing, setPlaying] = useState<SickPatient | null>(null);
 
   const buttons: [label: string, onPress: () => void][] = [
@@ -23,6 +40,14 @@ export function DevTools() {
     ["Call a patient", () => dispatch({ type: "patientArrives", id: SICK_PATIENTS[Math.floor(Math.random() * SICK_PATIENTS.length)].id, next: Date.now() + 60_000 })],
     ["+1 rebirth", () => dispatch({ type: "devRebirth" })],
     ["+10 Natal Gems", () => dispatch({ type: "claimPromo", hash: `dev-${Date.now()}`, rewards: [{ kind: "gems", amount: 10 }] })],
+    ["Walk 500 m", () => walk(REWARD_EVERY_M)],
+    ["Walk to 8 km", () => walk(DAILY_CAP_M)],
+    ["Flying heart now", () => devSignal("heart") || note("Open the medkit page", "The heart flies over the medkit page.")],
+    ["Ambulance now", () => devSignal("ambulance") || note("Open the hospital page", "Swipe to the hospital outside, then try again.")],
+    ["Daily gift again", () => dispatch({ type: "devPatch", patch: { daily: { ...store.get().daily, last: dayKey(Date.now() - 86_400_000) } } })],
+    ["Max Gem upgrades", () => dispatch({ type: "devPatch", patch: { gemUpgrades: maxLevels } })],
+    ["Reset Gem upgrades", () => dispatch({ type: "devPatch", patch: { gemUpgrades: {} } })],
+    ["Skip 8 hours away", () => simulateAway(8 * 3600)],
   ];
   // One button per minigame (the first patient that plays it).
   const games = SICK_PATIENTS.filter((p, i, all) => all.findIndex((q) => q.game === p.game) === i);

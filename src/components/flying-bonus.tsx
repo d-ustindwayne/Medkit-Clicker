@@ -9,6 +9,7 @@ import { useHaptics } from "@/hooks/use-haptics";
 import { usePalette } from "@/hooks/use-palette";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { autoTap } from "@/lib/auto-tap";
+import { onDevSignal } from "@/lib/dev-signals";
 import { flyingReward } from "@/lib/game";
 import { formatCount, formatShort } from "@/lib/format";
 
@@ -106,6 +107,9 @@ export function FlyingBonus({ width, height, active }: { width: number; height: 
   const bob = useSharedValue(0);
   /** When the next one may fly (0 until the first check sets it). */
   const nextAt = useRef(0);
+
+  // Dev tools: the next check sends one.
+  useEffect(() => onDevSignal("heart", () => (nextAt.current = 1)), []);
 
   // Checked every few seconds rather than one long timer, so time in the background or on another
   // page doesn't count down (and it never appears off screen).
