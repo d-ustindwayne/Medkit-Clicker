@@ -283,7 +283,7 @@ async function route(req: Request): Promise<Response> {
         return json({ ok: true });
       }
       const promo = path.match(/^\/admin\/promos\/([0-9a-f]{64})$/);
-      // A name to keep track of a code by (codes from add-promo before 0.8.3 only had their hash).
+      // A name to keep track of a code by (codes from add-promo before 0.8.8 only had their hash).
       if (promo && req.method === "PATCH") {
         const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
         await sql`UPDATE promo_codes SET label = ${String(b.name ?? "").trim().slice(0, 80) || null} WHERE code_sha256 = ${promo[1]}`;

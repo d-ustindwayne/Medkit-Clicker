@@ -3,7 +3,6 @@ import { Image } from "@/components/ui/image";
 import { Pressable, Text, View, type GestureResponderEvent, type ImageSourcePropType } from "react-native";
 import Animated, {
   Easing,
-  ZoomIn,
   cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
@@ -268,7 +267,7 @@ const COLOUR_HINT: Record<ColourKind, string> = {
   vivid: "One square is a little more (or less) colourful.",
 };
 
-/** One square of the grid: pops in with the round, bounces when right, shakes when wrong. */
+/** One square of the grid: bounces when right, shakes when wrong. The whole grid shows at once. */
 const ColourTile = memo(function ColourTile({ i, size, colour, onPick, result }: { i: number; size: number; colour: string; onPick: (i: number) => void; result: "right" | "wrong" | null }) {
   const still = useReduceMotion();
   const s = useSharedValue(1);
@@ -280,7 +279,7 @@ const ColourTile = memo(function ColourTile({ i, size, colour, onPick, result }:
   }, [result, still, s, x]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }, { scale: s.get() }], zIndex: result === "right" ? 2 : 0 }));
   return (
-    <Animated.View entering={still ? undefined : ZoomIn.delay(Math.min(i * 14, 380)).springify().damping(14)} style={[{ width: size, height: size }, style]}>
+    <Animated.View style={[{ width: size, height: size }, style]}>
       <TapPressable accessibilityRole="button" accessibilityLabel={`Square ${i + 1}`} onDown={() => onPick(i)} style={{ width: size, height: size, backgroundColor: colour }} className="border-[1.5px] border-outline">
         {result === "wrong" && <View className="absolute inset-0 items-center justify-center bg-black/25"><Text className="font-display text-lg text-white">×</Text></View>}
         {result === "right" && <View className="absolute inset-0 border-[3px] border-white" />}
@@ -368,8 +367,8 @@ const FINDABLE: { name: string; image: ImageSourcePropType }[] = [
   ...ROOM_ITEMS.filter((i) => !i.frames && !i.staff).map((i) => ({ name: i.name, image: i.image })),
 ];
 const FIND_ROUNDS = 3;
-/** The scene fills in over this long at the start of each round; the timer starts once it's full. */
-const FIND_FILL_MS = 900;
+/** Each round's pictures load out of sight first; if some never report back, show the round anyway after this long. */
+const FIND_LOAD_MS = 6000;
 /** Plain; Jumbled (everything turned every which way); Pair (find both); Drifting (it all floats about). */
 type FindVariant = "plain" | "spun" | "pair" | "drift";
 const FIND_VARIANTS: { id: FindVariant; from: number }[] = [
@@ -378,10 +377,13 @@ const FIND_VARIANTS: { id: FindVariant; from: number }[] = [
   { id: "pair", from: 0.45 },
   { id: "drift", from: 0.65 },
 ];
-type Scatter = { image: ImageSourcePropType; x: number; y: number; size: number; target: boolean; angle: number; order: number };
+type Scatter = { image: ImageSourcePropType; x: number; y: number; size: number; target: boolean; angle: number };
 
-/** One thing in the scene: pops in, maybe floats about, and bounces when it's the one. */
-const FindThing = memo(function FindThing({ t, w, h, drift, found, label, onPick }: { t: Scatter; w: number; h: number; drift: boolean; found: boolean; label: string; onPick: () => void }) {
+/**
+ * One thing in the scene: maybe floats about, and bounces when it's the one. `onLoad` says its picture
+ * is ready. The callbacks take its index, so they stay the same while the timer ticks and it doesn't redraw.
+ */
+const FindThing = memo(function FindThing({ i, t, w, h, drift, found, label, onPick, onLoad }: { i: number; t: Scatter; w: number; h: number; drift: boolean; found: boolean; label: string; onPick: (i: number) => void; onLoad: (i: number) => void }) {
   const still = useReduceMotion();
   const bob = useSharedValue(0);
   const s = useSharedValue(1);
@@ -399,10 +401,10 @@ const FindThing = memo(function FindThing({ t, w, h, drift, found, label, onPick
     zIndex: found ? 5 : 0,
   }));
   return (
-    <Animated.View entering={still ? undefined : ZoomIn.springify().damping(12)} style={[{ position: "absolute", left: t.x * w - t.size / 2, top: t.y * h - t.size / 2, width: t.size, height: t.size }, style]}>
-      <TapPressable accessibilityRole="button" accessibilityLabel={label} onDown={onPick} style={{ width: t.size, height: t.size }}>
+    <Animated.View style={[{ position: "absolute", left: t.x * w - t.size / 2, top: t.y * h - t.size / 2, width: t.size, height: t.size }, style]}>
+      <TapPressable accessibilityRole="button" accessibilityLabel={label} onDown={() => onPick(i)} style={{ width: t.size, height: t.size }}>
         {found && <View className="absolute rounded-full border-[3px] border-success bg-success/20" style={{ left: -6, top: -6, width: t.size + 12, height: t.size + 12 }} />}
-        <Image source={t.image} style={{ width: t.size, height: t.size }} contentFit="contain" />
+        <Image source={t.image} style={{ width: t.size, height: t.size }} contentFit="contain" onLoad={() => onLoad(i)} onError={() => onLoad(i)} />
       </TapPressable>
     </Animated.View>
   );
@@ -416,6 +418,7 @@ function FindGame({ onDone, tuning }: GameProps) {
   const [variant] = useState(() => pickVariant(tuning.level, FIND_VARIANTS));
   const [w, onLayout] = useWidth();
   const h = Math.round(w * 0.85);
+  const still = useReduceMotion();
   const [round, setRound] = useState(0);
   const mistakes = useRef(0);
   const deal = () => {
@@ -425,21 +428,27 @@ function FindGame({ onDone, tuning }: GameProps) {
     const things = Array.from({ length: tuning.findCount }, () => ({ image: pickOne(others).image, x: between(0.06, 0.94), y: between(0.08, 0.92), size: between(30, 44), target: false, angle: angle() }));
     // Drawn last, so nothing can cover them completely (two of them in the Pair twist).
     for (let k = variant === "pair" ? 2 : 1; k > 0; k--) things.push({ image: target.image, x: between(0.08, 0.92), y: between(0.1, 0.9), size: 36, target: true, angle: angle() });
-    // They pop in in a random order (not the drawing order), so the last one in isn't a giveaway.
-    const order = shuffle(things.map((_, i) => i));
-    return { target, things: things.map((t, i): Scatter => ({ ...t, order: order[i] })) };
+    return { target, things: things as Scatter[] };
   };
   const [scene, setScene] = useState(deal);
-  const [shown, setShown] = useState(0);
   const [found, setFound] = useState<number[]>([]);
-  // The scene fills in a few at a time; the clock waits until everything is out.
+  // The scene stays hidden until every picture in it (and the one asked for) has loaded, then shows
+  // all at once; the clock starts then too, so nothing appears while the player is already looking.
+  const loaded = useRef(new Set<number>());
+  const [ready, setReady] = useState(false);
+  const markLoaded = (i: number) => {
+    loaded.current.add(i);
+    if (loaded.current.size >= scene.things.length + 1) setReady(true);
+  };
   useEffect(() => {
-    const total = scene.things.length;
-    const step = Math.max(16, FIND_FILL_MS / total);
-    const id = setInterval(() => setShown((n) => Math.min(total, n + 1)), step);
-    return () => clearInterval(id);
+    const id = setTimeout(() => setReady(true), FIND_LOAD_MS);
+    return () => clearTimeout(id);
   }, [scene]);
-  const ready = shown >= scene.things.length;
+  const reveal = useSharedValue(0);
+  useEffect(() => {
+    reveal.set(!ready ? 0 : still ? 1 : withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) }));
+  }, [ready, still, reveal]);
+  const revealStyle = useAnimatedStyle(() => ({ opacity: reveal.get(), transform: [{ scale: 0.96 + reveal.get() * 0.04 }] }));
   const left = useCountdown(tuning.findMs, () => done(false), ready);
   const targets = scene.things.filter((t) => t.target).length;
   const pick = (i: number) => {
@@ -461,7 +470,8 @@ function FindGame({ onDone, tuning }: GameProps) {
       if (round + 1 >= FIND_ROUNDS) return done(true, mistakes.current === 0);
       setRound(round + 1);
       setFound([]);
-      setShown(0);
+      loaded.current = new Set();
+      setReady(false);
       setScene(deal());
     }, 450);
   };
@@ -470,7 +480,7 @@ function FindGame({ onDone, tuning }: GameProps) {
       <View className="gap-2" onLayout={onLayout}>
         <View className="flex-row items-center justify-center gap-2">
           <Text className="font-number text-base text-ink">{targets > 1 ? `Find both (${found.length}/2)` : "Find the"}</Text>
-          <Image source={scene.target.image} style={{ width: 28, height: 28 }} contentFit="contain" />
+          <Image key={round} source={scene.target.image} style={{ width: 28, height: 28 }} contentFit="contain" onLoad={() => markLoaded(-1)} onError={() => markLoaded(-1)} />
           <Text className="font-display text-base text-ink">{scene.target.name}</Text>
           <Text className="font-number text-sm text-ink opacity-70">
             ({round + 1}/{FIND_ROUNDS})
@@ -478,11 +488,11 @@ function FindGame({ onDone, tuning }: GameProps) {
         </View>
         <TimeBar left={left} total={tuning.findMs} />
         <View className="overflow-hidden border-2 border-outline bg-[#f4efe6]" style={{ height: h }}>
-          {scene.things.map((t, i) =>
-            t.order < shown ? (
-              <FindThing key={`${round}-${i}`} t={t} w={w} h={h} drift={variant === "drift"} found={found.includes(i)} label={t.target ? scene.target.name : "Something else"} onPick={() => pick(i)} />
-            ) : null,
-          )}
+          <Animated.View pointerEvents={ready ? "auto" : "none"} style={[{ position: "absolute", left: 0, top: 0, width: w, height: h }, revealStyle]}>
+            {scene.things.map((t, i) => (
+              <FindThing key={`${round}-${i}`} i={i} t={t} w={w} h={h} drift={variant === "drift"} found={found.includes(i)} label={t.target ? scene.target.name : "Something else"} onPick={pick} onLoad={markLoaded} />
+            ))}
+          </Animated.View>
         </View>
         <Hint>{!ready ? "Get ready..." : variant === "spun" ? "Everything's jumbled up. Spot it anyway!" : variant === "drift" ? "Things are floating about. Tap it when you spot it!" : "Tap it as soon as you spot it."}</Hint>
       </View>
@@ -668,14 +678,13 @@ const PipeTile = memo(function PipeTile({ base, spins, size, wet, order, reverse
   const still = useReduceMotion();
   const rot = useSharedValue(spins * 90);
   const water = useSharedValue(wet ? 1 : 0);
-  const press = useSharedValue(1);
   useEffect(() => {
-    rot.set(still ? spins * 90 : withTiming(spins * 90, { duration: 170, easing: Easing.out(Easing.back(1.6)) }));
+    rot.set(still ? spins * 90 : withTiming(spins * 90, { duration: 170, easing: Easing.out(Easing.cubic) }));
   }, [spins, still, rot]);
   useEffect(() => {
     water.set(still ? (wet ? 1 : 0) : wet ? withDelay(order * 45, withTiming(1, { duration: 160 })) : withTiming(0, { duration: 120 }));
   }, [wet, order, still, water]);
-  const turnStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rot.get()}deg` }, { scale: press.get() }] }));
+  const turnStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rot.get()}deg` }] }));
   const waterStyle = useAnimatedStyle(() => ({ opacity: water.get() }));
   const t = Math.max(6, Math.round(size * 0.26));
   const mid = (size - t) / 2;
@@ -684,10 +693,7 @@ const PipeTile = memo(function PipeTile({ base, spins, size, wet, order, reverse
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={reverse ? "Turn this pipe (it turns the other way)" : "Turn this pipe"}
-      onPress={() => {
-        if (!still) press.set(withSequence(withTiming(0.88, { duration: 60 }), withSpring(1, { damping: 10 })));
-        onPress();
-      }}
+      onPress={onPress}
       style={{ width: size, height: size }}
       className={`border border-outline/30 ${reverse ? "bg-[#ece2fb]" : "bg-surface"}`}
     >

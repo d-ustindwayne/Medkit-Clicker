@@ -37,7 +37,7 @@ const TITLES: Record<string, string> = {
   about: "ABOUT",
   redeem: "CODE",
   walk: "WALKING",
-  editor: "EDITOR",
+  editor: "CONSOLE",
 };
 const titleFor = (page: Page) => (page.startsWith("rewards:") ? "REWARDS" : TITLES[page]);
 
@@ -137,7 +137,7 @@ export function MenuDrawer({ visible, onClose }: { visible: boolean; onClose: ()
                 <MenuLink label="Settings" onPress={() => setPage("settings")} />
                 <MenuLink label="About" onPress={() => setPage("about")} />
                 {/* Dev code only: events and promo codes. On phones it opens the web version, where Google sign-in works. */}
-                {devTools && <MenuLink label="Editor" detail="events & codes" onPress={() => (Platform.OS === "web" ? setPage("editor") : Linking.openURL(`${APP_INFO.website}/play/`))} />}
+                {devTools && <MenuLink label="Console" onPress={() => (Platform.OS === "web" ? setPage("editor") : Linking.openURL(`${APP_INFO.website}/play/`))} />}
                 {rebirths >= FAME_REBIRTHS && fame !== "sent" && (
                   <MenuLink
                     label="Hall of Fame"

@@ -142,6 +142,9 @@ const TROPHY = {
 const MEDAL = require("@/imgs/achievements/medal.png");
 const WINGED_HEART = require("@/imgs/achievements/winged_heart.png");
 const CLOCK_MOON = require("@/imgs/achievements/clock_moon.png");
+const STREAK_FLAME = require("@/imgs/achievements/streak_flame.png");
+const INFINITY = require("@/imgs/achievements/infinity.png");
+const NURSE_HEART = require("@/imgs/achievements/nurse_heart.png");
 /**
  * The lifetime medkit trophies, in order of size (owner's split, 0.8.1): the first 9 bronze (to a
  * billion), the next 12 silver, then 15 each of gold, diamond and purple.
@@ -296,7 +299,7 @@ const LIST: Achievement[] = [
     id: "best_nurse",
     name: "Best Nurse in the World",
     description: "Unlock the Care Package.",
-    image: TROPHY.nurse,
+    image: NURSE_HEART,
     secret: true,
     section: "jasmine",
     coins: 5,
@@ -306,7 +309,7 @@ const LIST: Achievement[] = [
     id: "the_limit",
     name: "The Edge of Infinity",
     description: "Earn 179.769 uncentillion medkits, the most a phone can count.",
-    image: TROPHY.diamond,
+    image: INFINITY,
     secret: true,
     coins: 10,
     check: (s) => s.totalHealed >= Number.MAX_VALUE,
@@ -446,7 +449,7 @@ const LIST: Achievement[] = [
     id: "game_streak_15",
     name: "Unbeatable Shift",
     description: "Win 15 ward minigames in a row.",
-    image: TROPHY.gold,
+    image: STREAK_FLAME,
     coins: 8,
     check: (s) => s.minigameBestStreak >= 15,
     progress: (s) => s.minigameBestStreak / 15,

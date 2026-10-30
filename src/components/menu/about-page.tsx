@@ -6,7 +6,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withS
 
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
-import { APP_INFO, CREDIT } from "@/constants/app";
+import { APP_INFO } from "@/constants/app";
 import { HOSPITAL_IMAGE, MEDKIT_IMAGE } from "@/constants/items";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameState } from "@/hooks/use-game";
@@ -104,10 +104,6 @@ export function AboutPage({ onSecret }: { onSecret?: () => void }) {
         <Stat label="Playing since" value={new Date(s.startedAt).toLocaleDateString()} />
       </View>
       </HardShadow>
-
-      <Text className="font-body text-sm leading-5 text-ink">
-        {CREDIT} Code released under the {APP_INFO.license}. Original soundtrack made in BeepBox.
-      </Text>
     </View>
   );
 }

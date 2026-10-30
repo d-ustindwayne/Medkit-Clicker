@@ -9,7 +9,7 @@ import { MarqueeText } from "@/components/ui/marquee-text";
 import { AnimatedSprite } from "@/components/ui/animated-sprite";
 import { PixelIcon } from "@/components/ui/pixel-icon";
 import { WardPatient } from "@/components/ward/ward-patient";
-import { CHARACTER_PX, DRAG_DEPTH, ITEM_PX, ROOMS, STAFF_PER_ROOM, depth, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, isUnlocked, roomBonus, spotFor, unlockHint, type Placement, type RoomItem } from "@/constants/room";
+import { CHARACTER_PX, DRAG_DEPTH, ITEM_PX, ROOMS, STAFF_PER_ROOM, depth, ROOM_BONUS_CAP, ROOM_ITEMS, ZONES, isUnlocked, itemUnlocked, roomBonus, spotFor, unlockHint, type Placement, type RoomItem } from "@/constants/room";
 import { STAFF_FRAMES, WALK_FRAME_MS, WALK_SEQUENCE } from "@/constants/staff";
 import { useAudio } from "@/hooks/use-audio";
 import { useGameActions, useGameSelector } from "@/hooks/use-game";
@@ -220,7 +220,7 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
 
   const tapItem = (item: RoomItem) => {
     unlock();
-    if (!isUnlocked(item.unlock, state)) {
+    if (!itemUnlocked(item, state)) {
       haptic.denied();
       playSfx("invalid");
       return pushToast({ kind: "info", title: `${item.name} is locked`, body: unlockHint(item.unlock), image: item.image });
@@ -339,7 +339,7 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
     // Dropped back on the tray: cancel. Anywhere else (even on another item, or partly outside the
     // room) places it in the room.
     if (!b || pageY > b.y + b.h) return;
-    if (!isUnlocked(item.unlock, state)) return tapItem(item); // shows the unlock hint
+    if (!itemUnlocked(item, state)) return tapItem(item); // shows the unlock hint
     if (!placed.some((p) => p.item === item.id) && roomCount(placed, !!item.staff) >= (item.staff ? STAFF_PER_ROOM : room.limit)) return tapItem(item); // "room is full"
     // Items stand on their feet, so the drop point is the bottom of the item.
     const fx = Math.min(0.95, Math.max(0.05, (pageX - b.x) / b.w));
@@ -471,7 +471,7 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
         <View className="border-t-2 border-outline bg-surface py-1.5" accessibilityHint={`Drag placed items to move them. Bonuses are capped at +${Math.round(ROOM_BONUS_CAP * 100)}% each.`}>
           <ScrollView horizontal scrollEnabled={!dragging} showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-3">
             {ROOM_ITEMS.map((item, i) => {
-              const open = isUnlocked(item.unlock, state);
+              const open = itemUnlocked(item, state);
               const here = placed.some((p) => p.item === item.id);
               const elsewhere = !here && Object.entries(state.room.placed).some(([rid, list]) => rid !== room.id && list.some((p) => p.item === item.id));
               const bonus = item.bonus.rate ? `+${Math.round(item.bonus.rate * 100)}%/s` : `+${Math.round((item.bonus.tap ?? 0) * 100)}%/tap`;

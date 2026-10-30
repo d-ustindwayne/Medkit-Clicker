@@ -248,6 +248,8 @@ export const isUnlocked = (u: Unlock, s: Progress) => {
   if ("gem" in u) return s.gemItems?.includes(u.gem) ?? false;
   return (s.owned[u.item] ?? 0) >= u.owned;
 };
+/** A room item is the player's once its unlock is met, or once a code or event gave it to them. */
+export const itemUnlocked = (item: RoomItem, s: Progress & { giftedRoomItems?: string[] }) => !!s.giftedRoomItems?.includes(item.id) || isUnlocked(item.unlock, s);
 
 export type Placement = { item: string; x: number; y: number };
 /** `layout` 2 = positions on the 320x240 rooms; saves without it are from the 320x180 ones. */

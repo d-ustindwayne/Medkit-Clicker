@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { BOOSTS, boostMultiplier } from "@/constants/boosts";
-import { SHOP_ITEMS, TAP_GROWTH_STEPS, TAP_GROWTH_RATE, TAP_RATE_BONUS, itemCost, itemMultiplier, nextMilestone, perSecond } from "@/constants/items";
+import { CATCH_UP_LOSS, SHOP_ITEMS, TAP_GROWTH_STEPS, TAP_GROWTH_RATE, TAP_RATE_BONUS, itemCost, itemMultiplier, itemOutput, nextMilestone, perSecond } from "@/constants/items";
 import { SICK_PATIENTS, minigameLevel, minigameTuning } from "@/constants/patients";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS, HOSPITAL_TIERS, dayPhase, hospitalTier, visitorGap } from "@/constants/hospital";
 import { healingRate, rebirthTarget } from "@/constants/rebirth";
@@ -284,6 +284,25 @@ describe("item milestones", () => {
     const bandages = perSecond({ ...newGame().owned, bandage: 100 });
     expect(bandages).toBeGreaterThan(SHOP_ITEMS.find((i) => i.id === "stethoscope")!.rate);
   });
+  test("catch-up: a lower item earns about what the same medkits spent higher up would, once one is owned", () => {
+    const [bandage, gloves] = SHOP_ITEMS;
+    const alone = { ...newGame().owned, bandage: 30 };
+    expect(itemOutput(alone, bandage)).toBeCloseTo(30 * bandage.rate * 4);
+    // 30 bandages cost about what 14 gloves do: 14 gloves make 28/s, less 2% for the one step.
+    const withGloves = { ...alone, gloves: 1 };
+    expect(itemOutput(withGloves, bandage)).toBeCloseTo(14 * gloves.rate * 2 * (1 - CATCH_UP_LOSS[0]));
+    // The newest item has nothing above it.
+    const dna = SHOP_ITEMS.at(-1)!;
+    expect(itemOutput({ ...withGloves, dna: 5 }, dna)).toBeCloseTo(5 * dna.rate);
+  });
+  test("catch-up: buying one more of anything never lowers the total", () => {
+    for (let t = 0; t < 500; t++) {
+      const owned = { ...newGame().owned };
+      for (const item of SHOP_ITEMS) owned[item.id] = Math.random() < 0.6 ? Math.floor(Math.random() * 200) : 0;
+      const item = SHOP_ITEMS[Math.floor(Math.random() * SHOP_ITEMS.length)];
+      expect(perSecond({ ...owned, [item.id]: owned[item.id] + 1 })).toBeGreaterThanOrEqual(perSecond(owned) - 1e-6);
+    }
+  });
 });
 
 describe("reward cooldowns", () => {
@@ -465,6 +484,32 @@ describe("promo codes", () => {
   test("unknown backgrounds are ignored", () => {
     const s = run(newGame(), { type: "claimPromo", hash: "d", rewards: [{ kind: "background", id: "nope" }] });
     expect(s.ownedBackgrounds).toEqual([]);
+  });
+  test("shop items, boosts, cosmetics and room items from the Console", () => {
+    const timed = BOOSTS.find((b) => b.effect.kind === "timed")!;
+    const cosmetic = "sakura";
+    const locked = ROOM_ITEMS.find((i) => i.unlock && !("gem" in i.unlock))!;
+    const s = run(newGame(), {
+      type: "claimPromo",
+      hash: "e",
+      rewards: [
+        { kind: "item", id: SHOP_ITEMS[0].id, count: 3 },
+        { kind: "boost", id: timed.id, count: 2 },
+        { kind: "cosmetic", id: cosmetic },
+        { kind: "room", id: locked.id },
+        { kind: "item", id: "nope", count: 5 },
+      ],
+    });
+    expect(s.owned[SHOP_ITEMS[0].id]).toBe(3);
+    const seconds = timed.effect.kind === "timed" ? timed.effect.seconds : 0;
+    expect((s.boosts[timed.id] - Date.now()) / 1000).toBeGreaterThan(seconds * 2 - 5);
+    expect(s.gemItems).toEqual([cosmetic]);
+    expect(s.ownedBackgrounds).toEqual([cosmetic]);
+    expect(s.medkitSkin).toBeNull();
+    expect(s.giftedRoomItems).toEqual([locked.id]);
+    // A gifted room item can be placed although its unlock isn't met.
+    const placed = run(s, { type: "placeItem", room: ROOMS[0].id, item: locked.id, x: 0.5, y: ZONES[locked.place].minY } as GameAction);
+    expect(Object.values(placed.room.placed).flat().some((p) => p.item === locked.id)).toBe(true);
   });
 });
 

@@ -6,21 +6,10 @@ import { useMusic } from "@/hooks/use-audio";
 import { useGameActions, useGameState } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
 import { OFFLINE_MESSAGE, claimPromoOnline, cloudEnabled, isOffline, savePendingCode, unlockOnline, wakeServer } from "@/lib/cloud";
-import { formatCount } from "@/lib/format";
 import { codeHash, isDevCode, sectionForCode } from "@/lib/codes";
-import { BACKGROUNDS } from "@/constants/backgrounds";
 import { REWARD_SECTIONS, sectionOpen } from "@/constants/rewards";
 import type { PromoItem } from "@/lib/game";
-
-/** "+20 Care Coins, Purple Rain background" */
-const describe = (rewards: PromoItem[]) =>
-  rewards
-    .map((r) => {
-      if (r.kind === "background") return `${BACKGROUNDS.find((b) => b.id === r.id)?.name ?? "A new"} background`;
-      if (r.kind === "seconds") return `${r.amount} seconds of medkits`;
-      return `+${formatCount(r.amount)} ${r.kind === "medkits" ? "medkits" : r.kind === "coins" ? "Care Coins" : "Natal Gems"}`;
-    })
-    .join(", ");
+import { describeRewards } from "@/lib/rewards-text";
 
 /** Enter a code to unlock a hidden section. Codes are checked by hash; see src/constants/rewards.ts. */
 export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => void }) {
@@ -92,7 +81,7 @@ export function RedeemPage({ onUnlocked }: { onUnlocked: (sectionId: string) => 
         const rewards: PromoItem[] = reward.rewards ?? (reward.kind === "bundle" ? [] : [{ kind: reward.kind, amount: reward.amount }]);
         dispatch({ type: "claimPromo", hash, rewards });
         const unlocked = rewards.some((r) => r.kind === "background") ? " Pick the background in Settings." : "";
-        pushToast({ kind: "info", title: "Code redeemed", body: `${reward.message ? `${reward.message} ` : ""}${describe(rewards)}.${unlocked}` });
+        pushToast({ kind: "info", title: "Code redeemed", body: `${reward.message ? `${reward.message} ` : ""}${describeRewards(rewards)}.${unlocked}` });
         setCode("");
         return;
       }

@@ -4,7 +4,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import { BOOSTS, COIN, boostMultiplier, type Boost } from "@/constants/boosts";
-import { MEDKIT_IMAGE, SHOP_ITEMS, itemCost, itemMultiplier, nextMilestone, type ShopItem } from "@/constants/items";
+import { MEDKIT_IMAGE, SHOP_ITEMS, itemCost, itemOutput, nextMilestone, type ShopItem } from "@/constants/items";
 import { HOSPITAL_SCENE } from "@/constants/scenes";
 import { Shine } from "@/components/fx/shine";
 import { GemShop } from "@/components/hospital/gem-shop";
@@ -17,7 +17,7 @@ import { useGameActions, useGameSelector } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useNow } from "@/hooks/use-now";
 import { usePalette } from "@/hooks/use-palette";
-import { formatCount, formatMult, formatRate } from "@/lib/format";
+import { formatCount, formatRate } from "@/lib/format";
 import { bulkCost, coinBalance, priceOf, type GameState } from "@/lib/game";
 
 type CardProps = {
@@ -31,9 +31,12 @@ type CardProps = {
   hidden: boolean;
   /** How many one tap buys (x1 / x10 / x100). */
   qty: number;
+  /** Medkits per second each one makes now (catch-up included), and each at the next milestone. */
+  each: number;
+  nextEach: number;
 };
 
-const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progress, hidden, qty }: CardProps) {
+const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progress, hidden, qty, each, nextEach }: CardProps) {
   const { dispatch } = useGameActions();
   const { playSfx, unlock } = useAudio();
   const haptic = useHaptics();
@@ -78,8 +81,8 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
             </View>
             {!hidden && (
               <Text className="font-body text-xs text-ink opacity-70">
-                +{formatRate(item.rate * itemMultiplier(owned))} per second each
-                {` · ${formatMult(itemMultiplier(nextMilestone(owned)))} at ${nextMilestone(owned)}`}
+                +{formatRate(each)} per second each
+                {` · +${formatRate(nextEach)} each at ${nextMilestone(owned)}`}
               </Text>
             )}
           </View>
@@ -131,8 +134,11 @@ function ShopRow({ item, qty }: { item: ShopItem; qty: number }) {
   const card = useGameSelector((s) => {
     const cost = costOf(s, item, qty);
     const owned = s.owned[item.id];
+    const next = nextMilestone(owned);
     return {
       owned,
+      each: owned > 0 ? itemOutput(s.owned, item) / owned : itemOutput(s.owned, item, 1),
+      nextEach: itemOutput(s.owned, item, next) / next,
       cost,
       affordable: s.healed >= cost,
       progress: Math.min(1, Math.floor((s.healed / cost) * 50) / 50),

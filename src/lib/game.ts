@@ -1,12 +1,12 @@
 import { ACHIEVEMENTS, type AchievementId } from "@/constants/achievements";
 import { gemsForRebirth, healingRate, rebirthMultiplier } from "@/constants/rebirth";
 import { BACKGROUNDS } from "@/constants/backgrounds";
-import { BOOSTS, LUCKY_MULT, boostMultiplier } from "@/constants/boosts";
+import { BOOSTS, LUCKY_MULT, boostMultiplier, type Boost } from "@/constants/boosts";
 import { LOSE_SECONDS, LOSE_TAPS, WIN_SECONDS, WIN_TAPS, minigameLevel, minigameTuning, winCoins } from "@/constants/patients";
 import { GEM_ITEMS, GEM_LEVEL_COSTS, GEM_UPGRADES, gemBalance, gemLevel, type GemUpgradeId } from "@/constants/gems";
 import { EMERGENCY_SECONDS, EMERGENCY_TAPS } from "@/constants/hospital";
 import { REWARD_SECTIONS } from "@/constants/rewards";
-import { ROOMS, ROOM_ITEMS, STAFF_PER_ROOM, fromOldArt, isUnlocked, roomBonus, snapPlacement, spotFor, type RoomState } from "@/constants/room";
+import { ROOMS, ROOM_ITEMS, STAFF_PER_ROOM, fromOldArt, isUnlocked, itemUnlocked, roomBonus, snapPlacement, spotFor, type RoomState } from "@/constants/room";
 import { SHOP_ITEMS, baseTap, itemCost, perSecond, type ItemId } from "@/constants/items";
 import { todaysGift, type DailyState } from "@/lib/daily";
 import { COINS_PER_KM, MEDKIT_SECONDS, addReading, newWalk, type StepReading, type WalkState } from "@/lib/walk";
@@ -58,6 +58,8 @@ export type GameState = {
   gemUpgrades: Record<string, number>;
   /** Gem Shop cosmetics owned (ids from GEM_ITEMS). */
   gemItems: string[];
+  /** My Room items given by codes or events, whatever their unlock says. Kept through rebirth. */
+  giftedRoomItems: string[];
   /** Equipped medkit skin and tap effect (gem item ids), or null for the originals. */
   medkitSkin: string | null;
   tapEffect: string | null;
@@ -153,10 +155,15 @@ export type GameAction =
   | { type: "devAddCoins"; count: number };
 
 /**
- * One part of a promo code's reward (codes are set up with scripts/add-promo.ts): medkits, Care
- * Coins or Natal Gems; a paid background unlocked for free; or `seconds` of healing at the current rate.
+ * One part of a promo code's or event's reward (set up in the Console or with scripts/add-promo.ts):
+ * medkits, Care Coins or Natal Gems; `seconds` of healing at the current rate; a paid background; shop
+ * items or boosts (`count` of them); a Gem Shop cosmetic; or a My Room item. The newer kinds use
+ * `count`, not `amount`, so app versions from before them skip them instead of misreading them.
  */
-export type PromoItem = { kind: "medkits" | "coins" | "gems" | "seconds"; amount: number } | { kind: "background"; id: string };
+export type PromoItem =
+  | { kind: "medkits" | "coins" | "gems" | "seconds"; amount: number }
+  | { kind: "background" | "cosmetic" | "room"; id: string }
+  | { kind: "item" | "boost"; id: string; count: number };
 
 export const emptyOwned = (): Record<ItemId, number> =>
   Object.fromEntries(SHOP_ITEMS.map((i) => [i.id, 0])) as Record<ItemId, number>;
@@ -189,6 +196,7 @@ export const newGame = (): GameState => ({
   gemsSpent: 0,
   gemUpgrades: {},
   gemItems: [],
+  giftedRoomItems: [],
   medkitSkin: null,
   tapEffect: null,
   devTools: false,
@@ -320,6 +328,20 @@ const earn = (state: GameState, amount: number): GameState => {
   };
 };
 
+/** A boost's effect (already paid for, or given by a code or event). */
+const applyBoost = (state: GameState, boost: Boost): GameState => {
+  const e = boost.effect;
+  if (e.kind === "timed") {
+    const now = Date.now();
+    return { ...state, boosts: { ...state.boosts, [boost.id]: Math.max(now, state.boosts[boost.id] ?? 0) + e.seconds * 1000 } };
+  }
+  if (e.kind === "charges") return { ...state, luckyTaps: state.luckyTaps + e.taps };
+  // Instant: based on the unboosted rate, and never less than 10 taps early in the game.
+  const base = { owned: state.owned, rebirths: state.rebirths };
+  const amount = e.rateSeconds ? Math.max(healingRate(base) * e.rateSeconds, tapValue(base) * 10) : tapValue(base) * (e.taps ?? 0);
+  return earn(state, amount);
+};
+
 const withAchievements = (state: GameState): GameState => {
   let unlocked: GameState["achievements"] | null = null;
   for (const a of ACHIEVEMENTS) {
@@ -414,17 +436,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
     case "useBoost": {
       const boost = BOOSTS.find((b) => b.id === action.id);
       if (!boost || coinBalance(state) < boost.cost) return state;
-      const paid = { ...state, coinsSpent: state.coinsSpent + boost.cost };
-      const e = boost.effect;
-      if (e.kind === "timed") {
-        const now = Date.now();
-        return { ...paid, boosts: { ...state.boosts, [boost.id]: Math.max(now, state.boosts[boost.id] ?? 0) + e.seconds * 1000 } };
-      }
-      if (e.kind === "charges") return { ...paid, luckyTaps: state.luckyTaps + e.taps };
-      // Instant: based on the unboosted rate, and never less than 10 taps early in the game.
-      const base = { owned: state.owned, rebirths: state.rebirths };
-      const amount = e.rateSeconds ? Math.max(healingRate(base) * e.rateSeconds, tapValue(base) * 10) : tapValue(base) * (e.taps ?? 0);
-      return earn(paid, amount);
+      return applyBoost({ ...state, coinsSpent: state.coinsSpent + boost.cost }, boost);
     }
     case "patientArrives": {
       if (state.patients.length >= MAX_PATIENTS) return state;
@@ -484,7 +496,30 @@ const apply = (state: GameState, action: GameAction): GameState => {
           if (BACKGROUNDS.some((b) => b.id === r.id) && !next.ownedBackgrounds.includes(r.id)) next = { ...next, ownedBackgrounds: [...next.ownedBackgrounds, r.id] };
           continue;
         }
-        if (!(r.amount > 0)) continue;
+        if (r.kind === "cosmetic") {
+          // Owned as if bought in the Gem Shop, but not put on.
+          const item = GEM_ITEMS.find((i) => i.id === r.id);
+          if (!item || next.gemItems.includes(item.id)) continue;
+          next = { ...next, gemItems: [...next.gemItems, item.id] };
+          if (item.kind === "background" && !next.ownedBackgrounds.includes(item.id)) next = { ...next, ownedBackgrounds: [...next.ownedBackgrounds, item.id] };
+          continue;
+        }
+        if (r.kind === "room") {
+          if (ROOM_ITEMS.some((i) => i.id === r.id) && !next.giftedRoomItems.includes(r.id)) next = { ...next, giftedRoomItems: [...next.giftedRoomItems, r.id] };
+          continue;
+        }
+        if (r.kind === "item" || r.kind === "boost") {
+          const count = Math.min(1000, Math.floor(r.count));
+          if (!(count > 0)) continue;
+          if (r.kind === "item") {
+            if (r.id in next.owned) next = { ...next, owned: { ...next.owned, [r.id]: next.owned[r.id as ItemId] + count } };
+          } else {
+            const boost = BOOSTS.find((b) => b.id === r.id);
+            for (let k = 0; boost && k < count; k++) next = applyBoost(next, boost);
+          }
+          continue;
+        }
+        if (!("amount" in r) || !(r.amount > 0)) continue;
         if (r.kind === "coins") next = { ...next, bonusCoins: next.bonusCoins + r.amount };
         else if (r.kind === "gems") next = { ...next, bonusGems: next.bonusGems + r.amount };
         else if (r.kind === "medkits") next = earn(next, r.amount);
@@ -553,7 +588,7 @@ const apply = (state: GameState, action: GameAction): GameState => {
     case "placeItem": {
       const room = ROOMS.find((r) => r.id === action.room);
       const item = ROOM_ITEMS.find((i) => i.id === action.item);
-      if (!room || !item || !isUnlocked(item.unlock, state)) return state;
+      if (!room || !item || !itemUnlocked(item, state)) return state;
       // One of each item: take it out of wherever it is first.
       const placed = Object.fromEntries(Object.entries(state.room.placed).map(([k, v]) => [k, v.filter((p) => p.item !== item.id)]));
       const here = placed[room.id] ?? [];
@@ -606,7 +641,7 @@ const keepRewards = (from: GameState, into: GameState): GameState => {
 function putAwayLocked(s: GameState): GameState {
   const ok = (id: string) => {
     const item = ROOM_ITEMS.find((i) => i.id === id);
-    return !!item && isUnlocked(item.unlock, s);
+    return !!item && itemUnlocked(item, s);
   };
   const lists = Object.entries(s.room.placed);
   if (lists.every(([, list]) => list.every((p) => ok(p.item)))) return s;
@@ -668,6 +703,7 @@ export const normalizeSave = (raw: unknown): GameState | null => {
     gemsSpent: typeof s.gemsSpent === "number" ? s.gemsSpent : 0,
     gemUpgrades: { ...(s.gemUpgrades ?? {}) },
     gemItems: Array.isArray(s.gemItems) ? s.gemItems : [],
+    giftedRoomItems: Array.isArray(s.giftedRoomItems) ? s.giftedRoomItems : [],
     medkitSkin: typeof s.medkitSkin === "string" ? s.medkitSkin : null,
     tapEffect: typeof s.tapEffect === "string" ? s.tapEffect : null,
     devTools: s.devTools === true,

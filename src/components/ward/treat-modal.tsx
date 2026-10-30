@@ -5,7 +5,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSeq
 
 import { NEW_GAMES } from "@/components/ward/new-games";
 import { KeyHint, MORE_GAMES } from "@/components/ward/more-games";
-import { pickVariant, shuffle, useDone, useJuice, type GameProps } from "@/components/ward/game-kit";
+import { pickVariant, useDone, useJuice, type GameProps } from "@/components/ward/game-kit";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { PixelIcon } from "@/components/ui/pixel-icon";
@@ -125,8 +125,11 @@ function planBeats(variant: RhythmVariant, beatMs: number) {
     return { times, skip: times.map(() => false) };
   }
   if (variant === "skips") {
-    // 12 beats, 3 of them skipped (never the first two), so 9 real beats.
-    const skipAt = new Set(shuffle(Array.from({ length: 10 }, (_, k) => k + 2)).slice(0, 3));
+    // 12 beats, 2 of them skipped (never the first two, never back to back), so 10 real beats.
+    // (3 skips that showed only on the beat itself were too hard: nobody won it, 0.8.8.)
+    const first = 2 + Math.floor(Math.random() * 7);
+    const second = first + 2 + Math.floor(Math.random() * (10 - first));
+    const skipAt = new Set([first, second]);
     return { times: Array.from({ length: 12 }, (_, k) => k * beatMs), skip: Array.from({ length: 12 }, (_, k) => skipAt.has(k)) };
   }
   return { times: Array.from({ length: BEATS }, (_, k) => k * beatMs), skip: Array.from({ length: BEATS }, () => false) };
@@ -143,8 +146,7 @@ function RhythmGame({ onDone, tuning }: GameProps) {
     return { variant, ...planBeats(variant, tuning.beatMs) };
   });
   const count = plan.times.length;
-  // Skips: one fewer needed (there are 9 real beats instead of 10).
-  const NEED_BEATS = tuning.beatsNeeded - (plan.variant === "skips" ? 1 : 0);
+  const NEED_BEATS = tuning.beatsNeeded;
   const juice = useJuice();
   const [ripple, setRipple] = useState(0);
   const done = useDone(onDone);
@@ -153,6 +155,8 @@ function RhythmGame({ onDone, tuning }: GameProps) {
   const start = useRef(0);
   const [hitCount, setHitCount] = useState(0);
   const [beat, setBeat] = useState(-1);
+  /** The heart goes grey half a beat before a skipped beat, so it can be seen coming, until half a beat after. */
+  const [grey, setGrey] = useState(false);
   /** Beats tapped on time (each counts once). */
   const hits = useRef<number[]>([]);
   /**
@@ -175,6 +179,11 @@ function RhythmGame({ onDone, tuning }: GameProps) {
           pulse.set(withSequence(withTiming(peak, { duration: 70, easing: Easing.out(Easing.quad) }), withTiming(1, { duration: 180, easing: Easing.in(Easing.quad) })));
         }, s - Date.now() + at),
       );
+    });
+    plan.times.forEach((at, k) => {
+      if (!plan.skip[k]) return;
+      timers.push(setTimeout(() => setGrey(true), s - Date.now() + at - tuning.beatMs / 2));
+      timers.push(setTimeout(() => setGrey(false), s - Date.now() + at + tuning.beatMs / 2));
     });
     timers.push(setTimeout(() => done(score() >= NEED_BEATS), s - Date.now() + plan.times[count - 1] + tuning.beatMs + 250));
     return () => timers.forEach(clearTimeout);
@@ -204,8 +213,7 @@ function RhythmGame({ onDone, tuning }: GameProps) {
     juice.shake();
   };
   useKeys({ " ": press });
-  const skipped = beat >= 0 && plan.skip[beat];
-  const hint = `${plan.variant === "skips" ? "Tap with the beat, but not when the heart goes grey!" : plan.variant === "speedup" ? "The heart is speeding up. Keep with it!" : "Tap the heart every time it beats."} Extra taps cost you a beat.`;
+  const hint = `${plan.variant === "skips" ? "Tap with the beat, but let it pass when the heart goes grey!" : plan.variant === "speedup" ? "The heart is speeding up. Keep with it!" : "Tap the heart every time it beats."} Extra taps cost you a beat.`;
 
   return (
     <Animated.View style={juice.style}>
@@ -216,7 +224,7 @@ function RhythmGame({ onDone, tuning }: GameProps) {
       <TapPressable accessibilityRole="button" accessibilityLabel="Tap with the heartbeat" onDown={press} className="h-36 w-36 items-center justify-center">
         {ripple > 0 && <HeartRipple key={ripple} />}
         <Animated.View style={heart}>
-          <Image source={require("@/imgs/misc/heart.png")} style={{ width: 120, height: 120, opacity: skipped ? 0.4 : 1 }} contentFit="contain" tintColor={skipped ? "#8a94a3" : undefined} />
+          <Image source={require("@/imgs/misc/heart.png")} style={{ width: 120, height: 120, opacity: grey ? 0.4 : 1 }} contentFit="contain" tintColor={grey ? "#8a94a3" : undefined} />
         </Animated.View>
       </TapPressable>
       <Text className="text-center font-body text-sm text-ink opacity-70">{hint}</Text>

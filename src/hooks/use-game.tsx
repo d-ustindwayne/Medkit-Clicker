@@ -5,7 +5,7 @@ import { clearOldImageCache } from "@/components/ui/image";
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { PATIENT_WAIT_MS, SICK_PATIENTS, nextPatientDelay } from "@/constants/patients";
 import { healingRate } from "@/constants/rebirth";
-import { ROOMS, ROOM_ITEMS, isUnlocked } from "@/constants/room";
+import { ROOMS, ROOM_ITEMS, isUnlocked, itemUnlocked } from "@/constants/room";
 import type { ThemeName } from "@/constants/theme";
 import { formatCount, formatDuration } from "@/lib/format";
 import { MAX_PATIENTS, gameReducer, maxAwaySeconds, newGame, type GameAction, type GameState } from "@/lib/game";
@@ -34,7 +34,7 @@ export type Toast = { id: number; title: string; body: string; kind: "achievemen
  * as one string so the effect that announces new ones runs only when the list changes.
  */
 const roomUnlocks = (s: GameState) =>
-  [...ROOM_ITEMS.filter((i) => i.unlock && !("gem" in i.unlock) && isUnlocked(i.unlock, s)).map((i) => `item:${i.id}`), ...ROOMS.filter((r) => r.unlock && isUnlocked(r.unlock, s)).map((r) => `room:${r.id}`)].join(",");
+  [...ROOM_ITEMS.filter((i) => i.unlock && !("gem" in i.unlock) && itemUnlocked(i, s)).map((i) => `item:${i.id}`), ...ROOMS.filter((r) => r.unlock && isUnlocked(r.unlock, s)).map((r) => `room:${r.id}`)].join(",");
 
 type GameActions = {
   dispatch: (action: GameAction) => void;

@@ -91,8 +91,31 @@ export const milestonesReached = (count: number) => {
 export const nextMilestone = (count: number) => MILESTONES.find((m) => m > count) ?? MILESTONES[MILESTONES.length - 1] + MILESTONE_AFTER * (Math.floor((count - MILESTONES[MILESTONES.length - 1]) / MILESTONE_AFTER) + 1);
 export const itemMultiplier = (count: number) => 2 ** milestonesReached(count);
 
-export const perSecond = (owned: Record<ItemId, number>) =>
-  SHOP_ITEMS.reduce((sum, item) => {
-    const n = owned[item.id] ?? 0;
-    return sum + item.rate * n * itemMultiplier(n);
-  }, 0);
+/** An item's own output: rate x count x its doublings. */
+const plainOutput = (item: ShopItem, n: number) => item.rate * n * itemMultiplier(n);
+/** Medkits spent buying the first `n` of an item. */
+const spentOn = (item: ShopItem, n: number) => (item.baseCost * (COST_GROWTH ** n - 1)) / (COST_GROWTH - 1);
+
+/**
+ * Catch-up (0.8.8, owner's idea): so the first supplies never become useless, once a player owns an
+ * item higher up the list, a lower item earns at least what the same medkits spent on that higher item
+ * would earn, a little less for each step between them (CATCH_UP_LOSS). It starts as soon as one of
+ * the higher item is owned, only ever goes up as the player buys, and the newest items are left as they are.
+ */
+export const CATCH_UP_LOSS = [0.02, 0.05, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2, 0.22, 0.24, 0.26];
+export const itemOutput = (owned: Record<ItemId, number>, item: ShopItem, n = owned[item.id] ?? 0) => {
+  let best = plainOutput(item, n);
+  if (n <= 0) return best;
+  const spent = spentOn(item, n);
+  const from = SHOP_ITEMS.indexOf(item);
+  for (let j = from + 1; j < SHOP_ITEMS.length; j++) {
+    const higher = SHOP_ITEMS[j];
+    if ((owned[higher.id] ?? 0) <= 0) continue;
+    // How many of the higher item the same medkits would have bought.
+    const same = Math.floor(Math.log((spent * (COST_GROWTH - 1)) / higher.baseCost + 1) / Math.log(COST_GROWTH));
+    if (same > 0) best = Math.max(best, plainOutput(higher, same) * (1 - CATCH_UP_LOSS[j - from - 1]));
+  }
+  return best;
+};
+
+export const perSecond = (owned: Record<ItemId, number>) => SHOP_ITEMS.reduce((sum, item) => sum + itemOutput(owned, item), 0);

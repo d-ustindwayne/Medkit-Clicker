@@ -357,7 +357,7 @@ function PillsGame({ onDone, tuning }: GameProps) {
   );
 }
 
-// ---------- X-ray: several films in a row: fractures, a swallowed coin, a dislocated joint, counting breaks ----------
+// ---------- X-ray: several films in a row: fractures, a swallowed coin, a dislocated joint, counting breaks, a mixed film ----------
 const BONE = "#e8f2ff";
 /** Each film is a different part of the body, on a slightly different tint of film. */
 type BoneKind = "long" | "finger" | "rib" | "spine";
@@ -455,13 +455,14 @@ function Tummy({ coin, bubbles, faint }: { coin: boolean; bubbles: { x: number; 
   );
 }
 
-type XrayVariant = "fracture" | "coin" | "joint" | "double" | "count";
+type XrayVariant = "fracture" | "coin" | "joint" | "double" | "count" | "mixed";
 const XRAY_TEXT: Record<XrayVariant, { title: string; hint: string }> = {
   fracture: { title: "Find the fracture", hint: "Tap the bone with the crack." },
   coin: { title: "Find the swallowed coin", hint: "Gas bubbles are hollow. The coin is solid." },
   joint: { title: "Find the dislocated joint", hint: "Tap the bone that's out of line." },
   double: { title: "Find both fractures", hint: "Two bones are cracked. Tap them both." },
   count: { title: "How many fractures?", hint: "Look over the whole film, then answer." },
+  mixed: { title: "Find the fracture", hint: "Bones from all over the body. Tap the cracked one." },
 };
 const XRAY_VARIANTS: { id: XrayVariant; from: number }[] = [
   { id: "fracture", from: 0 },
@@ -469,6 +470,7 @@ const XRAY_VARIANTS: { id: XrayVariant; from: number }[] = [
   { id: "joint", from: 0.3 },
   { id: "double", from: 0.4 },
   { id: "count", from: 0.55 },
+  { id: "mixed", from: 0.65 },
 ];
 
 /**
@@ -511,13 +513,18 @@ function XrayFilm({ variant, tuning, onResult }: { variant: XrayVariant; tuning:
   const [film] = useState(() => {
     // The coin film uses fewer, bigger tummies; bones go up to 16, drawn smaller the more there are.
     const count = variant === "coin" ? Math.min(12, tuning.bones) : tuning.bones;
-    // A part of the body and a film tint for this film, and a little wobble in where each bone lies.
+    // A part of the body and a film tint for this film (the mixed film picks a part for every bone),
+    // and a little wobble in where each bone lies.
     const bones = BONE_KINDS[rand(BONE_KINDS.length)];
-    const cells = Array.from({ length: count }, () => ({
-      angle: rand(bones.turn * 2 + 1) - bones.turn,
-      nudge: { x: rand(7) - 3, y: rand(7) - 3 },
-      bubbles: Array.from({ length: 1 + rand(3) }, () => ({ x: 4 + rand(26), y: 4 + rand(26) })),
-    }));
+    const cells = Array.from({ length: count }, () => {
+      const own = variant === "mixed" ? BONE_KINDS[rand(BONE_KINDS.length)] : bones;
+      return {
+        kind: own.kind,
+        angle: rand(own.turn * 2 + 1) - own.turn,
+        nudge: { x: rand(7) - 3, y: rand(7) - 3 },
+        bubbles: Array.from({ length: 1 + rand(3) }, () => ({ x: 4 + rand(26), y: 4 + rand(26) })),
+      };
+    });
     // The bones that are "it": one, two (double), or 0-3 cracked ones to count.
     const howMany = variant === "double" ? 2 : variant === "count" ? rand(4) : 1;
     const odd = new Set(shuffle(Array.from({ length: count }, (_, i) => i)).slice(0, howMany));
@@ -561,14 +568,14 @@ function XrayFilm({ variant, tuning, onResult }: { variant: XrayVariant; tuning:
   // The crack gets finer and the joint shifts less as the game gets harder.
   const crackW = Math.round(16 - level * 6);
   const shift = Math.round(5 - level * 2);
-  const cracked = variant === "fracture" || variant === "double" || variant === "count";
+  const cracked = variant === "fracture" || variant === "double" || variant === "count" || variant === "mixed";
   const text = XRAY_TEXT[variant];
   return (
     <Animated.View style={juice.style}>
       <View className="items-center gap-3">
         <View className="items-center">
           <Text className="font-number text-base text-ink">{text.title}</Text>
-          {variant !== "coin" && <Text className="font-pixel text-[9px] tracking-[2px] text-ink opacity-60">{film.bones.name} FILM</Text>}
+          {variant !== "coin" && <Text className="font-pixel text-[9px] tracking-[2px] text-ink opacity-60">{variant === "mixed" ? "MIXED" : film.bones.name} FILM</Text>}
         </View>
         <TimeBar left={left} total={total} />
         <View onLayout={(e) => setFilmH(e.nativeEvent.layout.height)} className={`${cols === 4 ? "w-72" : "w-60"} flex-row flex-wrap justify-between gap-y-2 overflow-hidden border-2 border-outline p-2`} style={{ backgroundColor: film.tint }}>
@@ -582,7 +589,7 @@ function XrayFilm({ variant, tuning, onResult }: { variant: XrayVariant; tuning:
                   <Tummy coin={odd} bubbles={odd ? c.bubbles.slice(0, 1) : c.bubbles} faint={0.35 + level * 0.35} />
                 ) : (
                   <View style={{ transform: [{ translateX: c.nudge.x }, { translateY: c.nudge.y }, { rotate: `${c.angle}deg` }, { scale }] }}>
-                    <Bone kind={film.bones.kind} film={film.tint} crack={cracked && odd ? crackW : undefined} shift={variant === "joint" && odd ? shift : 0} />
+                    <Bone kind={c.kind} film={film.tint} crack={cracked && odd ? crackW : undefined} shift={variant === "joint" && odd ? shift : 0} />
                   </View>
                 )}
               </TapPressable>
