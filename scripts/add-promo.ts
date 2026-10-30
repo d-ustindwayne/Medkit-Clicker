@@ -42,6 +42,7 @@ const url = process.env.DATABASE_URL!;
 const sql = ca ? new SQL({ url: url.replace(/\?.*$/, ""), tls: { ca, rejectUnauthorized: true } }) : new SQL(url);
 // Bundles need the rewards column (also in db/schema.sql); safe to run every time.
 await sql.unsafe(`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS rewards JSONB;
+  ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS label TEXT;
   ALTER TABLE promo_codes DROP CONSTRAINT IF EXISTS promo_codes_kind_check;
   ALTER TABLE promo_codes ADD CONSTRAINT promo_codes_kind_check CHECK (kind IN ('medkits', 'coins', 'gems', 'bundle'));`);
 // Must match normalizeCode() in src/lib/codes.ts and normalize() in server/index.ts.
@@ -50,8 +51,9 @@ const kind = single?.kind ?? "bundle";
 const amount = single && "amount" in single ? single.amount : 1;
 // Sent as text and parsed by Postgres: a string typed as jsonb would be stored as one JSON string.
 const json = single ? null : JSON.stringify(rewards);
-await sql`INSERT INTO promo_codes (code_sha256, kind, amount, rewards, max_claims, message) VALUES (${hash}, ${kind}, ${amount}, ${json}::text::jsonb, ${max}, ${message})
-  ON CONFLICT (code_sha256) DO UPDATE SET kind = EXCLUDED.kind, amount = EXCLUDED.amount, rewards = EXCLUDED.rewards, max_claims = EXCLUDED.max_claims, message = EXCLUDED.message`;
+// The code itself is saved as its name, so the Console can show it (a name given there is kept).
+await sql`INSERT INTO promo_codes (code_sha256, label, kind, amount, rewards, max_claims, message) VALUES (${hash}, ${code!.trim()}, ${kind}, ${amount}, ${json}::text::jsonb, ${max}, ${message})
+  ON CONFLICT (code_sha256) DO UPDATE SET label = COALESCE(promo_codes.label, EXCLUDED.label), kind = EXCLUDED.kind, amount = EXCLUDED.amount, rewards = EXCLUDED.rewards, max_claims = EXCLUDED.max_claims, message = EXCLUDED.message`;
 const what = rewards.map((r) => ("id" in r ? `background ${r.id}` : `${r.amount} ${r.kind}`)).join(" + ");
 console.log(`Promo saved: ${what}${max ? `, up to ${max} phones` : ""}${message ? ` ("${message}")` : ""}.`);
 await sql.close();

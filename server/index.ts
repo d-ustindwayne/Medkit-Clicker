@@ -68,12 +68,21 @@ async function isAdmin(req: Request) {
   return ok;
 }
 
-/** Rewards as the game reads them (see PromoItem in src/lib/game.ts); anything else is dropped. */
-type Reward = { kind: "medkits" | "coins" | "gems" | "seconds"; amount: number } | { kind: "background"; id: string };
+/**
+ * Rewards as the game reads them (see PromoItem in src/lib/game.ts); anything else is dropped. Ids
+ * aren't checked here: the game skips ones it doesn't know.
+ */
+type Reward =
+  | { kind: "medkits" | "coins" | "gems" | "seconds"; amount: number }
+  | { kind: "background" | "cosmetic" | "room"; id: string }
+  | { kind: "item" | "boost"; id: string; count: number };
 const cleanRewards = (list: unknown): Reward[] =>
   (Array.isArray(list) ? list : []).flatMap((r) => {
-    const x = r as { kind?: string; amount?: unknown; id?: unknown };
-    if (x.kind === "background" && typeof x.id === "string" && x.id) return [{ kind: "background" as const, id: x.id.slice(0, 40) }];
+    const x = r as { kind?: string; amount?: unknown; id?: unknown; count?: unknown };
+    const id = typeof x.id === "string" ? x.id.slice(0, 40) : "";
+    if ((x.kind === "background" || x.kind === "cosmetic" || x.kind === "room") && id) return [{ kind: x.kind, id }];
+    const count = Math.floor(Number(x.count));
+    if ((x.kind === "item" || x.kind === "boost") && id && count > 0 && count <= 1000) return [{ kind: x.kind, id, count }];
     const amount = Number(x.amount);
     return ["medkits", "coins", "gems", "seconds"].includes(x.kind ?? "") && amount > 0 && Number.isFinite(amount) ? [{ kind: x.kind as "coins", amount }] : [];
   });
@@ -167,7 +176,7 @@ Bun.serve({
   async fetch(req) {
     const origin = allowedOrigin(req.headers.get("origin"));
     const cors: Record<string, string> = origin
-      ? { "access-control-allow-origin": origin, "access-control-allow-methods": "GET, POST, DELETE, OPTIONS", "access-control-allow-headers": "content-type, authorization", "access-control-max-age": "86400", vary: "Origin" }
+      ? { "access-control-allow-origin": origin, "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS", "access-control-allow-headers": "content-type, authorization", "access-control-max-age": "86400", vary: "Origin" }
       : {};
     if (req.method === "OPTIONS") return new Response(null, { status: origin ? 204 : 403, headers: cors });
     const res = await route(req);
@@ -225,7 +234,7 @@ async function route(req: Request): Promise<Response> {
 
     // The editor (Google sign-in, ADMIN_EMAIL only): events and promo codes.
     if (path.startsWith("/admin/")) {
-      if (!(await isAdmin(req))) return json({ error: "Sign in with the editor's Google account." }, 401);
+      if (!(await isAdmin(req))) return json({ error: "Sign in with the Console's Google account." }, 401);
       if (path === "/admin/whoami") return json({ ok: true });
       if (path === "/admin/events" && req.method === "GET") {
         const rows = await sql`SELECT id, title, description, starts_at, ends_at, tap_mult, rate_mult, rewards, icon FROM events ORDER BY starts_at DESC LIMIT 100`;
@@ -258,6 +267,7 @@ async function route(req: Request): Promise<Response> {
       if (path === "/admin/promos" && req.method === "POST") {
         const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
         const code = String(b.code ?? "").trim();
+        const name = String(b.name ?? "").trim().slice(0, 80) || code;
         const rewards = cleanRewards(b.rewards);
         if (code.length < 4 || code.length > 60 || rewards.length === 0) return json({ error: "A code of 4-60 characters and at least one reward." }, 400);
         const max = Number(b.maxClaims) > 0 ? Math.floor(Number(b.maxClaims)) : null;
@@ -267,12 +277,18 @@ async function route(req: Request): Promise<Response> {
         const first = rewards[0];
         const single = rewards.length === 1 && "amount" in first && first.kind !== "seconds" ? first : null;
         await sql`INSERT INTO promo_codes (code_sha256, label, kind, amount, rewards, max_claims, message, expires_at)
-          VALUES (${sha256(normalize(code))}, ${code}, ${single?.kind ?? "bundle"}, ${single?.amount ?? 1}, ${single ? null : JSON.stringify(rewards)}::text::jsonb, ${max}, ${String(b.message ?? "").slice(0, 200) || null}, ${expires})
+          VALUES (${sha256(normalize(code))}, ${name}, ${single?.kind ?? "bundle"}, ${single?.amount ?? 1}, ${single ? null : JSON.stringify(rewards)}::text::jsonb, ${max}, ${String(b.message ?? "").slice(0, 200) || null}, ${expires})
           ON CONFLICT (code_sha256) DO UPDATE SET label = EXCLUDED.label, kind = EXCLUDED.kind, amount = EXCLUDED.amount, rewards = EXCLUDED.rewards,
             max_claims = EXCLUDED.max_claims, message = EXCLUDED.message, expires_at = EXCLUDED.expires_at`;
         return json({ ok: true });
       }
       const promo = path.match(/^\/admin\/promos\/([0-9a-f]{64})$/);
+      // A name to keep track of a code by (codes from add-promo before 0.8.3 only had their hash).
+      if (promo && req.method === "PATCH") {
+        const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+        await sql`UPDATE promo_codes SET label = ${String(b.name ?? "").trim().slice(0, 80) || null} WHERE code_sha256 = ${promo[1]}`;
+        return json({ ok: true });
+      }
       if (promo && req.method === "DELETE") {
         await sql`DELETE FROM promo_codes WHERE code_sha256 = ${promo[1]}`;
         return json({ ok: true });
