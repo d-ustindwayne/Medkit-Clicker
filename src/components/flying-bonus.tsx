@@ -8,6 +8,7 @@ import { useGameActions, useGameStore } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { usePalette } from "@/hooks/use-palette";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
+import { autoTap } from "@/lib/auto-tap";
 import { flyingReward } from "@/lib/game";
 import { formatCount, formatShort } from "@/lib/format";
 
@@ -19,10 +20,9 @@ const FIRST_MS = [90_000, 180_000] as const;
 const EVERY_MS = [180_000, 420_000] as const;
 /** How long it takes to cross the screen; miss it and it's gone. */
 const FLIGHT_MS = 9_000;
-/** The tap frenzy: this many medkit taps, a batch at a time. */
+/** The tap frenzy: the medkit taps itself this many times, one tap at a time like a fast finger. */
 export const FRENZY_TAPS = 200;
-const FRENZY_STEPS = 10;
-const FRENZY_STEP_MS = 600;
+const FRENZY_TAP_MS = 40;
 
 const between = ([a, b]: readonly [number, number]) => a + Math.random() * (b - a);
 const MINI_HEART = require("@/imgs/gems/p_heart.png");
@@ -154,7 +154,8 @@ export function FlyingBonus({ width, height, active }: { width: number; height: 
     }
     if (!still) setPop({ id: Date.now(), ...at, label: "FRENZY!" });
     pushToast({ kind: "info", title: "Tap frenzy!", body: `The medkit taps itself ${FRENZY_TAPS} times.`, image: HEART });
-    for (let k = 0; k < FRENZY_STEPS; k++) setTimeout(() => dispatch({ type: "tap", count: FRENZY_TAPS / FRENZY_STEPS }), k * FRENZY_STEP_MS);
+    // Each tap goes through the medkit (press, number, sound); if it isn't on screen, it still counts.
+    for (let k = 0; k < FRENZY_TAPS; k++) setTimeout(() => autoTap() || dispatch({ type: "tap", count: 1 }), k * FRENZY_TAP_MS);
   };
 
   if (!flight && !pop) return null;

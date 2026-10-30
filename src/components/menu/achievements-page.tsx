@@ -90,12 +90,12 @@ export function AchievementsPage() {
       </View>
 
       <ScrollView contentContainerClassName="px-4 pb-4 pt-1">
-      <View className="flex-row flex-wrap gap-2" onLayout={(e) => setGridW(Math.floor(e.nativeEvent.layout.width))}>
+      {/* Hidden until measured, so the tiles never show at a guessed size and then jump. */}
+      <View className="flex-row flex-wrap gap-2" style={{ opacity: gridW ? 1 : 0 }} onLayout={(e) => setGridW(Math.floor(e.nativeEvent.layout.width))}>
         {ACHIEVEMENTS.map((a) => {
           const unlocked = achievements[a.id] !== undefined;
           const isSelected = a.id === selected;
-          // A secret one still to find shows in gold, so it stands out as something special.
-          const hiddenSecret = a.secret && !unlocked;
+          // Secret ones are outlined in gold, found or not, so they stand out as something special.
           return (
             <Pressable
               key={a.id}
@@ -104,12 +104,12 @@ export function AchievementsPage() {
               accessibilityState={{ selected: isSelected }}
               onPress={() => setSelected(a.id)}
               style={{ width: tile, height: tile }}
-              className={`items-center justify-center border-2 ${hiddenSecret ? "border-gold" : "border-outline"} ${isSelected ? "bg-primary" : unlocked ? "bg-surface" : "bg-ink/20"}`}
+              className={`items-center justify-center border-2 ${a.secret ? "border-gold" : "border-outline"} ${isSelected ? "bg-primary" : unlocked ? "bg-surface" : "bg-ink/20"}`}
             >
               {unlocked ? (
                 <Image source={a.image} style={{ width: tile * 0.64, height: tile * 0.64 }} contentFit="contain" />
               ) : (
-                <Text className={`font-pixel text-xl ${hiddenSecret ? "text-gold" : "text-ink opacity-50"}`}>?</Text>
+                <Text className={`font-pixel text-xl ${a.secret ? "text-gold" : "text-ink opacity-50"}`}>?</Text>
               )}
             </Pressable>
           );

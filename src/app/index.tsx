@@ -75,8 +75,9 @@ const EVENT_ICON = require("@/imgs/achievements/winged_heart.png");
 const SHOWN_BOOSTS = 3;
 
 /**
- * Countdown chips for running boosts and Lucky Stethoscope taps, centred just above the shop (and
- * above the page dots). With more than three running, the rest fold into a "..." box with a count.
+ * Countdown chips for running boosts and Lucky Stethoscope taps, stacked at the left edge just above
+ * the shop, clear of the medkit and the page dots. With more than three running, the rest fold into a
+ * "..." box with a count.
  */
 function ActiveBoosts() {
   const { boosts, luckyTaps } = useGameSelector((s) => ({ boosts: s.boosts, luckyTaps: s.luckyTaps }));
@@ -100,7 +101,7 @@ function ActiveBoosts() {
   if (chips.length === 0) return null;
   const more = chips.length - SHOWN_BOOSTS;
   return (
-    <View pointerEvents="none" className="absolute inset-x-0 bottom-9 z-10 flex-row justify-center gap-1.5">
+    <View pointerEvents="none" className="absolute bottom-3 left-3 z-10 items-start gap-1.5">
       {chips.slice(0, SHOWN_BOOSTS).map((c) => (
         <View key={c.key} className="flex-row items-center gap-1 rounded-full border-[1.5px] border-outline bg-accent px-2 py-0.5" accessibilityLabel={c.label}>
           <Image source={c.image} style={{ width: 14, height: 14 }} contentFit="contain" />
@@ -157,7 +158,7 @@ function Counter({ compact }: { compact: boolean }) {
     <View className={`z-10 items-center ${compact ? "px-24" : "px-28"}`} accessibilityLiveRegion="none">
       <View accessibilityRole="header" className="items-center self-stretch" onLayout={(e) => setBoxW(e.nativeEvent.layout.width)}>
         <View className="justify-center" style={{ height: maxPx + 6 }}>
-          <Text className="text-center font-display text-ink" style={[shadow, { fontSize: countPx, lineHeight: countPx + 6 }]} numberOfLines={1}>
+          <Text className="text-center font-display text-ink" style={[shadow, { fontSize: countPx, lineHeight: countPx + 6, opacity: boxW ? 1 : 0 }]} numberOfLines={1}>
             {line}
           </Text>
         </View>

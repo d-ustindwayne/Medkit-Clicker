@@ -52,7 +52,7 @@ export const GEM_ITEMS: GemItem[] = [
   // PLACEHOLDER icon (the sparkle) until the Galaxy gets its own sprite
   { id: "galaxy", name: "Galaxy", kind: "background", cost: 1, rebirths: 1, image: require("@/imgs/gems/p_sparkle.png") },
   // Your own photo as the background: unlock it here, pick the photo in Settings. PLACEHOLDER icon
-  { id: "custom", name: "Your Photo", kind: "background", cost: 5, rebirths: 1, image: require("@/imgs/misc/decorate.png") },
+  { id: "custom", name: "Your Photo", kind: "background", cost: 5, rebirths: 1, image: require("@/imgs/gems/bg_photo.png") },
   // Animated My Room items (listed in ROOM_ITEMS with the same ids)
   { id: "aquarium", name: "Aquarium", kind: "room", cost: 3, rebirths: 3, image: require("@/imgs/room/aquarium_1.png") },
   { id: "lava_lamp", name: "Lava Lamp", kind: "room", cost: 3, rebirths: 7, image: require("@/imgs/room/lava_lamp_1.png") },

@@ -266,6 +266,8 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
    * slide along with the finger.
    */
   const [dragging, setDragging] = useState(false);
+  /** The tray shows furniture or staff, one at a time. */
+  const [trayTab, setTrayTab] = useState<"items" | "staff">("items");
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
   const measure = () => {
@@ -468,9 +470,22 @@ export function RoomPage({ width, editing, onEditingChange, hideControls = false
       {/* Item tray: a swipe row under the room. Drag a tile up into the room, or tap it. */}
       {editing && (
         <Animated.View entering={TRAY_IN} exiting={TRAY_OUT} style={{ zIndex: CONTROLS_DEPTH }} onLayout={(e) => measured("tray")(e.nativeEvent.layout.height)}>
-        <View className="border-t-2 border-outline bg-surface py-1.5" accessibilityHint={`Drag placed items to move them. Bonuses are capped at +${Math.round(ROOM_BONUS_CAP * 100)}% each.`}>
-          <ScrollView horizontal scrollEnabled={!dragging} showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-3">
-            {ROOM_ITEMS.map((item, i) => {
+        <View className="gap-1.5 border-t-2 border-outline bg-surface py-1.5" accessibilityHint={`Drag placed items to move them. Bonuses are capped at +${Math.round(ROOM_BONUS_CAP * 100)}% each.`}>
+          <View className="flex-row gap-1.5 px-3" accessibilityRole="tablist">
+            {(["items", "staff"] as const).map((tab) => (
+              <Pressable
+                key={tab}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: trayTab === tab }}
+                onPress={() => setTrayTab(tab)}
+                className={`border-2 border-outline px-3 py-0.5 ${trayTab === tab ? "bg-primary" : "bg-surface"}`}
+              >
+                <Text className={`font-pixel text-[10px] tracking-[2px] ${trayTab === tab ? "text-white" : "text-ink"}`}>{tab === "items" ? "ITEMS" : "STAFF"}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <ScrollView key={trayTab} horizontal scrollEnabled={!dragging} showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-3">
+            {ROOM_ITEMS.filter((item) => !!item.staff === (trayTab === "staff")).map((item, i) => {
               const open = itemUnlocked(item, state);
               const here = placed.some((p) => p.item === item.id);
               const elsewhere = !here && Object.entries(state.room.placed).some(([rid, list]) => rid !== room.id && list.some((p) => p.item === item.id));

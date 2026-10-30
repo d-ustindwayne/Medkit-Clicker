@@ -31,10 +31,13 @@ const pickOne = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)]
 // Numbers come from minigameTuning, like the others; each has twists that open up with the player's
 // level (pickVariant), so a returning player doesn't play the same round every time.
 
-/** Measures a box's width, so a game can size itself to the treatment window. */
+/**
+ * Measures a box's width, so a game can size itself to the treatment window. `shown` hides the game until
+ * then, so it never draws at the fallback size and jumps.
+ */
 function useWidth(fallback = 300) {
-  const [w, setW] = useState(fallback);
-  return [w, (e: { nativeEvent: { layout: { width: number } } }) => setW(Math.max(160, e.nativeEvent.layout.width))] as const;
+  const [w, setW] = useState<number | null>(null);
+  return [w ?? fallback, (e: { nativeEvent: { layout: { width: number } } }) => setW(Math.max(160, e.nativeEvent.layout.width)), { opacity: w === null ? 0 : 1 }] as const;
 }
 
 /** A "+2" (or "-3") that floats up from where it happened and fades. */
@@ -106,7 +109,7 @@ function FoodGame({ onDone, tuning }: GameProps) {
   const juice = useJuice();
   const still = useReduceMotion();
   const [variant] = useState(() => pickVariant(tuning.level, FOOD_VARIANTS));
-  const [w, onLayout] = useWidth();
+  const [w, onLayout, shown] = useWidth();
   const [cartX, setCartX] = useState(0.5);
   const cart = useRef(0.5);
   const [items, setItems] = useState<Falling[]>([]);
@@ -189,7 +192,7 @@ function FoodGame({ onDone, tuning }: GameProps) {
   const progress = Math.min(1, score / tuning.foodTarget);
   return (
     <Animated.View style={juice.style}>
-      <View className="gap-2" onLayout={onLayout}>
+      <View className="gap-2" style={shown} onLayout={onLayout}>
         <View className="flex-row items-center gap-2">
           <Text className="font-number text-base text-ink">
             {score} / {tuning.foodTarget}
@@ -294,7 +297,7 @@ function ColourGame({ onDone, tuning }: GameProps) {
   const haptic = useHaptics();
   const juice = useJuice();
   const [variant] = useState(() => pickVariant(tuning.level, COLOUR_VARIANTS));
-  const [w, onLayout] = useWidth();
+  const [w, onLayout, shown] = useWidth();
   const [round, setRound] = useState(0);
   const mistakes = useRef(0);
   const busy = useRef(false);
@@ -343,7 +346,7 @@ function ColourGame({ onDone, tuning }: GameProps) {
   const size = Math.floor((Math.min(w, 300) - gap * (grid.n - 1)) / grid.n);
   return (
     <Animated.View style={juice.style}>
-      <View className="items-center gap-3" onLayout={onLayout}>
+      <View className="items-center gap-3" style={shown} onLayout={onLayout}>
         <View className="flex-row gap-1.5">
           {Array.from({ length: tuning.colourRounds }, (_, r) => (
             <View key={r} className={`h-2.5 w-6 border-[1.5px] border-outline ${r < round ? "bg-success" : r === round ? "bg-primary" : "bg-surface"}`} />
@@ -380,35 +383,52 @@ const FIND_VARIANTS: { id: FindVariant; from: number }[] = [
 type Scatter = { image: ImageSourcePropType; x: number; y: number; size: number; target: boolean; angle: number };
 
 /**
- * One thing in the scene: maybe floats about, and bounces when it's the one. `onLoad` says its picture
- * is ready. The callbacks take its index, so they stay the same while the timer ticks and it doesn't redraw.
+ * One thing in the scene: maybe floats about (and settles once found). `onLoad` says its picture is
+ * ready. The callbacks take its index, so they stay the same while the timer ticks and it doesn't redraw.
+ * It's never scaled or re-layered: the "found" ring is drawn separately (FindMark), since scaling a
+ * turned picture made it jump and spin on some phones.
  */
 const FindThing = memo(function FindThing({ i, t, w, h, drift, found, label, onPick, onLoad }: { i: number; t: Scatter; w: number; h: number; drift: boolean; found: boolean; label: string; onPick: (i: number) => void; onLoad: (i: number) => void }) {
   const still = useReduceMotion();
   const bob = useSharedValue(0);
-  const s = useSharedValue(1);
   useEffect(() => {
     if (!drift || still) return;
+    if (found) {
+      cancelAnimation(bob);
+      bob.set(withTiming(0, { duration: 150 }));
+      return;
+    }
     const ms = 1600 + Math.random() * 1400;
     bob.set(withDelay(Math.random() * 600, withRepeat(withTiming(1, { duration: ms, easing: Easing.inOut(Easing.sin) }), -1, true)));
     return () => cancelAnimation(bob);
-  }, [drift, still, bob]);
-  useEffect(() => {
-    if (found && !still) s.set(withSequence(withTiming(1.6, { duration: 140, easing: Easing.out(Easing.back(2)) }), withTiming(1.3, { duration: 160 })));
-  }, [found, still, s]);
+  }, [drift, still, found, bob]);
   const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: (bob.get() - 0.5) * 14 }, { translateY: Math.sin(bob.get() * 3.14) * -8 }, { rotate: `${t.angle}deg` }, { scale: s.get() }],
-    zIndex: found ? 5 : 0,
+    transform: [{ translateX: Math.sin(bob.get() * 6.28) * 7 }, { translateY: Math.sin(bob.get() * 3.14) * -8 }, { rotate: `${t.angle}deg` }],
   }));
   return (
     <Animated.View style={[{ position: "absolute", left: t.x * w - t.size / 2, top: t.y * h - t.size / 2, width: t.size, height: t.size }, style]}>
       <TapPressable accessibilityRole="button" accessibilityLabel={label} onDown={() => onPick(i)} style={{ width: t.size, height: t.size }}>
-        {found && <View className="absolute rounded-full border-[3px] border-success bg-success/20" style={{ left: -6, top: -6, width: t.size + 12, height: t.size + 12 }} />}
         <Image source={t.image} style={{ width: t.size, height: t.size }} contentFit="contain" onLoad={() => onLoad(i)} onError={() => onLoad(i)} />
       </TapPressable>
     </Animated.View>
   );
 });
+
+/** The ring around a thing that was found: it opens out and settles, drawn above everything. */
+function FindMark({ t, w, h }: { t: Scatter; w: number; h: number }) {
+  const still = useReduceMotion();
+  const k = useSharedValue(still ? 1 : 0);
+  useEffect(() => {
+    if (!still) k.set(withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) }));
+  }, [still, k]);
+  const style = useAnimatedStyle(() => ({ opacity: k.get(), transform: [{ scale: 1.5 - 0.5 * k.get() }] }));
+  const d = t.size + 14;
+  return (
+    <Animated.View pointerEvents="none" style={[{ position: "absolute", left: t.x * w - d / 2, top: t.y * h - d / 2, width: d, height: d }, style]}>
+      <View className="h-full w-full rounded-full border-[3px] border-success bg-success/20" />
+    </Animated.View>
+  );
+}
 
 function FindGame({ onDone, tuning }: GameProps) {
   const done = useDone(onDone);
@@ -416,7 +436,7 @@ function FindGame({ onDone, tuning }: GameProps) {
   const haptic = useHaptics();
   const juice = useJuice();
   const [variant] = useState(() => pickVariant(tuning.level, FIND_VARIANTS));
-  const [w, onLayout] = useWidth();
+  const [w, onLayout, shown] = useWidth();
   const h = Math.round(w * 0.85);
   const still = useReduceMotion();
   const [round, setRound] = useState(0);
@@ -446,9 +466,10 @@ function FindGame({ onDone, tuning }: GameProps) {
   }, [scene]);
   const reveal = useSharedValue(0);
   useEffect(() => {
-    reveal.set(!ready ? 0 : still ? 1 : withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) }));
+    reveal.set(!ready ? 0 : still ? 1 : withTiming(1, { duration: 260, easing: Easing.inOut(Easing.quad) }));
   }, [ready, still, reveal]);
-  const revealStyle = useAnimatedStyle(() => ({ opacity: reveal.get(), transform: [{ scale: 0.96 + reveal.get() * 0.04 }] }));
+  // A plain fade: the whole scene comes up together, nothing wobbles or grows.
+  const revealStyle = useAnimatedStyle(() => ({ opacity: reveal.get() }));
   const left = useCountdown(tuning.findMs, () => done(false), ready);
   const targets = scene.things.filter((t) => t.target).length;
   const pick = (i: number) => {
@@ -477,7 +498,7 @@ function FindGame({ onDone, tuning }: GameProps) {
   };
   return (
     <Animated.View style={juice.style}>
-      <View className="gap-2" onLayout={onLayout}>
+      <View className="gap-2" style={shown} onLayout={onLayout}>
         <View className="flex-row items-center justify-center gap-2">
           <Text className="font-number text-base text-ink">{targets > 1 ? `Find both (${found.length}/2)` : "Find the"}</Text>
           <Image key={round} source={scene.target.image} style={{ width: 28, height: 28 }} contentFit="contain" onLoad={() => markLoaded(-1)} onError={() => markLoaded(-1)} />
@@ -491,6 +512,9 @@ function FindGame({ onDone, tuning }: GameProps) {
           <Animated.View pointerEvents={ready ? "auto" : "none"} style={[{ position: "absolute", left: 0, top: 0, width: w, height: h }, revealStyle]}>
             {scene.things.map((t, i) => (
               <FindThing key={`${round}-${i}`} i={i} t={t} w={w} h={h} drift={variant === "drift"} found={found.includes(i)} label={t.target ? scene.target.name : "Something else"} onPick={pick} onLoad={markLoaded} />
+            ))}
+            {found.map((i) => (
+              <FindMark key={`${round}-mark-${i}`} t={scene.things[i]} w={w} h={h} />
             ))}
           </Animated.View>
         </View>
@@ -518,7 +542,7 @@ function MazeGame({ onDone, tuning }: GameProps) {
   const { playSfx } = useAudio();
   const haptic = useHaptics();
   const still = useReduceMotion();
-  const [w, onLayout] = useWidth();
+  const [w, onLayout, shown] = useWidth();
   const [setup] = useState(() => {
     const maze = makeMaze(tuning.mazeSize);
     const n = maze.n;
@@ -606,7 +630,7 @@ function MazeGame({ onDone, tuning }: GameProps) {
   const exitStyle = useAnimatedStyle(() => ({ opacity: 0.35 + glow.get() * 0.4 }));
   const ex = exit % maze.n, ey = Math.floor(exit / maze.n);
   return (
-    <View className="items-center gap-3" onLayout={onLayout}>
+    <View className="items-center gap-3" style={shown} onLayout={onLayout}>
       <TimeBar left={left} total={tuning.mazeMs} />
       <View
         style={{ width: side, height: side }}
@@ -731,7 +755,7 @@ function PipesGame({ onDone, tuning }: GameProps) {
   const { playSfx } = useAudio();
   const haptic = useHaptics();
   const still = useReduceMotion();
-  const [w, onLayout] = useWidth();
+  const [w, onLayout, shown] = useWidth();
   const [setup] = useState(() => {
     const p = makePipes(tuning.pipeSize);
     const variant = pickVariant(tuning.level, PIPE_VARIANTS);
@@ -780,7 +804,7 @@ function PipesGame({ onDone, tuning }: GameProps) {
     }
   };
   return (
-    <View className="items-center gap-3" onLayout={onLayout}>
+    <View className="items-center gap-3" style={shown} onLayout={onLayout}>
       <TimeBar left={left} total={tuning.pipeMs} />
       {setup.budget < Infinity && (
         <Text className={`font-number text-sm ${setup.budget - used <= 2 ? "text-danger" : "text-ink"}`}>

@@ -50,7 +50,8 @@ export function MarqueeText({ children, className = "", shrink = 0.92 }: Props) 
   const copyShown = scroll || fitted;
 
   return (
-    <View className="max-w-full overflow-hidden" onLayout={(e) => setBox(Math.round(e.nativeEvent.layout.width))}>
+    // Hidden until both widths are known, so a long name never shows cut off before it shrinks or scrolls.
+    <View className="max-w-full overflow-hidden" style={{ opacity: box > 0 && natural > 0 ? 1 : 0 }} onLayout={(e) => setBox(Math.round(e.nativeEvent.layout.width))}>
       <Text className={`${className} ${copyShown ? "opacity-0" : ""}`} numberOfLines={1}>
         {children}
       </Text>

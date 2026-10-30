@@ -21,6 +21,7 @@ import { useAudio } from "@/hooks/use-audio";
 import { useGameActions } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { usePalette } from "@/hooks/use-palette";
+import { onAutoTap } from "@/lib/auto-tap";
 import { formatShort } from "@/lib/format";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
@@ -81,17 +82,20 @@ export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned,
 
   const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: press.get() * beat.get() }] }));
 
-  /** `count` fingers came down at once (several fingers tapping count as several taps). */
-  const hit = (count: number) => {
-    unlock();
+  /** `count` fingers came down at once (several fingers tapping count as several taps). `auto`: the frenzy tapping. */
+  const hit = (count: number, auto = false) => {
+    if (!auto) unlock();
     tap(count);
     const now = Date.now();
     if (now - lastSound.current >= SOUND_GAP_MS) {
       lastSound.current = now;
       playSfx(effect && effect in SFX ? (effect as SfxName) : "medkit");
     }
-    haptic.tap();
-    press.set(withTiming(0.9, { duration: 50 }));
+    if (auto) press.set(withSequence(withTiming(0.9, { duration: 40 }), withSpring(1, { damping: 7, stiffness: 320 })));
+    else {
+      haptic.tap();
+      press.set(withTiming(0.9, { duration: 50 }));
+    }
 
     // Touch coordinates are relative to whichever child was hit (and differ on web),
     // so scatter the numbers over the top half of the medkit instead.
@@ -99,6 +103,12 @@ export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned,
     slots.current[id % BURST_SLOTS]?.fire(size * (0.3 + Math.random() * 0.4), size * (0.2 + Math.random() * 0.25), `+${formatShort(tapAmount * count)}`);
   };
   const release = () => press.set(withSpring(1, { damping: 7, stiffness: 320 }));
+  // The frenzy taps it like a finger would. (A ref, so the listener always calls the latest hit.)
+  const hitRef = useRef(hit);
+  useEffect(() => {
+    hitRef.current = hit;
+  });
+  useEffect(() => onAutoTap(() => hitRef.current(1, true)), []);
 
   const box = size * ORBIT_SCALE;
   const sun = size * SUNBURST_SCALE;
