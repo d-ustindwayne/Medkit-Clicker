@@ -16,9 +16,9 @@ import { formatCount, formatShort } from "@/lib/format";
 /** The flying bonus: the winged heart (src/imgs/achievements/winged_heart.png). */
 const HEART = require("@/imgs/achievements/winged_heart.png");
 const SIZE = 56;
-/** First one after 1.5-3 minutes of play, then every 3-7 minutes. */
-const FIRST_MS = [90_000, 180_000] as const;
-const EVERY_MS = [180_000, 420_000] as const;
+/** First one after 2-3.5 minutes of play, then every 4-8 minutes. */
+const FIRST_MS = [120_000, 210_000] as const;
+const EVERY_MS = [240_000, 480_000] as const;
 /** How long it takes to cross the screen; miss it and it's gone. */
 const FLIGHT_MS = 9_000;
 /** The tap frenzy: the medkit taps itself this many times, one tap at a time like a fast finger. */

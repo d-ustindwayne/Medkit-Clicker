@@ -103,7 +103,7 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
       pushToast({
         kind: "info",
         title: "Import failed",
-        body: e instanceof Error ? e.message : "Choose a .json or .csv save exported from Medkit Clicker.",
+        body: e instanceof Error ? e.message : "Choose a .json, .csv or .phl save exported from Medkit Clicker.",
       });
     }
   };
@@ -208,7 +208,7 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
         <Toggle label="Reduce motion" value={settings.reduceMotion} onChange={(reduceMotion) => updateSettings({ reduceMotion })} />
         <Text className="font-body text-xs text-ink opacity-70">Stops animated backgrounds, spinning rays, confetti and screen shakes. On by itself if your phone asks for less motion.</Text>
         <Toggle label="Colour labels" value={settings.colorLabels} onChange={(colorLabels) => updateSettings({ colorLabels })} />
-        <Text className="font-body text-xs text-ink opacity-70">Puts a letter on each pill colour in the minigames, for colour-blind players.</Text>
+        <Text className="font-body text-xs text-ink opacity-70">Puts a letter on each pill colour in the minigames and leaves out the odd-colour eye test, for colour-blind players.</Text>
         <Stepper
           label="Floating numbers"
           value={NUMBERS_LABEL[settings.numbers]}
@@ -225,10 +225,8 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
           <View className="flex-row gap-2">
             <PixelButton label="JSON" accessibilityLabel="Export as JSON" tone="success" onPress={() => onExport("json")} className="flex-1" />
             <PixelButton label="CSV" accessibilityLabel="Export as CSV" tone="success" onPress={() => onExport("csv")} className="flex-1" />
-            {/* PHL export is planned; the format comes from a separate project. */}
-            <PixelButton label="PHL" accessibilityLabel="Export as PHL, coming soon" tone="success" onPress={() => {}} disabled className="flex-1" />
+            <PixelButton label="PHL" accessibilityLabel="Export as PHL" tone="success" onPress={() => onExport("phl")} className="flex-1" />
           </View>
-          <Text className="font-body text-xs text-ink opacity-70">PHL export is coming soon.</Text>
         </Field>
         <PixelButton label="Import save" onPress={onImport} />
       </SettingsGroup>

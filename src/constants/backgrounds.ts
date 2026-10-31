@@ -31,7 +31,7 @@ export const BACKGROUNDS: { id: string; name: string; pattern: PatternKind | Ani
   // Dark theme only (picked by Claude, 2026-10-29: 1 gem, from the first rebirth)
   { id: "galaxy", name: "Galaxy", pattern: "galaxy", gems: true, darkOnly: true, light: { bg: "#05040f", line: "#ece8ff", accent: "#7b4dd8" }, dark: { bg: "#05040f", line: "#ece8ff", accent: "#7b4dd8" } },
   // The player's own photo: unlocked for 5 Natal Gems, then picked in Settings (0.8.0)
-  { id: "custom", name: "Your Photo", pattern: "photo", gems: true, light: { bg: "#f9e8e8", line: "#f9e8e8" }, dark: { bg: "#0f1c24", line: "#0f1c24" } },
+  { id: "custom", name: "Custom", pattern: "photo", gems: true, light: { bg: "#f9e8e8", line: "#f9e8e8" }, dark: { bg: "#0f1c24", line: "#0f1c24" } },
 ];
 
 /** Whether a background shows in this theme (a dark-only one doesn't in the light theme). */
@@ -44,5 +44,5 @@ export const ownsBackground = (index: number, owned: string[]) => {
 };
 
 
-/** Behind a see-through Your Photo background (instead of black): the Classic Grid's colour. */
+/** Behind a see-through Custom background (instead of black): the Classic Grid's colour. */
 export const imageBacking = (theme: "light" | "dark") => BACKGROUNDS.find((b) => b.id === "rose_grid")![theme].bg;

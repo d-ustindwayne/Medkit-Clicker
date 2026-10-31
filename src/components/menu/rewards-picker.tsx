@@ -22,7 +22,7 @@ const KINDS: { kind: Kind; label: string; options?: Option[]; qty: boolean }[] =
   { kind: "seconds", label: "Seconds of medkits", qty: true },
   { kind: "item", label: "Shop item", options: SHOP_ITEMS, qty: true },
   { kind: "boost", label: "Boost", options: BOOSTS, qty: true },
-  // Backgrounds bought with Care Coins (and Your Photo); the Gem Shop ones are under Gem Shop item.
+  // Backgrounds bought with Care Coins (and Custom); the Gem Shop ones are under Gem Shop item.
   { kind: "background", label: "Background", options: BACKGROUNDS.filter((b) => (b.price || b.gems) && !GEM_ITEMS.some((g) => g.id === b.id)), qty: false },
   { kind: "cosmetic", label: "Gem Shop item", options: GEM_ITEMS.map((g) => ({ id: g.id, name: `${GEM_KIND_LABEL[g.kind]}: ${g.name}`, image: g.image })), qty: false },
   // The Gem Shop's room items come with their cosmetic; these are the ones unlocked by playing.

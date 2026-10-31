@@ -48,14 +48,20 @@ const chooseFile = () =>
     input.click();
   });
 
-/** Scales a photo down and encodes it as a JPEG. */
-async function shrink(bitmap: ImageBitmap) {
+/** Picture types that can be see-through; they're kept see-through instead of turning black as a JPEG. */
+const SEE_THROUGH = ["image/png", "image/webp", "image/avif", "image/svg+xml", "image/apng"];
+
+/**
+ * Scales a photo down. A see-through one is encoded as a WebP (a PNG in browsers without WebP),
+ * so the backing colour shows through it; anything else as a JPEG.
+ */
+async function shrink(bitmap: ImageBitmap, seeThrough: boolean) {
   const k = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(bitmap.width * k);
   canvas.height = Math.round(bitmap.height * k);
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn't read that photo."))), "image/jpeg", 0.85));
+  return new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn't read that photo."))), seeThrough ? "image/webp" : "image/jpeg", 0.85));
 }
 
 /** A video's size and length, read from its metadata. */
@@ -83,7 +89,7 @@ export async function pickCustomMedia(): Promise<PickedMedia | null> {
   const bitmap = await createImageBitmap(file);
   const aspect = bitmap.height ? bitmap.width / bitmap.height : 0;
   // A GIF is kept as it is, so it stays animated.
-  const blob = file.type === "image/gif" ? file : await shrink(bitmap);
+  const blob = file.type === "image/gif" ? file : await shrink(bitmap, SEE_THROUGH.includes(file.type));
   const uri = URL.createObjectURL(blob);
   pending.set(uri, blob);
   return { uri, kind: "image", aspect, duration: 0 };

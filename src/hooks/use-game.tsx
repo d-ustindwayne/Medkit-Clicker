@@ -11,6 +11,9 @@ import { formatCount, formatDuration } from "@/lib/format";
 import { MAX_PATIENTS, gameReducer, maxAwaySeconds, newGame, type GameAction, type GameState } from "@/lib/game";
 import { DEFAULT_SETTINGS, clearGame, loadGame, loadSettings, saveGame, saveSettings, type Settings } from "@/lib/storage";
 
+/** Whether a patient's minigame is the odd-colour one (left out for Colour labels). */
+const colourGame = (id: string) => SICK_PATIENTS.find((x) => x.id === id)?.game === "colour";
+
 // 5 updates a second: smooth enough for the counter, and half the work of 10.
 const TICK_MS = 200;
 /** In focus mode (a minigame is open) the game behind it updates only this often; the time still all counts. */
@@ -160,6 +163,12 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
     if (ready) onReady?.();
   }, [ready, onReady]);
 
+  // Turning Colour labels on also sends home a patient already waiting for the odd-colour game.
+  const colorLabels = useRef(settings.colorLabels);
+  useEffect(() => {
+    colorLabels.current = settings.colorLabels;
+  }, [settings.colorLabels]);
+
   // Game loop.
   useEffect(() => {
     if (!ready) return;
@@ -174,11 +183,13 @@ export function GameProvider({ children, onReady }: { children: ReactNode; onRea
       // Patients keep coming (up to three wait at once); each is transferred if nobody comes in time.
       const s = stateRef.current;
       if (s.patients.length < MAX_PATIENTS && now >= s.nextPatientAt) {
-        const p = SICK_PATIENTS[Math.floor(Math.random() * SICK_PATIENTS.length)];
+        // With Colour labels on (colour-blind players), the odd-colour game is left out.
+        const pool = colorLabels.current ? SICK_PATIENTS.filter((x) => x.game !== "colour") : SICK_PATIENTS;
+        const p = pool[Math.floor(Math.random() * pool.length)];
         dispatch({ type: "patientArrives", id: p.id, next: now + nextPatientDelay() });
         pushToast({ kind: "info", title: "A patient needs you", body: `${p.condition}! Swipe the medkit over to My Room to help.`, image: p.image });
       }
-      for (const p of s.patients) if (now - p.arrivedAt > PATIENT_WAIT_MS) dispatch({ type: "patientLeaves", arrivedAt: p.arrivedAt });
+      for (const p of s.patients) if (now - p.arrivedAt > PATIENT_WAIT_MS || (colorLabels.current && colourGame(p.id))) dispatch({ type: "patientLeaves", arrivedAt: p.arrivedAt });
     }, TICK_MS);
     return () => clearInterval(id);
   }, [ready, grantAway, pushToast, dispatch]);

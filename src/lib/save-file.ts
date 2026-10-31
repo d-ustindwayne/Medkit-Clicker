@@ -2,14 +2,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as DocumentPicker from "expo-document-picker";
 import { Directory, File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import { parse as parsePhl, stringify as stringifyPhl } from "phl-file";
 import { Platform } from "react-native";
 
 import { normalizeSave, type GameState } from "@/lib/game";
 import { DEFAULT_SETTINGS, VOLUME_STEPS, type Settings } from "@/lib/storage";
 
-export type SaveFormat = "json" | "csv";
+export type SaveFormat = "json" | "csv" | "phl";
 
-const MIME: Record<SaveFormat, string> = { json: "application/json", csv: "text/csv" };
+// PHL has no registered type, so it's sent as plain text.
+const MIME: Record<SaveFormat, string> = { json: "application/json", csv: "text/csv", phl: "text/plain" };
+const UTI: Record<SaveFormat, string> = { json: "public.json", csv: "public.comma-separated-values-text", phl: "public.plain-text" };
 
 /** Everything a save file carries: the game, the settings (look, audio, vibration) and the app icon. */
 export type SaveData = {
@@ -49,6 +52,17 @@ const fromCsv = (text: string): unknown => {
   return out;
 };
 
+/**
+ * Reads a PHL save. PHL has no true, false or null, so they're written as "true", "false" and "nil";
+ * only those exact spellings are turned back (the library's own reading would also turn strings
+ * such as "none", a game value, into null).
+ */
+const fromPhl = (text: string): unknown => {
+  const back = (v: unknown): unknown =>
+    v === "true" ? true : v === "false" ? false : v === "nil" ? null : Array.isArray(v) ? v.map(back) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, back(x)])) : v;
+  return back(parsePhl(text, { coerce: false }));
+};
+
 /** Keeps only settings fields of the right type and range, so a hand-edited file can't break the app. */
 const readSettings = (raw: unknown): Partial<Settings> | null => {
   if (!raw || typeof raw !== "object") return null;
@@ -82,8 +96,10 @@ const OLD_EXPORT_FOLDER_KEY = "mc/exportFolder/v1";
  * Resolves to false if the user backed out.
  */
 export async function exportSave(data: SaveData, format: SaveFormat): Promise<boolean> {
-  // JSON keeps the game fields at the top level, as older saves had them.
-  const content = format === "json" ? JSON.stringify({ ...data.state, settings: data.settings, appIcon: data.appIcon }, null, 2) : toCsv(data);
+  // JSON keeps the game fields at the top level, as older saves had them. PHL (github.com/d-ustindwayne/PHL)
+  // holds the same fields; going through JSON first drops what JSON drops (undefined), which PHL can't write.
+  const flat = { ...data.state, settings: data.settings, appIcon: data.appIcon };
+  const content = format === "json" ? JSON.stringify(flat, null, 2) : format === "phl" ? stringifyPhl(JSON.parse(JSON.stringify(flat))) : toCsv(data);
   const now = new Date();
   const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const name = `medkit-clicker-save-${day}.${format}`;
@@ -114,7 +130,7 @@ export async function exportSave(data: SaveData, format: SaveFormat): Promise<bo
   if (file.exists) file.delete();
   file.create();
   file.write(content);
-  await Sharing.shareAsync(file.uri, { mimeType: MIME[format], UTI: format === "json" ? "public.json" : "public.comma-separated-values-text" });
+  await Sharing.shareAsync(file.uri, { mimeType: MIME[format], UTI: UTI[format] });
   return true;
 }
 
@@ -138,17 +154,20 @@ async function pickSaveText(): Promise<{ name: string; text: string } | null> {
 export async function importSave(): Promise<SaveData | null> {
   const picked = await pickSaveText();
   if (!picked) return null;
-  const isCsv = picked.name.toLowerCase().endsWith(".csv") || picked.text.startsWith("key,value");
+  const name = picked.name.toLowerCase();
+  const isCsv = name.endsWith(".csv") || picked.text.startsWith("key,value");
+  // A PHL save by its name, or by not being JSON (a JSON save starts with "{").
+  const isPhl = !isCsv && (name.endsWith(".phl") || name.endsWith(".pll") || !picked.text.trimStart().startsWith("{"));
   let raw: unknown;
   try {
-    raw = isCsv ? fromCsv(picked.text) : JSON.parse(picked.text);
+    raw = isCsv ? fromCsv(picked.text) : isPhl ? fromPhl(picked.text) : JSON.parse(picked.text);
   } catch {
     raw = null;
   }
   // The settings and icon ride along in the file but aren't part of the game state.
   const { settings: _settings, appIcon: _icon, ...game } = (raw ?? {}) as Record<string, unknown>;
   const state = normalizeSave(raw && typeof raw === "object" ? game : raw);
-  if (!state) throw new Error("That file isn't a Medkit Clicker save. Choose a .json or .csv file exported from Settings.");
+  if (!state) throw new Error("That file isn't a Medkit Clicker save. Choose a .json, .csv or .phl file exported from Settings.");
   const extra = raw as { settings?: unknown; appIcon?: unknown };
   // Older saves have no settings or icon; those stay as they are on this phone.
   return { state, settings: readSettings(extra.settings), appIcon: typeof extra.appIcon === "string" || extra.appIcon === null ? extra.appIcon : undefined };

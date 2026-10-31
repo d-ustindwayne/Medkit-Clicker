@@ -74,7 +74,7 @@ export const GEM_ITEMS: GemItem[] = [
   { id: "aurora", name: "Aurora Ward", kind: "background", cost: 6, rebirths: 10, image: require("@/imgs/gems/bg_aurora.png") },
   { id: "galaxy", name: "Galaxy", kind: "background", cost: 1, rebirths: 1, image: require("@/imgs/gems/bg_galaxy.png") },
   // Your own photo as the background: unlock it here, pick the photo in Settings.
-  { id: "custom", name: "Your Photo", kind: "background", cost: 5, rebirths: 1, image: require("@/imgs/gems/bg_photo.png") },
+  { id: "custom", name: "Custom", kind: "background", cost: 5, rebirths: 1, image: require("@/imgs/gems/bg_photo.png") },
   // Animated My Room items (listed in ROOM_ITEMS with the same ids)
   { id: "aquarium", name: "Aquarium", kind: "room", cost: 3, rebirths: 3, image: require("@/imgs/room/aquarium_1.png") },
   { id: "lava_lamp", name: "Lava Lamp", kind: "room", cost: 3, rebirths: 7, image: require("@/imgs/room/lava_lamp_1.png") },

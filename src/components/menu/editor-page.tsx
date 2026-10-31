@@ -111,6 +111,31 @@ function IconDrop({ icon, onIcon }: { icon: string | null; onIcon: (url: string 
 }
 
 /** One code in the list: its name (click Rename to change it), rewards and use, and Delete. */
+/** How many events or codes show at once; the rest are on further pages. */
+const PAGE_SIZE = 5;
+
+/** One page of `items`; the page stays in range as items are deleted. */
+function usePage<T>(items: T[]) {
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const at = Math.min(page, pages - 1);
+  return { shown: items.slice(at * PAGE_SIZE, (at + 1) * PAGE_SIZE), at, pages, setPage };
+}
+
+/** Previous and next buttons with "Page 2 of 3"; nothing when it all fits on one page. */
+function PageNav({ at, pages, setPage }: { at: number; pages: number; setPage: (p: number) => void }) {
+  if (pages < 2) return null;
+  return (
+    <View className="flex-row items-center gap-2">
+      <PixelButton label="Previous" disabled={at === 0} onPress={() => setPage(at - 1)} />
+      <Text className="flex-1 text-center font-body text-sm text-ink">
+        Page {at + 1} of {pages}
+      </Text>
+      <PixelButton label="Next" disabled={at === pages - 1} onPress={() => setPage(at + 1)} />
+    </View>
+  );
+}
+
 function CodeRow({ promo: p, onRename, onDelete }: { promo: Promo; onRename: (name: string) => Promise<void>; onDelete: () => void }) {
   const [name, setName] = useState<string | null>(null);
   return (
@@ -146,6 +171,8 @@ export function EditorPage() {
   const [events, setEvents] = useState<GameEvent[]>([]);
   const [promos, setPromos] = useState<Promo[]>([]);
   const buttonRef = useRef<View>(null);
+  const eventPage = usePage(events);
+  const codePage = usePage(promos);
 
   const call = useCallback(
     async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
@@ -270,7 +297,7 @@ export function EditorPage() {
       </SettingsGroup>
       <SettingsGroup title="EVENTS" icon="note">
         {events.length === 0 && <Text className="font-body text-sm text-ink opacity-70">No events yet.</Text>}
-        {events.map((e) => (
+        {eventPage.shown.map((e) => (
           <View key={e.id} className="flex-row items-center gap-2 border-b border-outline/30 pb-2">
             {e.icon && <Image source={{ uri: e.icon }} style={{ width: 28, height: 28 }} contentFit="contain" />}
             <View className="flex-1">
@@ -285,6 +312,7 @@ export function EditorPage() {
             <PixelButton label="Delete" tone="danger" onPress={() => call(`/admin/events/${e.id}`, { method: "DELETE" }).then(refresh, (x) => setError(x.message))} />
           </View>
         ))}
+        <PageNav {...eventPage} />
       </SettingsGroup>
       <SettingsGroup title="NEW CODE" icon="gift">
         <Field label="Code" value={code} onChange={setCode} placeholder="HAPPY2026" />
@@ -298,7 +326,7 @@ export function EditorPage() {
       </SettingsGroup>
       <SettingsGroup title="CODES" icon="lock">
         {promos.length === 0 && <Text className="font-body text-sm text-ink opacity-70">No codes yet.</Text>}
-        {promos.map((p) => (
+        {codePage.shown.map((p) => (
           <CodeRow
             key={p.hash}
             promo={p}
@@ -306,6 +334,7 @@ export function EditorPage() {
             onDelete={() => call(`/admin/promos/${p.hash}`, { method: "DELETE" }).then(refresh, (x) => setError(x.message))}
           />
         ))}
+        <PageNav {...codePage} />
       </SettingsGroup>
       <PixelButton
         label="Sign out"
