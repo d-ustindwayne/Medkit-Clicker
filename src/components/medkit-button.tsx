@@ -18,7 +18,7 @@ import { MEDKIT_SKINS, ROUND_SKINS } from "@/constants/gems";
 import { SFX, type SfxName } from "@/constants/playlists";
 import { MEDKIT_IMAGE, type ItemId } from "@/constants/items";
 import { useAudio } from "@/hooks/use-audio";
-import { useGameActions } from "@/hooks/use-game";
+import { useGameActions, useSettings } from "@/hooks/use-game";
 import { useHaptics } from "@/hooks/use-haptics";
 import { usePalette } from "@/hooks/use-palette";
 import { onAutoTap } from "@/lib/auto-tap";
@@ -30,6 +30,8 @@ import { useReduceMotion } from "@/hooks/use-reduce-motion";
  * turn, so tapping fast restarts an animation instead of mounting and unmounting a stack of views.
  */
 const BURST_SLOTS = 5;
+/** Combined numbers: taps closer together than this add to the same total. */
+const COMBO_MS = 800;
 /** The orbit ring and sunburst extend past the medkit by these factors. */
 export const ORBIT_SCALE = 1.32;
 const SUNBURST_SCALE = 2.1;
@@ -55,6 +57,9 @@ export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned,
   const slots = useRef<(BurstHandle | null)[]>([]);
   const nextId = useRef(0);
   const lastSound = useRef(0);
+  const { numbers } = useSettings();
+  /** Combined numbers: the running total and when it last grew. */
+  const combo = useRef({ total: 0, at: 0 });
   const press = useSharedValue(1);
   const beat = useSharedValue(1);
   const animate = active && !reduceMotion;
@@ -99,8 +104,17 @@ export const MedkitButton = memo(function MedkitButton({ size, tapAmount, owned,
 
     // Touch coordinates are relative to whichever child was hit (and differ on web),
     // so scatter the numbers over the top half of the medkit instead.
+    if (numbers === "combined") {
+      // One running total in the middle while the taps keep coming; a pause starts a new one.
+      const c = combo.current;
+      c.total = now - c.at < COMBO_MS ? c.total + tapAmount * count : tapAmount * count;
+      c.at = now;
+      slots.current[0]?.fire(size * 0.5, size * 0.3, `+${formatShort(c.total)}`);
+      return;
+    }
     const id = nextId.current++;
-    slots.current[id % BURST_SLOTS]?.fire(size * (0.3 + Math.random() * 0.4), size * (0.2 + Math.random() * 0.25), `+${formatShort(tapAmount * count)}`);
+    // Off: the burst still shows, without its number.
+    slots.current[id % BURST_SLOTS]?.fire(size * (0.3 + Math.random() * 0.4), size * (0.2 + Math.random() * 0.25), numbers === "off" ? "" : `+${formatShort(tapAmount * count)}`);
   };
   const release = () => press.set(withSpring(1, { damping: 7, stiffness: 320 }));
   // The frenzy taps it like a finger would. (A ref, so the listener always calls the latest hit.)

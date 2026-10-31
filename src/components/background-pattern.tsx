@@ -15,7 +15,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
-import Svg, { Circle, Defs, G, LinearGradient, Path, Pattern, RadialGradient, Rect, Stop } from "react-native-svg";
+import Svg, { Circle, Defs, G, LinearGradient, Path, Pattern, Rect, Stop } from "react-native-svg";
 
 import { CustomMedia } from "@/components/custom-media";
 import { pixelPath } from "@/components/ui/pixel-icon";
@@ -23,6 +23,7 @@ import { BACKGROUNDS, type AnimatedKind, type Colors, type PatternKind } from "@
 import type { ThemeName } from "@/constants/theme";
 import { useCustomBackground } from "@/lib/custom-bg-store";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
+import { useSettings } from "@/hooks/use-game";
 
 const TILE = 28;
 /** Time to drift one tile diagonally; the loop is seamless because the pattern repeats every tile. */
@@ -145,21 +146,10 @@ function Wash({ width, height, color, opacity, from }: { width: number; height: 
   );
 }
 
-/** A soft round glow (drawn once), for moonlight, fireflies and warm light. */
+const GLOW = require("@/imgs/textures/glow.png");
+/** A soft round glow for moonlight, fireflies and warm light: a tinted picture, cheap to move. */
 function Glow({ size, color, opacity, style }: { size: number; color: string; opacity: number; style?: object }) {
-  const id = useSvgId("glow");
-  return (
-    <Svg width={size} height={size} style={[{ position: "absolute" }, style]} pointerEvents="none">
-      <Defs>
-        <RadialGradient id={id} cx="50%" cy="50%" r="50%">
-          <Stop offset="0" stopColor={color} stopOpacity={opacity} />
-          <Stop offset="0.5" stopColor={color} stopOpacity={opacity * 0.35} />
-          <Stop offset="1" stopColor={color} stopOpacity={0} />
-        </RadialGradient>
-      </Defs>
-      <Circle cx={size / 2} cy={size / 2} r={size / 2} fill={`url(#${id})`} />
-    </Svg>
-  );
+  return <Image source={GLOW} tintColor={color} style={[{ position: "absolute", width: size, height: size, opacity }, style]} contentFit="fill" />;
 }
 
 /** Purple Rain: a streak falling at its own speed. Far ones are thinner, fainter and slower. */
@@ -310,7 +300,7 @@ const Faller = memo(function Faller({ i, width, height, image, px, wind, spin, f
 });
 
 /** Firefly Night: a firefly wandering slowly and glowing on and off. */
-const Firefly = memo(function Firefly({ i, width, height }: { i: number; width: number; height: number }) {
+const Firefly = memo(function Firefly({ i, width, height, glow: halo }: { i: number; width: number; height: number; glow: boolean }) {
   const t = useSharedValue(0);
   const glow = useSharedValue(0.2);
   const ms = 7000 + noise(i, 31) * 7000;
@@ -330,7 +320,7 @@ const Firefly = memo(function Firefly({ i, width, height }: { i: number; width: 
   }));
   return (
     <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: 18, height: 18 }, style]}>
-      <Glow size={54} color="#e9ff8f" opacity={0.45} style={{ left: -18, top: -18 }} />
+      {halo && <Glow size={54} color="#e9ff8f" opacity={0.45} style={{ left: -18, top: -18 }} />}
       <Image source={SPRITES.firefly} style={{ width: 18, height: 18 }} contentFit="contain" />
     </Animated.View>
   );
@@ -350,7 +340,7 @@ const AuroraBand = memo(function AuroraBand({ i, width, height, color }: { i: nu
   const id = useSvgId("aurora");
   const w = width * 1.5, h = height * 0.2;
   return (
-    <Animated.View style={[{ position: "absolute", left: -width * 0.25, top: height * (0.06 + i * 0.12), width: w, height: h }, style]}>
+    <Animated.View style={[{ position: "absolute", left: -width * 0.25, top: height * (0.06 + i * 0.12), width: w, height: h }, style]} renderToHardwareTextureAndroid>
       <Svg width={w} height={h}>
         <Defs>
           <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
@@ -543,17 +533,19 @@ function Ecg({ width, height, colors, theme }: { width: number; height: number; 
   );
 }
 
-function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: AnimatedKind; width: number; height: number; colors: Colors; theme: ThemeName }) {
-  const many = (n: number) => Array.from({ length: n }, (_, i) => i);
+function AnimatedBackdrop({ kind, width, height, colors, theme, lite }: { kind: AnimatedKind; width: number; height: number; colors: Colors; theme: ThemeName; lite: boolean }) {
+  // Lighter graphics: half as many moving bits, and none of the extras (far layers, splashes, specks).
+  const many = (n: number) => Array.from({ length: lite ? Math.ceil(n / 2) : n }, (_, i) => i);
+  const extra = (n: number) => (lite ? [] : Array.from({ length: n }, (_, i) => i));
   switch (kind) {
     case "rain":
       return (
         <>
           <Wash width={width} height={height * 0.45} color={colors.accent ?? colors.line} opacity={0.35} from="bottom" />
-          {many(18).map((i) => (
+          {extra(10).map((i) => (
             <Drop key={`far${i}`} i={i + 40} height={height} left={noise(i + 40) * width} color={colors.line} far />
           ))}
-          {many(8).map((i) => (
+          {extra(5).map((i) => (
             <Ripple key={`ripple${i}`} i={i} width={width} height={height} color={colors.line} />
           ))}
           {many(24).map((i) => (
@@ -577,7 +569,7 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
           {many(30).map((i) => (
             <Star key={i} i={i} left={noise(i, 9) * width} top={noise(i, 10) * height} color={colors.line} />
           ))}
-          <ShootingStar width={width} height={height} color={colors.line} />
+          {!lite && <ShootingStar width={width} height={height} color={colors.line} />}
           <Glow size={150} color={colors.line} opacity={0.4} style={{ right: width * 0.12 - 54, top: height * 0.12 - 54 }} />
           <Svg width={42} height={42} style={{ position: "absolute", right: width * 0.12, top: height * 0.12 }}>
             <G transform="scale(6)">
@@ -592,7 +584,7 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
           {/* The vessel walls: darker at the top and bottom. */}
           <Wash width={width} height={height * 0.3} color={colors.accent ?? colors.line} opacity={0.4} from="top" />
           <Wash width={width} height={height * 0.3} color={colors.accent ?? colors.line} opacity={0.4} from="bottom" />
-          {many(18).map((i) => (
+          {extra(10).map((i) => (
             <Platelet key={`p${i}`} i={i} width={width} height={height} color={colors.line} />
           ))}
           {many(14).map((i) => (
@@ -606,7 +598,7 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
           <Wash width={width} height={height * 0.55} color={colors.accent ?? colors.line} opacity={0.4} from="top" />
           {/* Warm light from the top corner. */}
           <Glow size={width * 1.1} color={theme === "dark" ? "#ff9ec4" : "#fff1c9"} opacity={theme === "dark" ? 0.22 : 0.7} style={{ right: -width * 0.45, top: -width * 0.45 }} />
-          {many(14).map((i) => (
+          {extra(8).map((i) => (
             <Faller key={`far${i}`} i={i + 30} width={width} height={height} image={SPRITES.petal} px={7 + noise(i + 30, 25) * 3} wind={0.6} spin far />
           ))}
           {many(16).map((i) => (
@@ -622,7 +614,7 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
           <View style={{ position: "absolute", left: 0, right: 0, bottom: height * 0.22, height: height * 0.06, backgroundColor: colors.accent }} />
           <Grass width={width} top={height * 0.72 - 14} color={colors.accent ?? colors.line} />
           {many(14).map((i) => (
-            <Firefly key={i} i={i} width={width} height={height} />
+            <Firefly key={i} i={i} width={width} height={height} glow={!lite} />
           ))}
         </>
       );
@@ -630,7 +622,7 @@ function AnimatedBackdrop({ kind, width, height, colors, theme }: { kind: Animat
       return (
         <>
           <Wash width={width} height={height * 0.6} color={colors.accent ?? colors.line} opacity={0.8} from="top" />
-          {many(16).map((i) => (
+          {extra(10).map((i) => (
             <Faller key={`far${i}`} i={i + 30} width={width} height={height} image={SPRITES.snow} px={5 + noise(i + 30, 26) * 3} wind={-0.2} spin={false} far />
           ))}
           <Hills width={width} height={height} top={0.86} far={colors.accent ?? colors.line} near={colors.line} />
@@ -677,6 +669,7 @@ export const BackgroundPattern = memo(function BackgroundPattern({ index, theme,
   const preset = BACKGROUNDS[index % BACKGROUNDS.length];
   const colors = preset[theme];
   const reduceMotion = useReduceMotion();
+  const { lightGraphics } = useSettings();
   // The tilt sensor only runs while the game is on screen, not in the background.
   const [active, setActive] = useState(AppState.currentState === "active");
   useEffect(() => {
@@ -712,10 +705,10 @@ export const BackgroundPattern = memo(function BackgroundPattern({ index, theme,
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: "hidden", backgroundColor: colors.bg }]}>
       {/* Not for your own photo or video: moving a whole-screen picture or video every frame made it slow. */}
-      {!reduceMotion && active && pattern !== "photo" && <TiltSensor tilt={tilt} />}
+      {!reduceMotion && !lightGraphics && active && pattern !== "photo" && <TiltSensor tilt={tilt} />}
       <TiltContext value={tilt}>
         <Animated.View style={[{ position: "absolute", left: -TILT_PAD, top: -TILT_PAD, width: bw, height: bh }, base]}>
-          {isAnimated(pattern) && !reduceMotion && <AnimatedBackdrop kind={pattern} width={bw} height={bh} colors={colors} theme={theme} />}
+          {isAnimated(pattern) && !reduceMotion && <AnimatedBackdrop kind={pattern} width={bw} height={bh} colors={colors} theme={theme} lite={lightGraphics} />}
           {pattern === "photo" && <CustomPhoto width={bw} height={bh} theme={theme} />}
           {!isAnimated(pattern) && pattern !== "plain" && pattern !== "photo" && (
             // Drawn once into a texture on Android and then only moved, not redrawn every frame. The view

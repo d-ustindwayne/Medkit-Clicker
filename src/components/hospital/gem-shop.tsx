@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Backed } from "@/components/ui/backed";
 import { Image } from "@/components/ui/image";
 import { BackHandler, ScrollView, Text, View } from "react-native";
 
@@ -55,9 +54,7 @@ function UpgradeCard({ upgrade }: { upgrade: GemUpgrade }) {
   return (
     <HardShadow offset={4}>
       <View className="flex-row items-center gap-3 border-[3px] border-outline bg-surface p-3">
-        <Backed size={40}>
-          <Image source={upgrade.image} style={{ width: 40, height: 40 }} contentFit="contain" />
-        </Backed>
+        <Image source={upgrade.image} style={{ width: 40, height: 40 }} contentFit="contain" />
         <View className="flex-1 gap-1">
           <Text className="font-display text-base text-ink">{upgrade.name}</Text>
           <Text className="font-body text-xs text-ink opacity-70">
@@ -158,9 +155,7 @@ function ItemTile({ item }: { item: GemItem }) {
     <View className="w-[48%]">
       <HardShadow offset={3}>
         <View className={`items-center gap-1 border-2 border-outline p-2 ${equipped ? "bg-accent" : "bg-surface"}`}>
-          <Backed size={52}>
-            <Image source={item.image} style={{ width: 52, height: 52, opacity: locked ? 0.35 : 1 }} contentFit="contain" />
-          </Backed>
+          <Image source={item.image} style={{ width: 52, height: 52, opacity: locked ? 0.35 : 1 }} contentFit="contain" />
           <MarqueeText className="text-center font-display text-sm text-ink">{item.name}</MarqueeText>
           {darkOnly && <Text className="text-center font-body text-xs text-ink opacity-70">Dark theme only</Text>}
           {locked ? (

@@ -1,4 +1,4 @@
-// Draws the Galaxy background's spiral once into src/imgs/textures/galaxy.png, so the game turns a
+// Draws the Galaxy background's spiral once into src/imgs/textures/galaxy.png (and a soft glow), so the game turns a
 // picture instead of redrawing ~200 SVG gradients and shapes (that made the Galaxy background slow).
 // Same layout as the old SVG in components/background-pattern.tsx. Run: bun scripts/galaxy-texture.ts
 import fs from "node:fs";
@@ -77,3 +77,20 @@ for (let i = 0; i < SIZE * SIZE; i++) {
 fs.mkdirSync("src/imgs/textures", { recursive: true });
 fs.writeFileSync("src/imgs/textures/galaxy.png", PNG.sync.write(png, { colorType: 6 }));
 console.log("src/imgs/textures/galaxy.png");
+
+// The soft glow (white, tinted in the game) behind the moon, fireflies and sakura light: a picture
+// is much cheaper to move than an SVG gradient.
+{
+  const G = 128;
+  const glow = new PNG({ width: G, height: G });
+  for (let y = 0; y < G; y++)
+    for (let x = 0; x < G; x++) {
+      const t = Math.hypot(x + 0.5 - G / 2, y + 0.5 - G / 2) / (G / 2);
+      const a = t >= 1 ? 0 : t < 0.5 ? 1 - (t / 0.5) * 0.65 : 0.35 * (1 - (t - 0.5) / 0.5);
+      const i = (y * G + x) * 4;
+      glow.data[i] = glow.data[i + 1] = glow.data[i + 2] = 255;
+      glow.data[i + 3] = Math.round(a * 255);
+    }
+  fs.writeFileSync("src/imgs/textures/glow.png", PNG.sync.write(glow, { colorType: 6 }));
+  console.log("src/imgs/textures/glow.png");
+}

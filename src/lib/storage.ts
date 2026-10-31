@@ -21,7 +21,13 @@ export type Settings = {
   reduceMotion: boolean;
   /** Letters on coloured pills in the minigames, for colour-blind players. */
   colorLabels: boolean;
+  /** The "+N" on taps and "-N" on spending: every one, combined into one running total, or none. */
+  numbers: NumbersMode;
+  /** Fewer moving bits in the backgrounds and no tilting, for slower phones and calmer screens. */
+  lightGraphics: boolean;
 };
+
+export type NumbersMode = "all" | "combined" | "off";
 
 export const DEFAULT_SETTINGS: Settings = {
   playlist: 0,
@@ -32,6 +38,8 @@ export const DEFAULT_SETTINGS: Settings = {
   haptics: true,
   reduceMotion: false,
   colorLabels: false,
+  numbers: "all",
+  lightGraphics: false,
 };
 
 type StoredGame = { state: GameState; savedAt: number };

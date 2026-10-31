@@ -44,5 +44,5 @@ export const ownsBackground = (index: number, owned: string[]) => {
 };
 
 
-/** Behind pictures with see-through parts (custom backgrounds, item tiles): the Classic Grid's colour. */
+/** Behind a see-through Your Photo background (instead of black): the Classic Grid's colour. */
 export const imageBacking = (theme: "light" | "dark") => BACKGROUNDS.find((b) => b.id === "rose_grid")![theme].bg;

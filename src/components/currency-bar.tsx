@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { Text, View, useWindowDimensions } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
 import { Image } from "@/components/ui/image";
 
@@ -8,7 +8,7 @@ import { COIN } from "@/constants/boosts";
 import { gemBalance } from "@/constants/gems";
 import { MEDKIT_IMAGE } from "@/constants/items";
 import { GEM } from "@/constants/rebirth";
-import { useGameSelector, useGameStore } from "@/hooks/use-game";
+import { useGameSelector, useGameStore, useSettings } from "@/hooks/use-game";
 import { usePalette } from "@/hooks/use-palette";
 import { formatCount, formatShort } from "@/lib/format";
 import { coinBalance } from "@/lib/game";
@@ -17,19 +17,43 @@ import { coinBalance } from "@/lib/game";
 const WIDE = 768;
 
 type Currency = "medkits" | "coins" | "gems";
-type Drop = { id: number; text: string };
-const DROP_MS = 1000;
+/** Numbers on screen at once per currency ("Every one"); later ones reuse the oldest. */
+const SLOTS = 3;
+/** Combined numbers: spends closer together than this add to the same total. */
+const COMBO_MS = 900;
+/** The pop up, then the fall. */
+const POP_MS = 110;
+const FALL_MS = 520;
 
-/** "-N" falling away beside a chip when that currency is spent, like the "+N" on a tap. */
-function SpendDrop({ text, big }: { text: string; big: boolean }) {
+type SlotHandle = { fire: (text: string) => void };
+type Spender = { spent: (n: number) => void };
+
+/**
+ * One "-N" beside a chip: it pops up and swells a little, then drops away under gravity, tipping
+ * as it goes, and fades. It stays mounted and is reused, so spending never adds or removes views.
+ */
+const SpendSlot = memo(function SpendSlot({ ref, big }: { ref: Ref<SlotHandle>; big: boolean }) {
   const palette = usePalette();
-  const t = useSharedValue(0);
+  const [shot, setShot] = useState({ n: 0, text: "" });
+  const y = useSharedValue(0);
+  const x = useSharedValue(0);
+  const o = useSharedValue(0);
+  const s = useSharedValue(1);
+  const r = useSharedValue(0);
+  useImperativeHandle(ref, () => ({ fire: (text) => setShot((p) => ({ n: p.n + 1, text })) }), []);
+  // Started once the new text is on screen, so the old one never flashes.
   useEffect(() => {
-    t.set(withTiming(1, { duration: DROP_MS, easing: Easing.in(Easing.quad) }));
-  }, [t]);
+    if (!shot.n) return;
+    const tip = shot.n % 2 ? 1 : -1;
+    y.set(withSequence(withTiming(-9, { duration: POP_MS, easing: Easing.out(Easing.quad) }), withTiming(30, { duration: FALL_MS, easing: Easing.in(Easing.quad) })));
+    x.set(withSequence(withTiming(0, { duration: 0 }), withDelay(POP_MS, withTiming(-5 - 4 * Math.random(), { duration: FALL_MS, easing: Easing.out(Easing.quad) }))));
+    r.set(withSequence(withTiming(0, { duration: 0 }), withDelay(POP_MS, withTiming(tip * 12, { duration: FALL_MS, easing: Easing.in(Easing.quad) }))));
+    s.set(withSequence(withTiming(1.3, { duration: 0 }), withSpring(1, { damping: 10, stiffness: 420 })));
+    o.set(withSequence(withTiming(1, { duration: 0 }), withDelay(POP_MS + FALL_MS * 0.45, withTiming(0, { duration: FALL_MS * 0.55 }))));
+  }, [shot, y, x, r, s, o]);
   const style = useAnimatedStyle(() => ({
-    opacity: t.get() < 0.45 ? 1 : 1 - (t.get() - 0.45) / 0.55,
-    transform: [{ translateY: 34 * t.get() }, { rotate: `${-8 * t.get()}deg` }],
+    opacity: o.get(),
+    transform: [{ translateX: x.get() }, { translateY: y.get() }, { rotate: `${r.get()}deg` }, { scale: s.get() }],
   }));
   return (
     <Animated.View pointerEvents="none" style={[{ position: "absolute", right: "100%", top: 0, marginRight: 6 }, style]}>
@@ -38,61 +62,75 @@ function SpendDrop({ text, big }: { text: string; big: boolean }) {
         className={`font-display text-danger ${big ? "text-lg" : "text-sm"}`}
         style={{ textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 0.1 }}
       >
-        {text}
+        {shot.text}
       </Text>
     </Animated.View>
   );
+});
+
+/** The numbers beside one chip, following the Floating numbers setting. */
+function SpendNumbers({ ref, big, format }: { ref: Ref<Spender>; big: boolean; format: (n: number) => string }) {
+  const { numbers } = useSettings();
+  const slots = useRef<(SlotHandle | null)[]>([]);
+  const next = useRef(0);
+  const combo = useRef({ total: 0, at: 0 });
+  useImperativeHandle(
+    ref,
+    () => ({
+      spent: (n) => {
+        if (numbers === "off") return;
+        if (numbers === "combined") {
+          const now = Date.now(), c = combo.current;
+          c.total = now - c.at < COMBO_MS ? c.total + n : n;
+          c.at = now;
+          slots.current[0]?.fire(`-${format(c.total)}`);
+          return;
+        }
+        slots.current[next.current++ % SLOTS]?.fire(`-${format(n)}`);
+      },
+    }),
+    [numbers, format],
+  );
+  if (numbers === "off") return null;
+  return Array.from({ length: numbers === "combined" ? 1 : SLOTS }, (_, i) => (
+    <SpendSlot
+      key={i}
+      big={big}
+      ref={(h) => {
+        slots.current[i] = h;
+      }}
+    />
+  ));
 }
 
 /**
- * Watches the balances and returns what was just spent of each. A drop that isn't a rebirth (which
- * empties the medkits on purpose) is a purchase.
+ * Tells each chip what was just spent. Cheap on every game tick: only the spent counters and the
+ * medkits are compared. A medkit drop at a rebirth (which empties them on purpose) isn't a purchase.
  */
-function useSpends() {
+function useSpendWatch(chips: Record<Currency, Spender | null>) {
   const store = useGameStore();
-  const [drops, setDrops] = useState<Record<Currency, Drop[]>>({ medkits: [], coins: [], gems: [] });
   useEffect(() => {
-    const read = () => {
+    let prev = store.get();
+    return store.subscribe(() => {
       const s = store.get();
-      return { medkits: s.healed, coins: coinBalance(s), gems: gemBalance(s), rebirths: s.rebirths };
-    };
-    let prev = read();
-    let next = 0;
-    const timers = new Set<ReturnType<typeof setTimeout>>();
-    const unsubscribe = store.subscribe(() => {
-      const now = read();
       const was = prev;
-      prev = now;
-      if (now.rebirths !== was.rebirths) return;
-      for (const c of ["medkits", "coins", "gems"] as const) {
-        const spent = was[c] - now[c];
-        if (!(spent > 0)) continue;
-        const drop = { id: next++, text: `-${c === "medkits" ? formatShort(spent) : formatCount(spent)}` };
-        setDrops((d) => ({ ...d, [c]: [...d[c].slice(-3), drop] }));
-        const timer = setTimeout(() => {
-          timers.delete(timer);
-          setDrops((d) => ({ ...d, [c]: d[c].filter((x) => x.id !== drop.id) }));
-        }, DROP_MS);
-        timers.add(timer);
-      }
+      prev = s;
+      if (s === was || s.rebirths !== was.rebirths) return;
+      if (s.healed < was.healed) chips.medkits?.spent(was.healed - s.healed);
+      if (s.coinsSpent > was.coinsSpent) chips.coins?.spent(s.coinsSpent - was.coinsSpent);
+      const gems = (s.gemsSpent ?? 0) - (was.gemsSpent ?? 0);
+      if (gems > 0) chips.gems?.spent(gems);
     });
-    return () => {
-      unsubscribe();
-      timers.forEach(clearTimeout);
-    };
-  }, [store]);
-  return drops;
+  }, [store, chips]);
 }
 
-function Chip({ image, value, label, big, drops }: { image: number; value: string; label: string; big: boolean; drops: Drop[] }) {
+function Chip({ image, value, label, big, spender, format }: { image: number; value: string; label: string; big: boolean; spender: Ref<Spender>; format: (n: number) => string }) {
   const icon = big ? 24 : 16;
   return (
     <View accessibilityLabel={label} className={`flex-row items-center self-end rounded-full border-[1.5px] border-outline bg-surface/90 ${big ? "gap-1.5 py-1 pl-1.5 pr-3" : "gap-1 py-0.5 pl-1 pr-2"}`}>
       <Image source={image} style={{ width: icon, height: icon }} contentFit="contain" />
       <Text className={`font-number text-ink ${big ? "text-lg" : "text-xs"}`}>{value}</Text>
-      {drops.map((d) => (
-        <SpendDrop key={d.id} text={d.text} big={big} />
-      ))}
+      <SpendNumbers ref={spender} big={big} format={format} />
     </View>
   );
 }
@@ -105,12 +143,20 @@ export function CurrencyBar() {
   const state = useGameSelector((s) => ({ healed: formatShort(s.healed), coins: coinBalance(s), gems: gemBalance(s) }));
   const coins = state.coins;
   const big = useWindowDimensions().width >= WIDE;
-  const drops = useSpends();
+  // Each chip's numbers, filled in by their refs (a plain object made once, read only when spending).
+  const [chips] = useState<Record<Currency, Spender | null>>(() => ({ medkits: null, coins: null, gems: null }));
+  useSpendWatch(chips);
+  const [setters] = useState(() => {
+    const set = (c: Currency) => (h: Spender | null) => {
+      chips[c] = h;
+    };
+    return { medkits: set("medkits"), coins: set("coins"), gems: set("gems") };
+  });
   return (
     <View className={big ? "gap-1.5" : "gap-1"} pointerEvents="none">
-      <Chip big={big} image={MEDKIT_IMAGE as number} value={state.healed} label={`${state.healed} medkits`} drops={drops.medkits} />
-      <Chip big={big} image={COIN.image as number} value={formatCount(coins)} label={`${coins} ${COIN.name}`} drops={drops.coins} />
-      <Chip big={big} image={GEM.image as number} value={formatCount(state.gems)} label={`${state.gems} ${GEM.name}`} drops={drops.gems} />
+      <Chip big={big} image={MEDKIT_IMAGE as number} value={state.healed} label={`${state.healed} medkits`} spender={setters.medkits} format={formatShort} />
+      <Chip big={big} image={COIN.image as number} value={formatCount(coins)} label={`${coins} ${COIN.name}`} spender={setters.coins} format={formatCount} />
+      <Chip big={big} image={GEM.image as number} value={formatCount(state.gems)} label={`${state.gems} ${GEM.name}`} spender={setters.gems} format={formatCount} />
     </View>
   );
 }

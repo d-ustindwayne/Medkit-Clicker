@@ -1,5 +1,4 @@
 import { memo, useEffect, useState } from "react";
-import { Backed } from "@/components/ui/backed";
 import { Image } from "@/components/ui/image";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
@@ -68,14 +67,12 @@ const ShopCard = memo(function ShopCard({ item, owned, cost, affordable, progres
         className={`overflow-hidden border-[3px] border-outline bg-surface active:translate-x-0.5 active:translate-y-0.5 ${affordable ? "" : "opacity-80"}`}
       >
         <View className="flex-row items-center gap-3 px-3 py-2">
-          <Backed size={48}>
-            <Image
-              source={item.image}
-              style={{ width: 48 * (item.iconScale ?? 1), height: 48 * (item.iconScale ?? 1), opacity: hidden ? 0.45 : 1 }}
-              contentFit="contain"
-              tintColor={hidden ? palette.ink : undefined}
-            />
-          </Backed>
+          <Image
+            source={item.image}
+            style={{ width: 48 * (item.iconScale ?? 1), height: 48 * (item.iconScale ?? 1), margin: 24 * (1 - (item.iconScale ?? 1)), opacity: hidden ? 0.45 : 1 }}
+            contentFit="contain"
+            tintColor={hidden ? palette.ink : undefined}
+          />
           <View className="flex-1">
             <MarqueeText className="font-pixel text-base tracking-[3px] text-ink">{hidden ? "???" : item.name.toUpperCase()}</MarqueeText>
             <View className="flex-row items-center gap-1">
@@ -210,9 +207,7 @@ const BoostCard = memo(function BoostCard({ boost, affordable, activeMs }: { boo
           className={`overflow-hidden border-[3px] border-outline bg-surface active:translate-x-0.5 active:translate-y-0.5 ${affordable ? "" : "opacity-80"}`}
         >
           <View className="flex-row items-center gap-3 px-3 py-2">
-            <Backed size={40}>
-              <Image source={boost.image} style={{ width: 40, height: 40 }} contentFit="contain" />
-            </Backed>
+            <Image source={boost.image} style={{ width: 40, height: 40 }} contentFit="contain" />
             <View className="flex-1">
               <MarqueeText className="font-pixel text-sm tracking-[2px] text-ink">{boost.name.toUpperCase()}</MarqueeText>
               <Text className="font-body text-xs leading-4 text-ink opacity-80">{boost.description}</Text>

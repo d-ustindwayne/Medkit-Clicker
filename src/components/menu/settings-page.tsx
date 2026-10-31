@@ -21,9 +21,12 @@ import { framingFor, useCustomBackground, type CustomBg } from "@/lib/custom-bg-
 import { appIcon } from "@/lib/app-icon";
 import { cloudEnabled } from "@/lib/cloud";
 import { exportSave, importSave, type SaveFormat } from "@/lib/save-file";
-import { VOLUME_STEPS } from "@/lib/storage";
+import { VOLUME_STEPS, type NumbersMode } from "@/lib/storage";
 
 const cycle = (i: number, delta: number, length: number) => (i + delta + length) % length;
+
+const NUMBERS: NumbersMode[] = ["all", "combined", "off"];
+const NUMBERS_LABEL: Record<NumbersMode, string> = { all: "Every one", combined: "Combined", off: "Off" };
 
 export function SettingsPage({ onDone }: { onDone: () => void }) {
   const settings = useSettings();
@@ -206,6 +209,15 @@ export function SettingsPage({ onDone }: { onDone: () => void }) {
         <Text className="font-body text-xs text-ink opacity-70">Stops animated backgrounds, spinning rays, confetti and screen shakes. On by itself if your phone asks for less motion.</Text>
         <Toggle label="Colour labels" value={settings.colorLabels} onChange={(colorLabels) => updateSettings({ colorLabels })} />
         <Text className="font-body text-xs text-ink opacity-70">Puts a letter on each pill colour in the minigames, for colour-blind players.</Text>
+        <Stepper
+          label="Floating numbers"
+          value={NUMBERS_LABEL[settings.numbers]}
+          onPrev={() => updateSettings({ numbers: NUMBERS[(NUMBERS.indexOf(settings.numbers) + NUMBERS.length - 1) % NUMBERS.length] })}
+          onNext={() => updateSettings({ numbers: NUMBERS[(NUMBERS.indexOf(settings.numbers) + 1) % NUMBERS.length] })}
+        />
+        <Text className="font-body text-xs text-ink opacity-70">The numbers that pop up when you tap or spend. Combined keeps one running total instead of many, so fast tapping and buying stay tidy.</Text>
+        <Toggle label="Lighter graphics" value={settings.lightGraphics} onChange={(lightGraphics) => updateSettings({ lightGraphics })} />
+        <Text className="font-body text-xs text-ink opacity-70">Fewer moving bits in the backgrounds and no tilting with the phone. Helps slower phones and the battery.</Text>
       </SettingsGroup>
 
       <SettingsGroup title="SAVE DATA" icon="save">
