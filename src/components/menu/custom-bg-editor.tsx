@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
-import { Modal, Text, View, useWindowDimensions, type GestureResponderEvent } from "react-native";
+import { Modal, Platform, Text, View, useWindowDimensions, type GestureResponderEvent } from "react-native";
 
 import { CustomMedia } from "@/components/custom-media";
 import { useSlide } from "@/components/ui/controls";
+import { backdropSize } from "@/constants/app";
 import { HardShadow } from "@/components/ui/hard-shadow";
 import { PixelButton } from "@/components/ui/pixel-button";
 import { themeVars } from "@/constants/theme";
@@ -47,8 +48,9 @@ export function CustomBgEditor({ initial, saveLabel, onCancel, onSave }: { initi
   const palette = usePalette();
   const [bg, setBg] = useState(initial);
   const win = useWindowDimensions();
-  // The preview has the screen's shape, as big as fits beside the controls.
-  const aspect = win.width / win.height;
+  // The preview has the shape of the box the background is drawn in, as big as fits beside the controls.
+  const box = backdropSize(win.width, win.height);
+  const aspect = box.width / box.height;
   let fw = Math.min(250, win.width - 96);
   let fh = fw / aspect;
   if (fh > win.height * 0.4) {
@@ -57,15 +59,33 @@ export function CustomBgEditor({ initial, saveLabel, onCancel, onSave }: { initi
   }
   const frame = mediaFrame(bg, fw, fh);
   const slackX = (frame.width - fw) / 2, slackY = (frame.height - fh) / 2;
-  // Dragging the picture moves it with the finger.
-  const drag = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
+  // Dragging the picture moves it with the finger; pinching with two fingers zooms (the slider too).
+  // `spread` is the distance between two fingers when the pinch began (0 while it's one finger).
+  const drag = useRef<{ px: number; py: number; x: number; y: number; spread: number; zoom: number } | null>(null);
+  const spreadOf = (e: GestureResponderEvent) => {
+    const t = e.nativeEvent.touches;
+    return t.length < 2 ? 0 : Math.hypot(t[0].pageX - t[1].pageX, t[0].pageY - t[1].pageY);
+  };
+  const begin = (e: GestureResponderEvent) => {
+    drag.current = { px: e.nativeEvent.pageX, py: e.nativeEvent.pageY, x: bg.x, y: bg.y, spread: spreadOf(e), zoom: bg.zoom };
+  };
   const move = (e: GestureResponderEvent) => {
     const d = drag.current;
     if (!d) return;
+    // Read now: the touch event is emptied once this handler returns, and the update below can run
+    // later (reading it there crashed with "pageX of null").
+    const { pageX, pageY } = e.nativeEvent;
+    const spread = spreadOf(e);
+    // A finger was added or lifted: start again from here, so the picture doesn't jump.
+    if (spread > 0 !== d.spread > 0) return begin(e);
+    if (spread > 0) {
+      const zoom = clamp((d.zoom * spread) / Math.max(1, d.spread), 1, MAX_ZOOM);
+      return setBg((b) => ({ ...b, zoom }));
+    }
     setBg((b) => ({
       ...b,
-      x: slackX > 0.5 ? clamp(d.x + (e.nativeEvent.pageX - d.px) / slackX, -1, 1) : 0,
-      y: slackY > 0.5 ? clamp(d.y + (e.nativeEvent.pageY - d.py) / slackY, -1, 1) : 0,
+      x: slackX > 0.5 ? clamp(d.x + (pageX - d.px) / slackX, -1, 1) : 0,
+      y: slackY > 0.5 ? clamp(d.y + (pageY - d.py) / slackY, -1, 1) : 0,
     }));
   };
   const [clipW, setClipW] = useState(0);
@@ -84,13 +104,13 @@ export function CustomBgEditor({ initial, saveLabel, onCancel, onSave }: { initi
             </Text>
             <View className="items-center">
               <View
-                accessibilityLabel="Preview. Drag to move the picture."
+                accessibilityLabel="Preview, the shape of your background. Drag to move the picture."
                 style={{ width: fw, height: fh }}
                 className="overflow-hidden border-2 border-outline"
                 onStartShouldSetResponder={() => true}
                 onMoveShouldSetResponder={() => true}
                 onResponderTerminationRequest={() => false}
-                onResponderGrant={(e) => (drag.current = { px: e.nativeEvent.pageX, py: e.nativeEvent.pageY, x: bg.x, y: bg.y })}
+                onResponderGrant={begin}
                 onResponderMove={move}
                 onResponderRelease={() => (drag.current = null)}
               >
@@ -105,7 +125,7 @@ export function CustomBgEditor({ initial, saveLabel, onCancel, onSave }: { initi
                   </View>
                 </View>
               </View>
-              <Text className="mt-1 font-body text-xs text-ink opacity-70">Drag the picture to move it.</Text>
+              <Text className="mt-1 font-body text-xs text-ink opacity-70">{Platform.OS === "web" ? "Drag the picture to move it." : "Drag to move it, pinch to zoom."}</Text>
             </View>
             <Slider label="Zoom" value={bg.zoom} min={1} max={MAX_ZOOM} shown={`${bg.zoom.toFixed(1)}x`} onChange={(zoom) => setBg((b) => ({ ...b, zoom }))} />
             {bg.kind === "video" && duration > bg.length + 0.05 && (

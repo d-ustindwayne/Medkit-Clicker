@@ -25,7 +25,6 @@ import {
   VISITOR_FEET_Y,
   VISITOR_SPEED,
   SKIES,
-  dayPhase,
   hospitalTier,
   type SkyBalloon,
   visitorGap,
@@ -41,6 +40,7 @@ import { useNow } from "@/hooks/use-now";
 import { onDevSignal } from "@/lib/dev-signals";
 import { formatCount } from "@/lib/format";
 import { emergencyReward } from "@/lib/game";
+import { sunPhase } from "@/lib/sun";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 const ART_W = 320;
@@ -460,7 +460,7 @@ export function HospitalPage({ width, active }: { width: number; active: boolean
   const { tier } = hospitalTier(rebirths);
   // Re-checked every minute, so the sky turns with the clock while the page is open.
   const now = useNow(60_000);
-  const phase = dayPhase(new Date(now).getHours());
+  const phase = sunPhase(new Date(now));
   const sky = SKIES[phase];
   const { dark, lights } = sky;
   // One object per change of time of day, so the memoized cars and visitors don't redraw needlessly.

@@ -1,7 +1,7 @@
 {
   "name": "medkit-clicker",
   "main": "./index.ts",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "dependencies": {
     "@expo/ui": "~57.0.26",
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -47,6 +47,7 @@
     "react-native-svg": "15.15.4",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.1",
+    "suncalc": "^2.1.1",
     "tailwindcss": "^3.4.17"
   },
   "devDependencies": {

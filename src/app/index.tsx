@@ -25,6 +25,7 @@ import { isRunning } from "@/lib/event-store";
 import { updateWidget } from "@/widget/sync";
 import { UpdatePrompt } from "@/components/update-prompt";
 import { RoomPage } from "@/components/room/room-page";
+import { SIDEBAR_WIDTH, WIDE_BREAKPOINT, backdropSize } from "@/constants/app";
 import { ownsBackground, showsInTheme } from "@/constants/backgrounds";
 import { GEM_ITEMS } from "@/constants/gems";
 import { TAP_GROWTH_EVERY, tapGrowth } from "@/constants/items";
@@ -40,9 +41,6 @@ import { usePalette } from "@/hooks/use-palette";
 import { formatCount, formatRate } from "@/lib/format";
 import { tapValue } from "@/lib/game";
 
-/** Above this width the shop sits beside the medkit (PC & tablet view). */
-const WIDE_BREAKPOINT = 768;
-const SIDEBAR_WIDTH = 380;
 /** The sidebar's left border (border-l-[3px]), which the shop's pages must leave room for. */
 const SIDEBAR_BORDER = 3;
 
@@ -262,7 +260,10 @@ function Clicker({ width, height, compact, shopUp, drag, onEditing }: { width: n
         ? !editing && (
             <Animated.View style={[{ overflow: "hidden", alignSelf: "stretch", zIndex: 10 }, counterFade]}>
               {/* Measured once at full height, so the fold knows how far to go. */}
-              <View onLayout={(e) => setCounterH((h) => h || e.nativeEvent.layout.height)}>
+              <View onLayout={(e) => {
+                const { height } = e.nativeEvent.layout;
+                setCounterH((h) => h || height);
+              }}>
                 <Counter compact={compact} />
               </View>
             </Animated.View>
@@ -400,7 +401,7 @@ export default function GameScreen() {
     <View className={`flex-1 bg-backdrop ${wide ? "flex-row" : "flex-col"}`}>
       <Animated.View style={[{ width: clickerWidth, paddingTop: insets.top, paddingLeft: insets.left, position: "relative", overflow: "hidden" }, clickerStyle]}>
         {/* Drawn at the tallest the area gets, so dragging the shop down never shows a bare edge. */}
-        <Backdrop width={clickerWidth} height={wide ? height : height * 0.56} />
+        <Backdrop {...backdropSize(width, height)} />
         <View className="absolute left-4 z-10" style={{ top: insets.top + 12 }}>
           <MenuButton onPress={() => setMenuOpen(true)} />
         </View>

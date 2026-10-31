@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Image } from "@/components/ui/image";
-import { BackHandler, ScrollView, Text, View } from "react-native";
+import { BackHandler, FlatList, Text, View } from "react-native";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HardShadow } from "@/components/ui/hard-shadow";
@@ -203,6 +203,43 @@ function ItemTile({ item }: { item: GemItem }) {
 const KINDS: GemItemKind[] = (["skin", "tap", "background", "room", "icon", "sticker"] as const).filter((k) => k !== "icon" || supportsIcons);
 const SECTION_TITLE: Record<GemItemKind, string> = { skin: "MEDKIT SKINS", tap: "TAP EFFECTS", background: "ANIMATED BACKGROUNDS", room: "ANIMATED ROOM ITEMS", icon: "APP ICONS", sticker: "STICKERS" };
 
+/** The list's rows: section titles, upgrade cards and pairs of item tiles. */
+type Row = { key: string; title: string; label?: string } | { key: string; upgrade: GemUpgrade } | { key: string; pair: GemItem[]; last: boolean };
+
+/** The Gem Shop as rows, in the order they show. */
+function gemRows(items: GemItem[]): Row[] {
+  const rows: Row[] = [{ key: "t-upgrades", title: "UPGRADES" }, ...GEM_UPGRADES.map((u) => ({ key: u.id, upgrade: u }))];
+  for (const kind of KINDS) {
+    const tiles = (kind === "icon" && supportsIcons ? [ORIGINAL_ICON, ...items] : items).filter((i) => i.kind === kind);
+    rows.push({ key: `t-${kind}`, title: SECTION_TITLE[kind], label: GEM_KIND_LABEL[kind] });
+    for (let i = 0; i < tiles.length; i += 2) rows.push({ key: `p-${tiles[i].id}`, pair: tiles.slice(i, i + 2), last: i + 2 >= tiles.length });
+  }
+  return rows;
+}
+
+/** One row, spaced like the old single scroll page (16 px between blocks, 8 under a title, 12 between tiles). */
+function GemRow({ row }: { row: Row }) {
+  if ("title" in row)
+    return (
+      <Text className={`font-pixel text-sm tracking-[2px] text-ink ${row.key === "t-upgrades" ? "mb-4" : "mb-2"}`} accessibilityLabel={row.label}>
+        {row.title}
+      </Text>
+    );
+  if ("upgrade" in row)
+    return (
+      <View className="mb-4">
+        <UpgradeCard upgrade={row.upgrade} />
+      </View>
+    );
+  return (
+    <View className={`flex-row justify-between ${row.last ? "mb-4" : "mb-3"}`}>
+      {row.pair.map((i) => (
+        <ItemTile key={i.id} item={i} />
+      ))}
+    </View>
+  );
+}
+
 /** Third page of the shop: spend Natal Gems on permanent upgrades and cosmetics. */
 export function GemShop() {
   const state = useGameSelector(pickGems);
@@ -210,6 +247,7 @@ export function GemShop() {
   const now = useNow(60_000);
   const open = openSections(state.unlockedSections, now);
   const items = GEM_ITEMS.filter((i) => !i.section || open.includes(i.section));
+  const rows = gemRows(items);
   const locked = state.rebirths < 1;
   return (
     <View className="flex-1">
@@ -221,27 +259,18 @@ export function GemShop() {
         <Text className="font-number text-lg text-ink">{gemBalance(state)}</Text>
       </View>
     </View>
-    <ScrollView contentContainerClassName="gap-4 px-4 pb-6" scrollEnabled={!locked}>
-      <Text className="font-pixel text-sm tracking-[2px] text-ink">UPGRADES</Text>
-      {GEM_UPGRADES.map((u) => (
-        <UpgradeCard key={u.id} upgrade={u} />
-      ))}
-
-      {KINDS.map((kind) => (
-        <View key={kind} className="gap-2">
-          <Text className="font-pixel text-sm tracking-[2px] text-ink" accessibilityLabel={GEM_KIND_LABEL[kind]}>
-            {SECTION_TITLE[kind]}
-          </Text>
-          <View className="flex-row flex-wrap justify-between gap-y-3">
-            {(kind === "icon" && supportsIcons ? [ORIGINAL_ICON, ...items] : items)
-              .filter((i) => i.kind === kind)
-              .map((i) => (
-                <ItemTile key={i.id} item={i} />
-              ))}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
+    {/* A virtualized list: only the rows near the screen are built. The pager hides pages that are
+        off screen, which takes their views away, so every visit used to rebuild all ~50 tiles at once. */}
+    <FlatList
+      data={rows}
+      keyExtractor={(r) => r.key}
+      renderItem={({ item }) => <GemRow row={item} />}
+      contentContainerClassName="px-4 pb-2"
+      scrollEnabled={!locked}
+      initialNumToRender={8}
+      maxToRenderPerBatch={6}
+      windowSize={5}
+    />
       {/* Until the first rebirth the whole Gem Shop is a preview behind a lock. */}
       {locked && (
         <View className="absolute inset-0 items-center justify-center bg-ink/55 px-8">

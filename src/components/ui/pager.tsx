@@ -21,8 +21,6 @@ type Props = {
 
 /** How long after start-up the second page is built, once the first screen has settled. */
 const PREWARM_MS = 1500;
-/** Longer than the slide to the next page: when the pages it passed are hidden, if nothing settled it sooner. */
-const SLIDE_MS = 450;
 const WEB = Platform.OS === "web";
 /**
  * Web: each page takes the full height, or its own lists grow instead of scrolling. It's also a snap
@@ -131,20 +129,10 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
   // tapped) and then kept, so hidden pages cost nothing at start-up.
   const [mounted, setMounted] = useState<number[]>([0]);
   const mount = (...ids: number[]) => setMounted((m) => (ids.every((i) => i < 0 || i >= pages.length || m.includes(i)) ? m : [...new Set([...m, ...ids])]));
-  /**
-   * Phones: the pages drawn right now, the current one and, while a swipe or page change is under
-   * way, the ones it passes. Built pages stay mounted (nothing is lost), but a hidden one isn't drawn:
-   * Android uploads the pictures of every drawn page to the GPU each frame, even off screen, and with
-   * My Room, the Hospital and the Gem Shop all drawn they overflowed its cache and every frame stuttered.
-   */
-  const [shownRange, setShownRange] = useState<[number, number]>([0, 0]);
-  const show = (a: number, b: number) => {
-    const lo = Math.max(0, Math.min(a, b)), hi = Math.min(pages.length - 1, Math.max(a, b));
-    setShownRange((r) => (r[0] === lo && r[1] === hi ? r : [lo, hi]));
-  };
+  /** Builds the pages from here to `ids`, and every page on the way (a dot tap slides past them). */
   const reveal = (...ids: number[]) => {
-    mount(...ids);
-    show(Math.min(page, ...ids), Math.max(page, ...ids));
+    const lo = Math.min(page, ...ids), hi = Math.max(page, ...ids);
+    mount(...Array.from({ length: hi - lo + 1 }, (_, k) => lo + k));
   };
   // A moment after start-up the next page is built too, so the first swipe never reaches a page
   // that is still loading its art.
@@ -153,18 +141,9 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
     return () => clearTimeout(t);
   }, [pages.length]);
 
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => clearTimeout(hideTimer.current ?? undefined), []);
-  /**
-   * Lands on a page. `sliding`: the pages are still on their way there (a let-go title drag), so
-   * the pages they pass stay drawn until the slide ends; hiding them at once made the page being
-   * left vanish mid-slide.
-   */
-  const settle = (next: number, sliding = false) => {
+  /** Lands on a page. */
+  const settle = (next: number) => {
     mount(next);
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    if (sliding) hideTimer.current = setTimeout(() => show(next, next), SLIDE_MS);
-    else show(next, next);
     if (next === page) return;
     playSfx("click");
     setPage(next);
@@ -174,7 +153,7 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
   // Dragging the title scrolls the pages with the finger, then snaps to the nearest one.
   const drag = useRef<{ x: number; y: number; t: number } | null>(null);
   // While the title is dragged, the pages move by scrollTo, which on Android can report a finished
-  // scroll at every step; settling there would hide the page being left.
+  // scroll at every step; settling there would land on a page while it's still being dragged.
   const titleDragging = useRef(false);
   const dragDx = (pageX: number) => pageX - (drag.current?.x ?? pageX);
   const titleDrag = {
@@ -199,12 +178,12 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
       const next = Math.min(Math.max(page + step, 0), pages.length - 1);
       titleDragging.current = false;
       scroller.current?.scrollTo({ x: next * width, animated: true });
-      settle(next, true);
+      settle(next);
     },
     onResponderTerminate: () => {
       titleDragging.current = false;
       scroller.current?.scrollTo({ x: page * width, animated: true });
-      settle(page, true);
+      settle(page);
     },
   };
 
@@ -267,6 +246,11 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
         showsHorizontalScrollIndicator={false}
         // On the web, visible overflow would stop the pages scrolling at all, so they clip there.
         style={{ width, flexGrow: 1, overflow: overflowVisible && !WEB ? "visible" : undefined }}
+        // Phones: a page off screen is taken out of drawing but kept, and put back as it slides in.
+        // Android keeps the pictures of every drawn view on the GPU, even off screen (with My Room, the
+        // Hospital and the Gem Shop all drawn, its cache overflowed and every frame stuttered). Hiding
+        // pages with display: none did the same, but rebuilt every view of a page at each swipe (~15 fps).
+        removeClippedSubviews={!WEB}
         onScrollBeginDrag={() => reveal(page - 1, page + 1)}
         onMomentumScrollEnd={(e) => {
           if (titleDragging.current) return;
@@ -276,13 +260,7 @@ export function Pager({ width, pages, dots = "bottom", onPageChange, scrollEnabl
       >
         {pages.map((p, i) => (
           <View key={p.key} style={WEB ? [WEB_PAGE, { width }] : { width }}>
-            {mounted.includes(i) ? (
-              WEB ? (
-                p.content
-              ) : (
-                <View style={{ flex: 1, display: i >= shownRange[0] && i <= shownRange[1] ? "flex" : "none" }}>{p.content}</View>
-              )
-            ) : null}
+            {mounted.includes(i) ? p.content : null}
           </View>
         ))}
       </ScrollView>

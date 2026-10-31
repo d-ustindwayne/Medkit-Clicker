@@ -39,7 +39,7 @@ export const SKIES: Record<DayPhase, { image: ImageSourcePropType; tint: string 
   sunset: { image: require("@/imgs/scenes/hospital_sky_sunset.png"), tint: "rgba(255,120,60,0.16)", clouds: 0.8, fill: "#002978", dark: 0.2, lights: true },
   night: { image: require("@/imgs/scenes/hospital_sky_night.png"), tint: "rgba(10,16,48,0.42)", clouds: 0.25, fill: "#080c28", dark: 0.45, lights: true },
 };
-/** Sunrise 5-7, day 7-17, sunset 17-19, night 19-5. */
+/** By the clock: sunrise 5-7, day 7-17, sunset 17-19, night 19-5. The game uses the real sun (sunPhase in src/lib/sun.ts) and this where the place isn't known. */
 export const dayPhase = (hour: number): DayPhase => (hour >= 5 && hour < 7 ? "sunrise" : hour >= 7 && hour < 17 ? "day" : hour >= 17 && hour < 19 ? "sunset" : "night");
 
 /** The look for this many rebirths, and the next one (undefined once fully grown). */
