@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CryptoDigestAlgorithm, digestStringAsync } from "expo-crypto";
 import * as DocumentPicker from "expo-document-picker";
 import { Directory, File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
@@ -22,9 +23,10 @@ export type SaveData = {
   appIcon?: string | null;
 };
 
-/** Every field gets a row; numbers as they are, anything else as URI-encoded JSON (no commas to break the CSV). */
+/** A CSV value: numbers as they are, anything else as URI-encoded JSON (no commas to break the CSV). */
+const cell = (v: unknown) => (typeof v === "number" ? String(v) : encodeURIComponent(JSON.stringify(v)));
+/** Every field gets a row. */
 const toCsv = ({ state, settings, appIcon }: SaveData) => {
-  const cell = (v: unknown) => (typeof v === "number" ? String(v) : encodeURIComponent(JSON.stringify(v)));
   const rows = [...Object.entries(state), ["settings", settings], ["appIcon", appIcon]].map(([k, v]) => `${k},${cell(v)}`);
   return ["key,value", ...rows].join("\n");
 };
@@ -63,6 +65,21 @@ const fromPhl = (text: string): unknown => {
   return back(parsePhl(text, { coerce: false }));
 };
 
+/** A save's text read back into data, by its format. */
+const readAs = (format: SaveFormat, text: string): unknown => (format === "csv" ? fromCsv(text) : format === "phl" ? fromPhl(text) : JSON.parse(text));
+
+/**
+ * Save files are signed, so a value changed by hand (medkits, coins, a background) is refused on
+ * import. The signature is a SHA-256 of the key and the save's data as it reads back (keys sorted),
+ * so it's the same for JSON, CSV and PHL. The key is set when the game is built (.env.local, and a
+ * GitHub Actions secret for the web version). It ships inside the game, so this stops editing a file,
+ * not someone who digs the key out of the game.
+ */
+const SAVE_KEY = process.env.EXPO_PUBLIC_SAVE_KEY ?? "";
+const sorted = (v: unknown): unknown =>
+  Array.isArray(v) ? v.map(sorted) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sorted((v as Record<string, unknown>)[k])])) : v;
+const signatureOf = (data: unknown) => digestStringAsync(CryptoDigestAlgorithm.SHA256, `${SAVE_KEY}\n${JSON.stringify(sorted(data))}`);
+
 /** Keeps only settings fields of the right type and range, so a hand-edited file can't break the app. */
 const readSettings = (raw: unknown): Partial<Settings> | null => {
   if (!raw || typeof raw !== "object") return null;
@@ -90,16 +107,24 @@ const ANDROID_START_FOLDER = "content://com.android.externalstorage.documents/tr
 /** Older builds remembered the export folder; every export now asks, so the old entry is cleared. */
 const OLD_EXPORT_FOLDER_KEY = "mc/exportFolder/v1";
 
+/** The save as a file's text in `format`, signed. */
+export async function saveText(data: SaveData, format: SaveFormat): Promise<string> {
+  // JSON keeps the game fields at the top level, as older saves had them. PHL (github.com/d-ustindwayne/PHL)
+  // holds the same fields; going through JSON first drops what JSON drops (undefined), which PHL can't write.
+  const flat = JSON.parse(JSON.stringify({ ...data.state, settings: data.settings, appIcon: data.appIcon }));
+  const write = (extra: Record<string, unknown>) => (format === "json" ? JSON.stringify({ ...flat, ...extra }, null, 2) : stringifyPhl({ ...flat, ...extra }));
+  // Signed as it will read back, then written again with the signature as one more field (a last row in CSV).
+  const signature = await signatureOf(readAs(format, format === "csv" ? toCsv(data) : write({})));
+  return format === "csv" ? `${toCsv(data)}\nsignature,${cell(signature)}` : write({ signature });
+}
+
 /**
  * Saves the game to a file. Web downloads it; Android asks for a folder every time (Documents by default) and
  * writes it there; iOS has no Downloads folder, so it opens the share sheet's "Save to Files".
  * Resolves to false if the user backed out.
  */
 export async function exportSave(data: SaveData, format: SaveFormat): Promise<boolean> {
-  // JSON keeps the game fields at the top level, as older saves had them. PHL (github.com/d-ustindwayne/PHL)
-  // holds the same fields; going through JSON first drops what JSON drops (undefined), which PHL can't write.
-  const flat = { ...data.state, settings: data.settings, appIcon: data.appIcon };
-  const content = format === "json" ? JSON.stringify(flat, null, 2) : format === "phl" ? stringifyPhl(JSON.parse(JSON.stringify(flat))) : toCsv(data);
+  const content = await saveText(data, format);
   const now = new Date();
   const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const name = `medkit-clicker-save-${day}.${format}`;
@@ -150,25 +175,39 @@ async function pickSaveText(): Promise<{ name: string; text: string } | null> {
   return { name: picked.result.name, text: await picked.result.text() };
 }
 
-/** Opens a file picker; resolves to the save inside, or null if cancelled. Throws on unreadable files. */
-export async function importSave(): Promise<SaveData | null> {
-  const picked = await pickSaveText();
-  if (!picked) return null;
-  const name = picked.name.toLowerCase();
-  const isCsv = name.endsWith(".csv") || picked.text.startsWith("key,value");
+/** Reads a save file's text (`name` tells its format). Throws if it isn't a save, or isn't signed by this game. */
+export async function readSave(fileName: string, text: string): Promise<SaveData> {
+  const name = fileName.toLowerCase();
+  const isCsv = name.endsWith(".csv") || text.startsWith("key,value");
   // A PHL save by its name, or by not being JSON (a JSON save starts with "{").
-  const isPhl = !isCsv && (name.endsWith(".phl") || name.endsWith(".pll") || !picked.text.trimStart().startsWith("{"));
+  const isPhl = !isCsv && (name.endsWith(".phl") || name.endsWith(".pll") || !text.trimStart().startsWith("{"));
   let raw: unknown;
   try {
-    raw = isCsv ? fromCsv(picked.text) : isPhl ? fromPhl(picked.text) : JSON.parse(picked.text);
+    raw = readAs(isCsv ? "csv" : isPhl ? "phl" : "json", text);
   } catch {
     raw = null;
+  }
+  // Only a save exactly as the game exported it is loaded: no signature (older saves too) or one
+  // that doesn't match (a value was changed) is refused.
+  if (raw && typeof raw === "object") {
+    const { signature, ...data } = raw as Record<string, unknown>;
+    if (typeof signature !== "string" || signature !== (await signatureOf(data))) {
+      throw new Error("This save was changed outside the game, or comes from an older version, so it can't be loaded. Only saves exported from this version work.");
+    }
+    raw = data;
   }
   // The settings and icon ride along in the file but aren't part of the game state.
   const { settings: _settings, appIcon: _icon, ...game } = (raw ?? {}) as Record<string, unknown>;
   const state = normalizeSave(raw && typeof raw === "object" ? game : raw);
   if (!state) throw new Error("That file isn't a Medkit Clicker save. Choose a .json, .csv or .phl file exported from Settings.");
   const extra = raw as { settings?: unknown; appIcon?: unknown };
-  // Older saves have no settings or icon; those stay as they are on this phone.
+  // Without settings or an icon in the save, those stay as they are on this phone.
   return { state, settings: readSettings(extra.settings), appIcon: typeof extra.appIcon === "string" || extra.appIcon === null ? extra.appIcon : undefined };
+}
+
+/** Opens a file picker; resolves to the save inside, or null if cancelled. Throws on unreadable files. */
+export async function importSave(): Promise<SaveData | null> {
+  const picked = await pickSaveText();
+  if (!picked) return null;
+  return readSave(picked.name, picked.text);
 }

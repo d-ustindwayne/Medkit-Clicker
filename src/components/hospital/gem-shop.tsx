@@ -16,7 +16,7 @@ import { useGameActions, useGameSelector, useSettings } from "@/hooks/use-game";
 import { useNow } from "@/hooks/use-now";
 import type { GameState } from "@/lib/game";
 import { useHaptics } from "@/hooks/use-haptics";
-import { appIcon, iconFromPending, setAppIcon, supportsIcons } from "@/lib/app-icon";
+import { appIcon, iconFromPending, relaunchApp, setAppIcon, supportsIcons } from "@/lib/app-icon";
 import { saveSticker } from "@/lib/stickers";
 
 const MAX_LEVEL = GEM_LEVEL_COSTS.length;
@@ -128,7 +128,8 @@ function ItemTile({ item }: { item: GemItem }) {
   const restartNow = () => {
     setAskRestart(false);
     setAppIcon(iconFromPending(chosen))
-      .then(() => BackHandler.exitApp())
+      // Comes back with the new icon; if the phone won't reopen it, it just closes, as before.
+      .then(() => relaunchApp() || BackHandler.exitApp())
       .catch(() => pushToast({ kind: "info", title: "Couldn't change the icon", body: "This phone doesn't allow changing the app icon." }));
   };
   const later = () => {

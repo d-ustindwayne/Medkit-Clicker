@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Image } from "@/components/ui/image";
 import { Modal, Text, View } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
 import { NEW_GAMES } from "@/components/ward/new-games";
 import { KeyHint, MORE_GAMES } from "@/components/ward/more-games";
@@ -170,23 +170,34 @@ function RhythmGame({ onDone, tuning }: GameProps) {
     const s = Date.now() + 1200;
     start.current = s;
     const timers: ReturnType<typeof setTimeout>[] = [];
-    plan.times.forEach((at, k) => {
-      timers.push(
-        setTimeout(() => {
-          setBeat(k);
-          // A short, steady beat: the heart swells and settles, with no wobble. A skipped beat barely moves.
-          const peak = plan.skip[k] ? 1.03 : 1.12;
-          pulse.set(withSequence(withTiming(peak, { duration: 70, easing: Easing.out(Easing.quad) }), withTiming(1, { duration: 180, easing: Easing.in(Easing.quad) })));
-        }, s - Date.now() + at),
-      );
-    });
+    // The heart's beats are one animation on the UI thread, so they land exactly on the beat times
+    // taps are judged against (JS timers could fire late while the game runs behind the minigame).
+    // A short, steady beat: the heart swells and settles, with no wobble. A skipped beat barely moves.
+    let at = -1200;
+    pulse.set(
+      withSequence(
+        ...plan.times.flatMap((t, k) => {
+          const wait = t - at;
+          at = t + 250;
+          return [
+            withDelay(wait, withTiming(plan.skip[k] ? 1.03 : 1.12, { duration: 70, easing: Easing.out(Easing.quad) })),
+            withTiming(1, { duration: 180, easing: Easing.in(Easing.quad) }),
+          ];
+        }),
+      ),
+    );
+    // The label and the beat row only need to keep roughly up.
+    plan.times.forEach((t, k) => timers.push(setTimeout(() => setBeat(k), s - Date.now() + t)));
     plan.times.forEach((at, k) => {
       if (!plan.skip[k]) return;
       timers.push(setTimeout(() => setGrey(true), s - Date.now() + at - tuning.beatMs / 2));
       timers.push(setTimeout(() => setGrey(false), s - Date.now() + at + tuning.beatMs / 2));
     });
     timers.push(setTimeout(() => done(score() >= NEED_BEATS), s - Date.now() + plan.times[count - 1] + tuning.beatMs + 250));
-    return () => timers.forEach(clearTimeout);
+    return () => {
+      timers.forEach(clearTimeout);
+      cancelAnimation(pulse);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per game
   }, []);
   const heart = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }));
@@ -213,7 +224,7 @@ function RhythmGame({ onDone, tuning }: GameProps) {
     juice.shake();
   };
   useKeys({ " ": press });
-  const hint = `${plan.variant === "skips" ? "Tap with the beat, but let it pass when the heart goes grey!" : plan.variant === "speedup" ? "The heart is speeding up. Keep with it!" : "Tap the heart every time it beats."} Extra taps cost you a beat.`;
+  const hint = `${plan.variant === "skips" ? "Tap with the beat, but let the grey beats in the row pass (the heart goes grey too)!" : plan.variant === "speedup" ? "The heart is speeding up. Keep with it!" : "Tap the heart every time it beats."} Extra taps cost you a beat.`;
 
   return (
     <Animated.View style={juice.style}>
@@ -221,6 +232,17 @@ function RhythmGame({ onDone, tuning }: GameProps) {
       <Text className="font-number text-base text-ink">
         {beat < 0 ? "Get ready..." : `Beat ${beat + 1} of ${count}`} · {hitCount} on time (need {NEED_BEATS})
       </Text>
+      {/* Skipped beats: every beat in a row, the grey ones to let pass, so they can be seen coming. */}
+      {plan.variant === "skips" && (
+        <View className="flex-row items-center gap-1.5" accessibilityLabel={`Skipped beats: ${plan.skip.flatMap((s, k) => (s ? [k + 1] : [])).join(" and ")}`}>
+          {plan.skip.map((skip, k) => (
+            <View
+              key={k}
+              className={`border-[1.5px] ${k === beat ? "h-4 w-4" : "h-3 w-3"} ${skip ? "border-ink/40 bg-ink/15" : "border-outline bg-primary"} ${k < beat ? "opacity-30" : ""}`}
+            />
+          ))}
+        </View>
+      )}
       <TapPressable accessibilityRole="button" accessibilityLabel="Tap with the heartbeat" onDown={press} className="h-36 w-36 items-center justify-center">
         {ripple > 0 && <HeartRipple key={ripple} />}
         <Animated.View style={heart}>

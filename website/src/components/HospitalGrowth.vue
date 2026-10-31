@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 import { useInView } from "@/composables/useInView";
 import { useReducedMotion } from "@/composables/useReducedMotion";
-import { dayPhase, HOSPITAL_TIERS, SCENE, SKIES, STREET, type DayPhase } from "@/lib/content";
+import { HOSPITAL_TIERS, SCENE, SKIES, STREET, sunPhase, type DayPhase } from "@/lib/content";
 
 // The game's Hospital page in miniature: the look for each rebirth, a sky that follows the visitor's clock,
 // drifting clouds, two lanes of traffic, visitors walking to the door, and now and then an ambulance to admit.
@@ -17,7 +17,7 @@ const pctY = (y: number) => `${(y / H) * 100}%`;
 
 const tier = ref(0);
 const current = computed(() => HOSPITAL_TIERS[tier.value]);
-const phase = ref<DayPhase>(dayPhase(new Date().getHours()));
+const phase = ref<DayPhase>(sunPhase());
 const sky = computed(() => SKIES[phase.value]);
 
 const root = ref<HTMLElement>();

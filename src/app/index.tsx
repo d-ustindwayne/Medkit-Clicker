@@ -150,6 +150,11 @@ function Counter({ compact }: { compact: boolean }) {
   const stacked = compact || fit(`${widest} ${label}`) < MIN_LINE_PX;
   const line = stacked ? count : `${count} ${label}`;
   const countPx = fit(line);
+  // The rate line shrinks the same way, by its length, inside the pill (its padding is 2 x 16 px).
+  // (adjustsFontSizeToFit sometimes measured it while the area was still resizing, after the shop
+  // came back down, and never grew it back, so it stayed tiny.)
+  const ratePx = compact ? 14 : 18;
+  const rateFontPx = boxW ? Math.max(8, Math.min(ratePx, Math.floor((boxW - 32) / (rateText.length * CHAR_EM)))) : ratePx;
   return (
     // Side padding clears the menu button (left) and the currency chips (right). The counter draws
     // above the pager, so the medkit and its orbit never cover the numbers (the shine goes behind them).
@@ -169,7 +174,7 @@ function Counter({ compact }: { compact: boolean }) {
           {Platform.OS === "web" ? (
             <MarqueeText shrink={0.8} className={`text-center font-display text-ink ${compact ? "text-base" : "text-xl"}`}>{rateText}</MarqueeText>
           ) : (
-            <Text className={`text-center font-display text-ink ${compact ? "text-sm" : "text-lg"}`} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+            <Text className="text-center font-display text-ink" style={{ fontSize: rateFontPx, lineHeight: compact ? 20 : 28 }} numberOfLines={1}>
               {rateText}
             </Text>
           )}

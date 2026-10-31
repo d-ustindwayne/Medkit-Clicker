@@ -1,5 +1,9 @@
 // Game facts shown on the site, copied from the game's src/constants. Keep in sync when the game changes.
 
+import { getPosition, getTimes } from "suncalc";
+
+import { TIMEZONE_PLACES } from "@/lib/timezones";
+
 const files = import.meta.glob<string>("../assets/**/*.{png,mp3}", { eager: true, query: "?url", import: "default" });
 const sprite = (path: string) => {
   const url = files[`../assets/${path}`];
@@ -63,7 +67,7 @@ export const HOSPITAL_TIERS = [
   { rebirths: 50, name: "Grand Haven Reborn" },
 ].map((t, i) => ({ ...t, img: sprite(`scenes/hospital_${i}.png`) }));
 
-/** The sky follows the clock, as in the game: `tint` darkens or warms the buildings, `clouds` is cloud opacity. */
+/** The sky follows the real sun, as in the game (sunPhase in src/lib/sun.ts): `tint` darkens or warms the buildings, `clouds` is cloud opacity. */
 export type DayPhase = "sunrise" | "day" | "sunset" | "night";
 // `dark` shades the people and cars (0-1) and `lights` turns the headlights on, as in the game
 // (SKIES in src/constants/hospital.ts).
@@ -73,9 +77,26 @@ export const SKIES: Record<DayPhase, { label: string; img: string; tint: string 
   sunset: { label: "Sunset", img: sprite("scenes/hospital_sky_sunset.png"), tint: "rgba(255,120,60,0.16)", clouds: 0.8, fill: "#002978", dark: 0.2, lights: true },
   night: { label: "Night", img: sprite("scenes/hospital_sky_night.png"), tint: "rgba(10,16,48,0.42)", clouds: 0.25, fill: "#080c28", dark: 0.45, lights: true },
 };
-/** Sunrise 5-7, day 7-17, sunset 17-19, night 19-5. */
+/** By the clock: sunrise 5-7, day 7-17, sunset 17-19, night 19-5. Used where the time zone isn't a place. */
 export const dayPhase = (hour: number): DayPhase =>
   hour >= 5 && hour < 7 ? "sunrise" : hour >= 7 && hour < 17 ? "day" : hour >= 17 && hour < 19 ? "sunset" : "night";
+
+/**
+ * Sunrise, day, sunset or night now, from the real sun at the visitor's time zone's main city, like
+ * the game: night while the sun is 6 degrees or more below the horizon, day once it's 6 above.
+ */
+export function sunPhase(date = new Date()): DayPhase {
+  let place: [number, number] | undefined;
+  try {
+    place = TIMEZONE_PLACES[Intl.DateTimeFormat().resolvedOptions().timeZone];
+  } catch {}
+  if (!place) return dayPhase(date.getHours());
+  const [lat, lng] = place;
+  const { altitude } = getPosition(date, lat, lng);
+  if (altitude <= -6) return "night";
+  if (altitude >= 6) return "day";
+  return date.getTime() < getTimes(date, lat, lng).solarNoon.getTime() ? "sunrise" : "sunset";
+}
 
 /** The scene's art-pixel grid: 320x240, like the game since 2026-10-21 (src/constants/hospital.ts). */
 export const SCENE = { w: 320, h: 240 };

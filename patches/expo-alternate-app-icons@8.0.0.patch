@@ -1,9 +1,23 @@
+diff --git a/node_modules/expo-alternate-app-icons/.bun-tag-3819491ca54425a4 b/.bun-tag-3819491ca54425a4
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/android/src/main/java/expo/modules/alternateappicons/ExpoAlternateAppIconsModule.kt b/android/src/main/java/expo/modules/alternateappicons/ExpoAlternateAppIconsModule.kt
-index 9c3ba02686d8d2d41e900f5483b4d06df4c1d22e..823d7c0aac745f7f1a93e30de22964906e3b5eda 100644
+index 9c3ba02686d8d2d41e900f5483b4d06df4c1d22e..b668a5f7601ab965683ad7cdb51752bb60e23ef2 100644
 --- a/android/src/main/java/expo/modules/alternateappicons/ExpoAlternateAppIconsModule.kt
 +++ b/android/src/main/java/expo/modules/alternateappicons/ExpoAlternateAppIconsModule.kt
-@@ -22,30 +22,48 @@ class ExpoAlternateAppIconsModule : Module() {
+@@ -1,6 +1,7 @@
+ package expo.modules.alternateappicons
+ 
+ import android.content.ComponentName
++import android.content.Intent
+ import android.content.pm.PackageManager
+ import expo.modules.kotlin.functions.Coroutine
+ import expo.modules.kotlin.modules.Module
+@@ -20,35 +21,72 @@ class ExpoAlternateAppIconsModule : Module() {
+ 
+     Function("getAppIconName", this@ExpoAlternateAppIconsModule::getAppIconName)
      AsyncFunction("setAlternateAppIcon").Coroutine(this@ExpoAlternateAppIconsModule::setAlternateAppIcon)
++    Function("relaunch", this@ExpoAlternateAppIconsModule::relaunch)
    }
  
 -  private fun getAppIconName(): String? {
@@ -66,3 +80,24 @@ index 9c3ba02686d8d2d41e900f5483b4d06df4c1d22e..823d7c0aac745f7f1a93e30de2296490
      return@withContext icon
    }
  
++  // Patched (Medkit Clicker): opens the game again through the launcher entry that's enabled now (the
++  // new icon's), replacing the running screen, so "Restart now" comes back with the new icon instead
++  // of just closing. False if it couldn't (the game then closes, as before).
++  private fun relaunch(): Boolean {
++    val activity = appContext.currentActivity ?: return false
++    return try {
++      val target = launcherComponents().firstOrNull { isEnabled(activity.packageManager, it) } ?: return false
++      val intent = Intent(Intent.ACTION_MAIN)
++        .addCategory(Intent.CATEGORY_LAUNCHER)
++        .setComponent(target)
++        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
++      activity.startActivity(intent)
++      true
++    } catch (error: Exception) {
++      false
++    }
++  }
++
+   private fun getSimpleName(component: ComponentName): String = component.className.split('.').last()
+ 
+   private fun retrieveIconNameFromComponent(component: ComponentName): String? =
