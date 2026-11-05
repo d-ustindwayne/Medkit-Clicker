@@ -1,0 +1,51 @@
+{
+  "name": "Medkit Clicker",
+  "identifier": "ee.dustindwayn.medkit-clicker.source",
+  "subtitle": "A cosy pixel-art hospital idle game",
+  "description": "A cosy pixel-art idle game about running a hospital. Tap the medkit, heal patients, and grow a little clinic into a grand medical center.",
+  "iconURL": "https://medkit-clicker.dustindwayn.ee/og-icon.png",
+  "website": "https://medkit-clicker.dustindwayn.ee/",
+  "tintColor": "#dd1122",
+  "apps": [
+    {
+      "name": "Medkit Clicker",
+      "bundleIdentifier": "com.medkitclicker.app",
+      "developerName": "Dustin Dwayne Diaz",
+      "subtitle": "A cosy pixel-art hospital idle game",
+      "localizedDescription": "A cosy pixel-art idle game about running a hospital. Tap the medkit, heal patients, and grow a little clinic into a grand medical center.",
+      "iconURL": "https://medkit-clicker.dustindwayn.ee/og-icon.png",
+      "tintColor": "#dd1122",
+      "category": "games",
+      "screenshots": [],
+      "versions": [
+        {
+          "version": "0.11.1",
+          "buildVersion": "0.5.0",
+          "date": "2026-11-05T02:13:29Z",
+          "localizedDescription": "- Fixed the game freezing on iPhone right after opening\n- The How to Play popup no longer flashes each time the game opens\n- Gloocose now slides towards the low side when you tilt, and can reach the whole background",
+          "downloadURL": "https://github.com/d-ustindwayne/Medkit-Clicker/releases/download/v0.11.1/medkit-clicker.ipa",
+          "size": 28372732,
+          "minOSVersion": "16.4"
+        },
+        {
+          "version": "0.11.0",
+          "buildVersion": "0.5.0",
+          "date": "2026-11-04T13:07:01Z",
+          "localizedDescription": "- New in the Gem Shop: Lucky Crates, with a good prize guaranteed by the tenth\n- New in the Gem Shop: Supply Packs in three sizes, worth the same at any stage of the game\n- 7 new achievements: every sticker, every skin, every upgrade, and buying certain boosts many times\n- Long effect names scroll\n- The hot air balloon no longer covers notifications\n- The bandage arrow game needs a few fewer wraps\n- On the web, the app button now works for any phone",
+          "downloadURL": "https://github.com/d-ustindwayne/Medkit-Clicker/releases/download/v0.11.0/medkit-clicker.ipa",
+          "size": 28372348,
+          "minOSVersion": "16.4"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {
+          "NSMicrophoneUsageDescription": "Allow MedkitClicker to access your microphone",
+          "NSPhotoLibraryAddUsageDescription": "Medkit Clicker saves stickers to your photos.",
+          "NSPhotoLibraryUsageDescription": "Medkit Clicker uses a photo you pick as your background."
+        }
+      }
+    }
+  ],
+  "news": []
+}
