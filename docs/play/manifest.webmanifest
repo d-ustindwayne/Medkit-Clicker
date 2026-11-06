@@ -1,0 +1,15 @@
+{
+  "name": "Medkit Clicker",
+  "short_name": "Medkit Clicker",
+  "description": "A cosy medical clicker game: tap the medkit, heal patients and grow your hospital.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f9e8e8",
+  "theme_color": "#dd1122",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
